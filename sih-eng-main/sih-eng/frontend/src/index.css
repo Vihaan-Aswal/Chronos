@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens */
+:root {
+  --primary: 99 102 241;      /* indigo-500 */
+  --primary-dark: 67 56 202;  /* indigo-700 */
+  --accent: 16 185 129;       /* emerald-500 */
+  --accent-warm: 245 158 11;  /* amber-500 */
+  --surface: 248 250 252;     /* slate-50 */
+  --surface-dark: 15 23 42;   /* slate-900 */
+  --border: 226 232 240;      /* slate-200 */
+  --text: 15 23 42;           /* slate-900 */
+  --text-muted: 100 116 139;  /* slate-400 */
+}
+
+/* Force full-height layout */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--surface));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--text-muted) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--text-muted) / 0.5);
+}
+
+/* Fade in-out animation for nudge notifications */
+@keyframes fade-in-out {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  90% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+}
+
+.animate-fade-in-out {
+  animation: fade-in-out 3s ease-in-out;
+}
+
+/* Slide-in toast for nudge notifications */
+@keyframes nudge-slide-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 24px);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -12px);
+  }
+}
+
+.animate-nudge-slide-in {
+  animation: nudge-slide-in 3s ease-in-out forwards;
+}
