@@ -4,6 +4,9 @@ import { useLocation, useSearchParams } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 
 import useTeacherWebSocket from "../hooks/useTeacherWebSocket";
+import useClassroomSimulator, {
+  isSimulatedStudentId,
+} from "../hooks/useClassroomSimulator.js";
 import NudgeButton from "../components/NudgeButton.jsx";
 import HMSMeeting from "../hms/HMSMeeting.jsx";
 import JoinScreen from "../components/JoinScreen.jsx";
@@ -40,6 +43,9 @@ export default function TeacherPage() {
   const [showReport, setShowReport] = useState(false);
   const [sessionData, setSessionData] = useState(null);
   const [strictMode, setStrictMode] = useState(false);
+  /** Lenient class vs strict exam engagement (student-side scoring). */
+  const [classContextMode, setClassContextMode] = useState("class");
+  const [simulateClassroom, setSimulateClassroom] = useState(false);
   const [showFlaggedOnly, setShowFlaggedOnly] = useState(true);
   const [ignoredUserIds, setIgnoredUserIds] = useState(new Set());
   const [removedUserIds, setRemovedUserIds] = useState(new Set());
@@ -48,6 +54,7 @@ export default function TeacherPage() {
   const metricsHistoryRef = useRef([]);
 
   const { connected, students } = useTeacherWebSocket(sessionId);
+  useClassroomSimulator(sessionId, inMeeting && simulateClassroom);
 
   const allStudents = Object.entries(students)
     .filter(([uid]) => !removedUserIds.has(uid))
@@ -140,7 +147,8 @@ export default function TeacherPage() {
           headPose: s.headPose || { yaw: 0, pitch: 0 },
           presence: s.presence || 'unknown',
           identityStatus: s.identityStatus || 'checking',
-          identityMismatchCount: s.identityMismatchCount || 0
+          identityMismatchCount: s.identityMismatchCount || 0,
+          isSimulated: Boolean(s.isSimulated),
         };
       });
 
@@ -176,6 +184,31 @@ export default function TeacherPage() {
   const handleJoinMeeting = () => {
     sessionStartRef.current = new Date();
     setInMeeting(true);
+  };
+
+  const handleToggleClassContext = async () => {
+    const next = classContextMode === "class" ? "exam" : "class";
+    setClassContextMode(next);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL || "http://localhost:8000"}/session/set-class-context`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: sessionId,
+            context: next,
+          }),
+        }
+      );
+      if (!res.ok) {
+        setClassContextMode(next === "exam" ? "class" : "exam");
+        console.error("Failed to set class context");
+      }
+    } catch (err) {
+      setClassContextMode(next === "exam" ? "class" : "exam");
+      console.error("Failed to set class context:", err);
+    }
   };
 
   const handleToggleStrictMode = async () => {
@@ -320,6 +353,9 @@ export default function TeacherPage() {
       }
 
       if (isAtRisk) {
+        if (studentInfo?.isSimulated) {
+          reasons.push("Simulated learner (demo)");
+        }
         atRisk.push({
           userId: uid,
           avgScore: avgScore,
@@ -348,25 +384,63 @@ export default function TeacherPage() {
   const handleLeaveMeeting = () => {
     setSessionEnded(true);
     setInMeeting(false);
+    setSimulateClassroom(false);
 
     const endTime = new Date();
     const startTime = sessionStartRef.current || endTime;
     const durationMinutes = (endTime - startTime) / 1000 / 60;
 
-    const scores = studentArray.map(s => s.score || 0);
-    const avgScore = scores.length > 0 
-      ? scores.reduce((a, b) => a + b, 0) / scores.length 
-      : 0;
+    const reportRoster = Object.entries(students)
+      .filter(([uid]) => !removedUserIds.has(uid))
+      .map(([uid, data]) => ({ userId: uid, ...data }));
 
-    const attentive = studentArray.filter(s => (s.score || 0) > 0.7).length;
-    const distracted = studentArray.filter(s => (s.score || 0) >= 0.4 && (s.score || 0) <= 0.7).length;
-    const disengaged = studentArray.filter(s => (s.score || 0) < 0.4).length;
+    const scores = reportRoster.map((s) => s.score || 0);
+    const avgScore =
+      scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
-    const metricsTimeline = metricsHistoryRef.current.map((m, idx) => ({
-      time: `${Math.floor(idx * 0.5)}m`,
-      avgScore: Number(m.avgScore) || 0,
-      students: m.studentCount || 0
-    }));
+    const attentive = reportRoster.filter((s) => (s.score || 0) > 0.7).length;
+    const distracted = reportRoster.filter(
+      (s) => (s.score || 0) >= 0.4 && (s.score || 0) <= 0.7
+    ).length;
+    const disengaged = reportRoster.filter((s) => (s.score || 0) < 0.4).length;
+
+    const totalStudentsSimulated = reportRoster.filter((s) => s.isSimulated).length;
+    const totalStudentsReal = reportRoster.length - totalStudentsSimulated;
+
+    const studentMeta = {};
+    reportRoster.forEach((s) => {
+      studentMeta[s.userId] = {
+        isSimulated: Boolean(s.isSimulated),
+        displayName: s.isSimulated
+          ? `Simulated · ${s.userId}`
+          : (s.userId || "").slice(0, 12),
+      };
+    });
+
+    const metricsTimeline = metricsHistoryRef.current.map((m, idx) => {
+      const stud = m.students || {};
+      let rSum = 0,
+        rN = 0,
+        sSum = 0,
+        sN = 0;
+      Object.values(stud).forEach((met) => {
+        const sc = Number(met?.score || 0);
+        if (met?.isSimulated) {
+          sSum += sc;
+          sN += 1;
+        } else {
+          rSum += sc;
+          rN += 1;
+        }
+      });
+      return {
+        time: `${Math.floor(idx * 0.5)}m`,
+        avgScore: Number(m.avgScore) || 0,
+        students: m.studentCount || 0,
+        avgScoreReal: rN ? rSum / rN : null,
+        avgScoreSimulated: sN ? sSum / sN : null,
+      };
+    });
 
     const perStudentTimelines = {};
     metricsHistoryRef.current.forEach((snapshot, idx) => {
@@ -382,7 +456,10 @@ export default function TeacherPage() {
     });
 
     const confusionHotspots = findConfusionHotspots(metricsHistoryRef.current);
-    const atRiskStudents = identifyAtRiskStudents(metricsHistoryRef.current, studentArray);
+    const atRiskStudents = identifyAtRiskStudents(
+      metricsHistoryRef.current,
+      reportRoster
+    );
 
     const tpi = (() => {
       if (metricsTimeline.length === 0) return 0;
@@ -400,7 +477,12 @@ export default function TeacherPage() {
       endTime: endTime.toISOString(),
       duration: durationMinutes,
       avgScore,
-      totalStudents: studentArray.length,
+      totalStudents: reportRoster.length,
+      totalStudentsReal,
+      totalStudentsSimulated,
+      studentMeta,
+      classContextMode,
+      strictModeAtEnd: strictMode,
       tpi,
       perStudentTimelines,
       metricsTimeline,
@@ -490,26 +572,74 @@ export default function TeacherPage() {
       if (!exists || !analytics?.length) return;
       const a = analytics[0];
       const rawTimeline = a.metrics_timeline || [];
-      const metricsTimeline = rawTimeline.map((m, idx) => ({
-        time: `${Math.floor(idx * 0.5)}m`,
-        avgScore: Number(m.avgScore) || 0,
-        students: m.studentCount || 0
-      }));
+      const metricsTimeline = rawTimeline.map((m, idx) => {
+        const stud = m.students || {};
+        let rSum = 0,
+          rN = 0,
+          sSum = 0,
+          sN = 0;
+        Object.values(stud).forEach((met) => {
+          const sc = Number(met?.score || 0);
+          if (met?.isSimulated) {
+            sSum += sc;
+            sN += 1;
+          } else {
+            rSum += sc;
+            rN += 1;
+          }
+        });
+        return {
+          time: `${Math.floor(idx * 0.5)}m`,
+          avgScore: Number(m.avgScore) || 0,
+          students: m.studentCount || 0,
+          avgScoreReal: rN ? rSum / rN : null,
+          avgScoreSimulated: sN ? sSum / sN : null,
+        };
+      });
       const perStudentTimelines = {};
+      const studentMeta = {};
       rawTimeline.forEach((snapshot, idx) => {
         const t = `${Math.floor(idx * 0.5)}m`;
         const studentData = snapshot.students || {};
         Object.entries(studentData).forEach(([uid, metrics]) => {
           if (!perStudentTimelines[uid]) perStudentTimelines[uid] = [];
-          perStudentTimelines[uid].push({ time: t, score: Number(metrics?.score || 0) });
+          perStudentTimelines[uid].push({
+            time: t,
+            score: Number(metrics?.score || 0),
+          });
+          if (metrics?.isSimulated != null) {
+            studentMeta[uid] = {
+              isSimulated: Boolean(metrics.isSimulated),
+              displayName: metrics.isSimulated
+                ? `Simulated · ${uid}`
+                : uid.slice(0, 12),
+            };
+          }
         });
       });
+      const lastSnap = rawTimeline[rawTimeline.length - 1];
+      const lastStudents = lastSnap?.students || {};
+      Object.keys(lastStudents).forEach((uid) => {
+        const met = lastStudents[uid];
+        if (!studentMeta[uid]) {
+          studentMeta[uid] = {
+            isSimulated: Boolean(met?.isSimulated),
+            displayName: met?.isSimulated
+              ? `Simulated · ${uid}`
+              : uid.slice(0, 12),
+          };
+        }
+      });
+      const simCount = Object.values(lastStudents).filter((m) => m?.isSimulated).length;
       setSelectedPastSession({
         sessionId: a.session_id,
         teacherId: a.teacher_id,
         duration: a.duration_minutes || 0,
         avgScore: a.avg_engagement_score || 0,
         totalStudents: a.total_students || 0,
+        totalStudentsSimulated: simCount,
+        totalStudentsReal: Math.max(0, (a.total_students || 0) - simCount),
+        studentMeta,
         tpi: a.tpi,
         metricsTimeline,
         perStudentTimelines,
@@ -601,39 +731,72 @@ export default function TeacherPage() {
             </div>
           </div>
 
-          <div className="w-[380px] bg-white h-full border-l border-slate-200 overflow-y-auto shadow-xl">
-            <div className="p-5 border-b border-slate-200 bg-gradient-to-r from-indigo-600 to-indigo-700">
-              <h1 className="text-xl font-bold text-white">
+          <div className="w-[400px] bg-gradient-to-b from-slate-50 to-white h-full border-l border-slate-200/80 overflow-y-auto shadow-2xl">
+            <div className="p-5 border-b border-white/10 bg-gradient-to-br from-indigo-700 via-violet-700 to-indigo-900 text-white">
+              <h1 className="text-xl font-bold tracking-tight">
                 Teacher Dashboard
               </h1>
-              <p className="text-sm text-indigo-100 mt-1">
-                Session: <span className="font-mono">{sessionId}</span>
+              <p className="text-xs text-indigo-100/90 mt-1 font-mono break-all opacity-90">
+                {sessionId}
               </p>
-              <p className="text-xs text-indigo-200 mt-0.5">
-                {user.email}
-              </p>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <div className="inline-flex rounded-full overflow-hidden border border-indigo-400/30">
+              <p className="text-xs text-indigo-200/80 mt-1">{user.email}</p>
+
+              <div className="mt-4 space-y-3">
+                <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={handleToggleStrictMode}
-                    className={`px-3 py-1.5 text-xs font-medium transition ${
-                      strictMode
-                        ? "bg-amber-500 text-white"
-                        : "bg-white/20 text-white hover:bg-white/30"
+                    type="button"
+                    onClick={handleToggleClassContext}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm border transition ${
+                      classContextMode === "exam"
+                        ? "bg-rose-500/90 border-rose-300 text-white"
+                        : "bg-white/15 border-white/25 text-white hover:bg-white/25"
                     }`}
                   >
-                    {strictMode ? "Strict" : "Normal"}
+                    {classContextMode === "exam" ? "Exam mode" : "Class mode"}
+                  </button>
+                  <div className="inline-flex rounded-xl overflow-hidden border border-white/25 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={handleToggleStrictMode}
+                      className={`px-3 py-1.5 text-xs font-semibold transition ${
+                        strictMode
+                          ? "bg-amber-500 text-white"
+                          : "bg-white/15 text-white hover:bg-white/25"
+                      }`}
+                    >
+                      {strictMode ? "Strict tab" : "Normal tab"}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSimulateClassroom((v) => !v)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border shadow-sm transition ${
+                      simulateClassroom
+                        ? "bg-emerald-500 border-emerald-300 text-white"
+                        : "bg-white/15 border-white/25 text-white hover:bg-white/25"
+                    }`}
+                  >
+                    {simulateClassroom ? "Simulate ON" : "Simulate"}
                   </button>
                 </div>
-                <span className="text-xs text-indigo-200">
-                  {strictMode ? "Tab = Disengaged" : "Free tab"}
-                </span>
+                <p className="text-[11px] leading-snug text-indigo-100/80">
+                  {classContextMode === "exam"
+                    ? "Exam: strict gaze / one-strike disengage on students."
+                    : "Class: standard engagement model."}{" "}
+                  {strictMode
+                    ? "Strict tab switches mark disengaged."
+                    : "Tab switching allowed."}{" "}
+                  {simulateClassroom
+                    ? "20 simulated learners are streaming metrics."
+                    : ""}
+                </p>
                 <button
+                  type="button"
                   onClick={() => handleCheckEngagement()}
                   disabled={livenessLoading}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium bg-white/20 text-white hover:bg-white/30 disabled:opacity-50 border border-indigo-400/30"
+                  className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-white text-indigo-800 hover:bg-indigo-50 disabled:opacity-50 shadow-md transition"
                 >
-                  {livenessLoading ? "Sending…" : "Check Engagement"}
+                  {livenessLoading ? "Sending…" : "Check engagement (all)"}
                 </button>
               </div>
             </div>
@@ -652,7 +815,7 @@ export default function TeacherPage() {
               </div>
 
               {sortedStudents.length === 0 ? (
-                <div className="p-6 text-center border border-slate-200 rounded-xl text-slate-500 bg-slate-50">
+                <div className="p-6 text-center border border-dashed border-slate-300 rounded-2xl text-slate-500 bg-white/80">
                   {showFlaggedOnly ? "No flagged students" : "Waiting for students…"}
                 </div>
               ) : (
@@ -660,55 +823,82 @@ export default function TeacherPage() {
                   {sortedStudents.map((s) => {
                     const hasIdentityIssue = s.identityStatus === "mismatch" && (s.identityMismatchCount || 0) >= 2;
                     const isPinned = isFlagged(s);
+                    const isSim =
+                      s.isSimulated === true || isSimulatedStudentId(s.userId);
                     
                     return (
                       <div
                         key={s.userId}
-                        className={`p-4 border rounded-xl shadow-sm transition ${
+                        className={`p-4 border rounded-2xl shadow-md transition ring-1 ring-black/5 ${
                           isPinned
-                            ? "border-amber-400 border-2 bg-amber-50"
+                            ? "border-amber-400 border-2 bg-gradient-to-br from-amber-50 to-orange-50/50"
                             : hasIdentityIssue
-                            ? "bg-red-50 border-red-400"
+                            ? "bg-red-50 border-red-300"
                             : s.strikes >= 3
-                            ? "bg-red-50/80 border-red-300"
-                            : "bg-slate-50 border-slate-200"
+                            ? "bg-red-50/80 border-red-200"
+                            : "bg-white border-slate-200"
                         }`}
                       >
                         <div className="flex justify-between items-start gap-2">
-                          <div className="font-semibold text-slate-800 flex items-center gap-1.5 min-w-0">
-                            {isPinned && <span title="Pinned">📌</span>}
-                            <span className="truncate">{s.userId.slice(0, 8)}…</span>
+                          <div className="font-semibold text-slate-800 flex flex-col gap-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {isPinned && <span title="Pinned">📌</span>}
+                              <span className="truncate text-sm">
+                                {isSim ? s.userId : `${s.userId.slice(0, 10)}…`}
+                              </span>
+                              {isSim && (
+                                <span className="text-[10px] uppercase tracking-wide font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 border border-violet-200">
+                                  Simulated
+                                </span>
+                              )}
+                              {classContextMode === "exam" && !isSim && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+                                  Exam
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex gap-1 flex-shrink-0 flex-wrap">
-                            <NudgeButton sessionId={sessionId} userId={s.userId} />
+                          <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end max-w-[200px]">
+                            {!isSim && (
+                              <NudgeButton sessionId={sessionId} userId={s.userId} />
+                            )}
                             <button
+                              type="button"
+                              disabled={isSim}
                               onClick={() => handleMarkEngaged(s.userId)}
-                              className="inline-flex items-center gap-1 bg-emerald-500 text-white px-2 py-1 rounded-lg text-xs font-medium hover:bg-emerald-600 transition"
+                              className="inline-flex items-center gap-1 bg-emerald-500 text-white px-2 py-1 rounded-lg text-xs font-medium hover:bg-emerald-600 transition disabled:opacity-40 disabled:pointer-events-none"
                             >
                               ✓ Engaged
                             </button>
                             <button
+                              type="button"
+                              disabled={isSim}
                               onClick={() => handleMessage(s.userId)}
-                              className="inline-flex items-center gap-1 bg-indigo-500 text-white px-2 py-1 rounded-lg text-xs font-medium hover:bg-indigo-600 transition"
+                              className="inline-flex items-center gap-1 bg-indigo-500 text-white px-2 py-1 rounded-lg text-xs font-medium hover:bg-indigo-600 transition disabled:opacity-40 disabled:pointer-events-none"
                             >
-                              ✉ Message
+                              ✉ Msg
                             </button>
                             <button
+                              type="button"
+                              disabled={isSim}
                               onClick={() => handleIgnore(s.userId)}
-                              className="inline-flex items-center gap-1 bg-slate-500 text-white px-2 py-1 rounded-lg text-xs font-medium hover:bg-slate-600 transition"
+                              className="inline-flex items-center gap-1 bg-slate-500 text-white px-2 py-1 rounded-lg text-xs font-medium hover:bg-slate-600 transition disabled:opacity-40 disabled:pointer-events-none"
                             >
                               Ignore
                             </button>
                             <button
+                              type="button"
+                              disabled={isSim}
                               onClick={() => handleRemove(s.userId)}
-                              className="inline-flex items-center gap-1 bg-red-500 text-white px-2 py-1 rounded-lg text-xs font-medium hover:bg-red-600 transition"
+                              className="inline-flex items-center gap-1 bg-red-500 text-white px-2 py-1 rounded-lg text-xs font-medium hover:bg-red-600 transition disabled:opacity-40 disabled:pointer-events-none"
                             >
                               Remove
                             </button>
                             <button
+                              type="button"
+                              disabled={isSim || livenessLoading}
                               onClick={() => handleCheckEngagement(s.userId)}
-                              disabled={livenessLoading}
-                              className="inline-flex items-center gap-1 bg-purple-500 text-white px-2 py-1 rounded-lg text-xs font-medium hover:bg-purple-600 disabled:opacity-50 transition"
+                              className="inline-flex items-center gap-1 bg-purple-500 text-white px-2 py-1 rounded-lg text-xs font-medium hover:bg-purple-600 disabled:opacity-40 disabled:pointer-events-none transition"
                             >
                               Verify
                             </button>

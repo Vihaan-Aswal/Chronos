@@ -62,6 +62,9 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
 
   const [identityStatus, setIdentityStatus] = useState("checking");
   const [sessionMode, setSessionMode] = useState("normal");
+  /** class = lenient engagement; exam = strict gaze + one-strike disengage */
+  const classContextRef = useRef("class");
+  const gazeDirHistoryRef = useRef([]);
   const [tabSwitchPopup, setTabSwitchPopup] = useState(false);
   const [livenessChallenge, setLivenessChallenge] = useState(null);
   const livenessChallengeRef = useRef(null);
@@ -340,9 +343,9 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
     return presenceState;
   }
 
-  // SCORING
-  const scoreFromGaze = g => g.direction === "center" ? 1 : 0;
-  const scoreFromHeadPose = p =>
+  // SCORING (class mode uses discrete gaze; exam uses continuous iris offset — applied in detect loop via classContextRef)
+  const scoreFromGazeClass = (g) => (g.direction === "center" ? 1 : 0);
+  const scoreFromHeadPose = (p) =>
     (!p.turned && !p.lookingDown) ? 1 :
       (p.turned && Math.abs(p.yaw) < 0.12) ? 0.6 : 0;
   const scoreFromPresence = p => p.status === "present" ? 1 : 0;
@@ -377,7 +380,8 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
   // Auto-nudge config 
   const WINDOW_MS = 10 * 1000;
   const CHECK_INTERVAL = 10 * 1000;
-  const AUTO_THRESHOLD = 0.5;
+  const AUTO_THRESHOLD_CLASS = 0.5;
+  const AUTO_THRESHOLD_EXAM = 0.58;
   const RESPONSE_WAIT_MS = 10 * 1000;
   const MAX_STRIKES = 3;
 
@@ -412,8 +416,25 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
     pendingAutoRef.current.pending = false;
     pendingAutoRef.current.responseResolver = null;
 
+    const isExam = classContextRef.current === "exam";
+
     if (response && response.type === "yes") {
-      strikeCountRef.current += 1;  
+      if (isExam) {
+        strikeCountRef.current = 0;
+        scoreBufferRef.current = [];
+        send({
+          type: "auto_nudge_response",
+          session_id: sessionId,
+          user_id: userId,
+          response: "yes",
+          timestamp: new Date().toISOString(),
+          strike_count: 0,
+          score: Number(engagementState.smoothScore || 0),
+        });
+        return;
+      }
+
+      strikeCountRef.current += 1;
       const strikes = strikeCountRef.current;
 
       send({
@@ -453,9 +474,23 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       timestamp: new Date().toISOString(),
       strike_count: strikes,
       avg_score: avgScore,
-      score: Number(engagementState.smoothScore || 0)
+      score: Number(engagementState.smoothScore || 0),
     });
     scoreBufferRef.current = [];
+
+    if (isExam) {
+      send({
+        type: "auto_disengaged_strike",
+        session_id: sessionId,
+        user_id: userId,
+        timestamp: new Date().toISOString(),
+        strike_count: Math.max(strikes, 3),
+        message: "Exam mode: marked disengaged",
+        score: Number(engagementState.smoothScore || 0),
+      });
+      scoreBufferRef.current = [];
+      return;
+    }
 
     if (strikes >= MAX_STRIKES) {
       send({
@@ -465,7 +500,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
         timestamp: new Date().toISOString(),
         strike_count: strikes,
         message: "Repeated disengagement",
-        score: Number(engagementState.smoothScore || 0)
+        score: Number(engagementState.smoothScore || 0),
       });
       scoreBufferRef.current = [];
     }
@@ -479,6 +514,10 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
     }
     if (message.type === "session_mode") {
       setSessionMode(message.mode || "normal");
+    }
+    if (message.type === "class_context") {
+      const ctx = message.context === "exam" ? "exam" : "class";
+      classContextRef.current = ctx;
     }
     if (message.type === "liveness_challenge") {
       const ch = {
@@ -572,7 +611,8 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
           presence: metrics?.presence || "unknown",
           // Use authoritative identityState values to avoid stale metrics
           identity_status: identityState.status || "checking",
-          identity_mismatch_count: identityState.mismatchCount || 0
+          identity_mismatch_count: identityState.mismatchCount || 0,
+          is_simulated: false,
         });
       }
     }, 3000);
@@ -597,12 +637,20 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
 
     (async () => {
       const avg = computeAverageLastWindow();
-      if (avg < AUTO_THRESHOLD) triggerAutoNudge(avg);
+      const th =
+        classContextRef.current === "exam"
+          ? AUTO_THRESHOLD_EXAM
+          : AUTO_THRESHOLD_CLASS;
+      if (avg < th) triggerAutoNudge(avg);
     })();
 
     checkInterval = setInterval(() => {
       const avg = computeAverageLastWindow();
-      if (avg < AUTO_THRESHOLD) {
+      const th =
+        classContextRef.current === "exam"
+          ? AUTO_THRESHOLD_EXAM
+          : AUTO_THRESHOLD_CLASS;
+      if (avg < th) {
         triggerAutoNudge(avg);
       }
     }, CHECK_INTERVAL);
@@ -814,12 +862,53 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
         }
       }
 
-      const raw =
-        scoreFromPresence(pres) * 0.3 +
-        scoreFromGaze(gaze) * 0.25 +
-        scoreFromHeadPose(pose) * 0.2 +
-        scoreFromEye(blinkData.status) * 0.15 +
-        scoreFromIdentity(identityState.status) * 0.1;
+      const classCtx = classContextRef.current;
+      const cCenter = gazeCalib.centerAvg ?? 0.5;
+      const horizOff = Math.abs((gaze?.horizontal ?? 0.5) - cCenter);
+
+      let gazeScoreClass = scoreFromGazeClass(gaze);
+      let gazeScoreExam = 1 - Math.min(1, horizOff * 6);
+      if (gaze?.direction === "down") gazeScoreExam *= 0.45;
+      if (gaze?.direction === "left" || gaze?.direction === "right") {
+        gazeScoreExam *= 0.55;
+      }
+
+      const hist = gazeDirHistoryRef.current;
+      hist.push(gaze?.direction || "center");
+      if (hist.length > 14) hist.shift();
+      let gazeOscillating = false;
+      if (hist.length >= 8 && classCtx === "exam") {
+        let transitions = 0;
+        for (let i = 1; i < hist.length; i++) {
+          const a = hist[i - 1];
+          const b = hist[i];
+          if (
+            (a === "left" && b === "right") ||
+            (a === "right" && b === "left")
+          ) {
+            transitions += 1;
+          }
+        }
+        gazeOscillating = transitions >= 2;
+      }
+      if (gazeOscillating) gazeScoreExam *= 0.5;
+
+      let raw;
+      if (classCtx === "exam") {
+        raw =
+          scoreFromPresence(pres) * 0.18 +
+          gazeScoreExam * 0.48 +
+          scoreFromHeadPose(pose) * 0.14 +
+          scoreFromEye(blinkData.status) * 0.15 +
+          scoreFromIdentity(identityState.status) * 0.05;
+      } else {
+        raw =
+          scoreFromPresence(pres) * 0.3 +
+          gazeScoreClass * 0.25 +
+          scoreFromHeadPose(pose) * 0.2 +
+          scoreFromEye(blinkData.status) * 0.15 +
+          scoreFromIdentity(identityState.status) * 0.1;
+      }
 
       if (engagementState && engagementState.smoothScore !== undefined) {
         engagementState.smoothScore =

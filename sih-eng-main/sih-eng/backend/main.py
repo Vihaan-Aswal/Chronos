@@ -70,6 +70,12 @@ class SessionModePayload(BaseModel):
     mode: str  # "strict" | "normal"
 
 
+class ClassContextPayload(BaseModel):
+    """Class vs exam engagement strictness (separate from strict/normal tab mode)."""
+    session_id: str
+    context: str  # "class" | "exam"
+
+
 class TeacherActionPayload(BaseModel):
     session_id: str
     user_id: str
@@ -351,6 +357,15 @@ async def set_session_mode(payload: SessionModePayload):
     msg = {"type": "session_mode", "mode": payload.mode}
     await manager.broadcast_to_students(payload.session_id, msg)
     return {"status": "success", "mode": payload.mode}
+
+
+@app.post("/session/set-class-context")
+async def set_class_context(payload: ClassContextPayload):
+    if payload.context not in ("class", "exam"):
+        raise HTTPException(status_code=400, detail="context must be 'class' or 'exam'")
+    msg = {"type": "class_context", "context": payload.context}
+    await manager.broadcast_to_students(payload.session_id, msg)
+    return {"status": "success", "context": payload.context}
 
 
 # LIVENESS VERIFICATION

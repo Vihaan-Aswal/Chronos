@@ -19,9 +19,9 @@ export default function useTeacherWebSocket(sessionId) {
     function connect() {
       if (!isMounted) return;
 
-      const wsUrl = `${
-        import.meta.env.VITE_BACKEND_WS_URL
-      }/ws/teacher/${sessionId}`;
+      const base =
+        import.meta.env.VITE_BACKEND_WS_URL || "ws://localhost:8000";
+      const wsUrl = `${base}/ws/teacher/${sessionId}`;
 
       try {
         const ws = new WebSocket(wsUrl);
@@ -71,6 +71,7 @@ export default function useTeacherWebSocket(sessionId) {
                     // Identity verification
                     identityStatus: msg.identity_status || prevStudent.identityStatus || 'checking',
                     identityMismatchCount: msg.identity_mismatch_count ?? prevStudent.identityMismatchCount ?? 0,
+                    isSimulated: Boolean(msg.is_simulated) || prevStudent.isSimulated === true,
                   }
                 };
               }

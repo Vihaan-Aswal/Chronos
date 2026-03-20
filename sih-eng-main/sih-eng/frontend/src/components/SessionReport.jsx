@@ -1,5 +1,5 @@
 // src/components/SessionReport.jsx
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { jsPDF } from 'jspdf';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
@@ -14,6 +14,11 @@ export default function SessionReport({
     duration,
     avgScore,
     totalStudents,
+    totalStudentsReal,
+    totalStudentsSimulated,
+    studentMeta = {},
+    classContextMode,
+    strictModeAtEnd,
     metricsTimeline,
     distribution,
     confusionHotspots = [],
@@ -23,6 +28,72 @@ export default function SessionReport({
   } = sessionData;
 
   const [showPerStudent, setShowPerStudent] = useState(false);
+
+  const distributionEffective = useMemo(() => {
+    const hasData =
+      (distribution?.attentive || 0) +
+        (distribution?.distracted || 0) +
+        (distribution?.disengaged || 0) >
+      0;
+    if (hasData) return distribution;
+    const avgs = Object.entries(perStudentTimelines).map(([uid, pts]) => {
+      if (!pts?.length) return { uid, avg: 0 };
+      const avg = pts.reduce((s, p) => s + (p.score ?? 0), 0) / pts.length;
+      return { uid, avg };
+    });
+    let attentive = 0;
+    let distracted = 0;
+    let disengaged = 0;
+    avgs.forEach(({ avg }) => {
+      if (avg > 0.7) attentive += 1;
+      else if (avg >= 0.4) distracted += 1;
+      else disengaged += 1;
+    });
+    return { attentive, distracted, disengaged };
+  }, [distribution, perStudentTimelines]);
+
+  const classMeanFromStudents = useMemo(() => {
+    const pts = Object.values(perStudentTimelines);
+    if (!pts.length) return avgScore || 0;
+    const avgs = pts
+      .filter((p) => p?.length)
+      .map((series) => series.reduce((s, x) => s + (x.score ?? 0), 0) / series.length);
+    if (!avgs.length) return avgScore || 0;
+    return avgs.reduce((a, b) => a + b, 0) / avgs.length;
+  }, [perStudentTimelines, avgScore]);
+
+  const relativePieData = useMemo(() => {
+    const mu = classMeanFromStudents || 0.01;
+    const hi = Math.min(0.95, mu * 1.15);
+    const lo = Math.max(0.05, mu * 0.7);
+    const avgs = Object.entries(perStudentTimelines).map(([uid, series]) => {
+      if (!series?.length) return { uid, avg: 0 };
+      const avg = series.reduce((s, p) => s + (p.score ?? 0), 0) / series.length;
+      return { uid, avg };
+    });
+    let above = 0;
+    let mid = 0;
+    let below = 0;
+    avgs.forEach(({ avg }) => {
+      if (avg >= hi) above += 1;
+      else if (avg <= lo) below += 1;
+      else mid += 1;
+    });
+    const total = above + mid + below || 1;
+    return {
+      rows: [
+        { name: `Strong (≥${(hi * 100).toFixed(0)}%)`, value: above, color: '#10b981' },
+        { name: 'Typical band', value: mid, color: '#f59e0b' },
+        { name: `Below (≤${(lo * 100).toFixed(0)}%)`, value: below, color: '#ef4444' },
+      ],
+      hi,
+      lo,
+      total,
+    };
+  }, [perStudentTimelines, classMeanFromStudents]);
+
+  const hasSimLine = metricsTimeline?.some((m) => m.avgScoreSimulated != null && !Number.isNaN(m.avgScoreSimulated));
+  const hasRealLine = metricsTimeline?.some((m) => m.avgScoreReal != null && !Number.isNaN(m.avgScoreReal));
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
@@ -38,7 +109,7 @@ export default function SessionReport({
       doc.text(`Teacher Performance Index (TPI): ${tpi}/100`, 20, y);
       y += 10;
     }
-    doc.text(`Attentive: ${distribution.attentive} | Distracted: ${distribution.distracted} | Disengaged: ${distribution.disengaged}`, 20, y);
+    doc.text(`Attentive: ${distributionEffective.attentive} | Distracted: ${distributionEffective.distracted} | Disengaged: ${distributionEffective.disengaged}`, 20, y);
     y += 15;
     if (atRiskStudents.length > 0) {
       doc.setFontSize(14);
@@ -61,10 +132,11 @@ export default function SessionReport({
   };
 
   const pieData = [
-    { name: 'Attentive', value: distribution.attentive, color: COLORS.attentive },
-    { name: 'Distracted', value: distribution.distracted, color: COLORS.distracted },
-    { name: 'Disengaged', value: distribution.disengaged, color: COLORS.disengaged }
+    { name: 'Attentive', value: distributionEffective.attentive, color: COLORS.attentive },
+    { name: 'Distracted', value: distributionEffective.distracted, color: COLORS.distracted },
+    { name: 'Disengaged', value: distributionEffective.disengaged, color: COLORS.disengaged }
   ];
+  const pieDataNonZero = pieData.filter((d) => d.value > 0);
 
   const formatTime = (minutes) => {
     const hrs = Math.floor(minutes / 60);
@@ -86,66 +158,82 @@ export default function SessionReport({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto border border-slate-200">
+    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-3xl shadow-[0_25px_80px_-12px_rgba(0,0,0,0.35)] max-w-5xl w-full max-h-[92vh] overflow-y-auto border border-slate-200/80 ring-1 ring-white/60">
         
         {/* Header */}
-        <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-indigo-600 via-indigo-700 to-slate-800">
-          <h2 className="text-2xl font-bold text-white mb-1">
-            Session Complete! 🎉
+        <div className="p-7 border-b border-slate-200/80 bg-gradient-to-br from-indigo-700 via-violet-700 to-indigo-950 text-white">
+          <h2 className="text-2xl font-bold tracking-tight mb-1">
+            Post-class analytics
           </h2>
-          <p className="text-indigo-200 text-sm">
-            Here's how your class performed
+          <p className="text-indigo-100/90 text-sm max-w-2xl">
+            Engagement over time, simulated cohort (if used), and at-risk signals — class mean ≈ {(classMeanFromStudents * 100).toFixed(0)}% from per-learner series.
           </p>
+          <div className="flex flex-wrap gap-2 mt-4">
+            {classContextMode && (
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/15 border border-white/25">
+                Context: {classContextMode}
+              </span>
+            )}
+            {strictModeAtEnd != null && (
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/15 border border-white/25">
+                Tab mode end: {strictModeAtEnd ? 'Strict' : 'Normal'}
+              </span>
+            )}
+            {(totalStudentsSimulated ?? 0) > 0 && (
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-400/20 border border-emerald-200/40 text-emerald-100">
+                Includes {totalStudentsSimulated} simulated learners
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="p-6 grid grid-cols-3 gap-4">
-          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 h-[100px] flex flex-col justify-center">
-            <div className="text-sm text-slate-600 font-medium mb-1 flex items-center gap-2">
-              <span>⏱</span> Duration
-            </div>
-            <div className="text-2xl font-bold text-slate-800">
+        <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-slate-50 to-slate-100/80 rounded-2xl p-5 border border-slate-200/80 flex flex-col justify-center shadow-sm">
+            <div className="text-xs uppercase tracking-wide text-slate-500 font-semibold mb-1">Duration</div>
+            <div className="text-2xl font-bold text-slate-900">
               {formatTime(duration)}
             </div>
           </div>
 
-          <div className={`rounded-xl p-4 border h-[100px] flex flex-col justify-center ${
-            avgScore >= 0.7 ? 'bg-emerald-50 border-emerald-200' : 
-            avgScore >= 0.4 ? 'bg-amber-50 border-amber-200' : 
-            'bg-red-50 border-red-200'
+          <div className={`rounded-2xl p-5 border flex flex-col justify-center shadow-sm ${
+            avgScore >= 0.7 ? 'bg-emerald-50/90 border-emerald-200' : 
+            avgScore >= 0.4 ? 'bg-amber-50/90 border-amber-200' : 
+            'bg-red-50/90 border-red-200'
           }`}>
-            <div className="text-sm font-medium mb-1 flex items-center gap-2">
-              <span>📊</span>
-              <span className={avgScore >= 0.7 ? 'text-emerald-600' : avgScore >= 0.4 ? 'text-amber-600' : 'text-red-600'}>Avg Engagement</span>
-            </div>
+            <div className="text-xs uppercase tracking-wide font-semibold mb-1 opacity-80">Avg engagement</div>
             <div className={`text-2xl font-bold ${getScoreColor(avgScore)}`}>
               {(avgScore * 100).toFixed(0)}%
             </div>
-            <div className={`text-xs font-medium mt-0.5 ${getScoreColor(avgScore)}`}>
+            <div className={`text-xs font-medium mt-1 ${getScoreColor(avgScore)}`}>
               {getScoreLabel(avgScore)}
             </div>
           </div>
 
-          <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-200 h-[100px] flex flex-col justify-center">
-            <div className="text-sm text-indigo-600 font-medium mb-1 flex items-center gap-2">
-              <span>👥</span> Students
-            </div>
-            <div className="text-2xl font-bold text-indigo-700">
+          <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-2xl p-5 border border-indigo-200/80 shadow-sm">
+            <div className="text-xs uppercase tracking-wide text-indigo-600 font-semibold mb-1">Learners</div>
+            <div className="text-2xl font-bold text-indigo-900">
               {totalStudents}
             </div>
+            {(totalStudentsReal != null || totalStudentsSimulated != null) && (
+              <div className="text-xs text-indigo-700/80 mt-2 space-y-0.5">
+                {totalStudentsReal != null && <div>Live / enrolled: {totalStudentsReal}</div>}
+                {(totalStudentsSimulated ?? 0) > 0 && (
+                  <div>Simulated (demo): {totalStudentsSimulated}</div>
+                )}
+              </div>
+            )}
           </div>
 
           {tpi != null && (
-            <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-200" style={{ gridColumn: '1 / -1' }}>
-              <div className="text-sm text-indigo-600 font-medium mb-1 flex items-center gap-2">
-                <span>📈</span> Teacher Performance Index (TPI)
+            <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-2xl p-5 border border-violet-200/80 shadow-sm lg:col-span-1">
+              <div className="text-xs uppercase tracking-wide text-violet-700 font-semibold mb-1">TPI</div>
+              <div className="text-3xl font-bold text-violet-900">
+                {tpi}<span className="text-lg text-violet-600">/100</span>
               </div>
-              <div className="text-3xl font-bold text-indigo-700">
-                {tpi}/100
-              </div>
-              <div className="text-xs text-indigo-600 mt-1">
-                Based on engagement retention and drop-points
+              <div className="text-xs text-violet-700/80 mt-2">
+                Retention of attention + average engagement
               </div>
             </div>
           )}
@@ -166,12 +254,15 @@ export default function SessionReport({
                   {metricsTimeline.map((m, idx) => {
                     const s = Number(m.avgScore) || 0;
                     const color = s >= 0.7 ? '#10b981' : s >= 0.4 ? '#f59e0b' : '#ef4444';
+                    const parts = [`All: ${(s * 100).toFixed(0)}%`];
+                    if (m.avgScoreReal != null) parts.push(`Live: ${(m.avgScoreReal * 100).toFixed(0)}%`);
+                    if (m.avgScoreSimulated != null) parts.push(`Sim: ${(m.avgScoreSimulated * 100).toFixed(0)}%`);
                     return (
                       <div
                         key={idx}
-                        title={`${m.time}: ${(s*100).toFixed(0)}%`}
-                        className="flex-1 min-w-[8px] h-8 rounded-sm transition-opacity hover:opacity-80"
-                        style={{ backgroundColor: color, opacity: 0.5 + s * 0.5 }}
+                        title={`${m.time} — ${parts.join(' · ')}`}
+                        className="flex-1 min-w-[8px] h-10 rounded-md transition-opacity hover:opacity-90 ring-1 ring-black/5"
+                        style={{ backgroundColor: color, opacity: 0.45 + s * 0.55 }}
                       />
                     );
                   })}
@@ -186,51 +277,75 @@ export default function SessionReport({
 
           {/* Engagement Over Time */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">
-              Engagement Timeline
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">
+              Engagement timeline
             </h3>
+            <p className="text-sm text-slate-500 mb-3">
+              Combined average includes simulated learners when simulation was on; split lines separate live vs simulated cohorts.
+            </p>
             {metricsTimeline && metricsTimeline.length > 0 ? (
-              <div className="bg-gray-50 rounded-lg p-4 border">
-                <ResponsiveContainer width="100%" height={250}>
+              <div className="bg-slate-50/80 rounded-2xl p-5 border border-slate-200/80 shadow-inner">
+                <ResponsiveContainer width="100%" height={280}>
                   <LineChart data={metricsTimeline}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                     <XAxis 
                       dataKey="time" 
-                      stroke="#6b7280"
-                      style={{ fontSize: '12px' }}
+                      stroke="#64748b"
+                      tick={{ fontSize: 11 }}
                     />
                     <YAxis 
-                      stroke="#6b7280"
-                      style={{ fontSize: '12px' }}
+                      stroke="#64748b"
+                      tick={{ fontSize: 11 }}
                       domain={[0, 1]}
                       ticks={[0, 0.25, 0.5, 0.75, 1]}
                       tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
                     />
                     <Tooltip 
                       formatter={(value, name) => {
-                        if (name === "Class Average") {
-                          return [`${(value * 100).toFixed(0)}%`, name];
-                        }
-                        return [value, name];
+                        if (value == null || Number.isNaN(value)) return ['—', name];
+                        return [`${(Number(value) * 100).toFixed(0)}%`, name];
                       }}
                       contentStyle={{ 
                         backgroundColor: 'white',
                         border: '1px solid #e2e8f0',
                         borderRadius: '12px',
                         fontSize: '12px',
-                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.08)'
                       }}
                     />
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
                     <Line 
                       type="monotone" 
                       dataKey="avgScore" 
-                      name="Class Average"
-                      stroke="#3b82f6" 
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                      activeDot={{ r: 6 }}
+                      name="All learners (avg)"
+                      stroke="#4f46e5" 
+                      strokeWidth={2.5}
+                      dot={{ r: 3 }}
+                      activeDot={{ r: 5 }}
                     />
+                    {hasRealLine && (
+                      <Line
+                        type="monotone"
+                        dataKey="avgScoreReal"
+                        name="Live learners"
+                        stroke="#0d9488"
+                        strokeWidth={2}
+                        dot={false}
+                        connectNulls
+                      />
+                    )}
+                    {hasSimLine && (
+                      <Line
+                        type="monotone"
+                        dataKey="avgScoreSimulated"
+                        name="Simulated"
+                        stroke="#a855f7"
+                        strokeDasharray="6 4"
+                        strokeWidth={2}
+                        dot={false}
+                        connectNulls
+                      />
+                    )}
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -243,46 +358,89 @@ export default function SessionReport({
 
           {/* Distribution Pie Chart */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">
-              Attention Distribution
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">
+              Attention distribution
             </h3>
-            <div className="bg-gray-50 rounded-lg p-4 border">
-              <ResponsiveContainer width="100%" height={250}>
+            <p className="text-sm text-slate-500 mb-3">
+              Fixed bands: attentive &gt;70%, distracted 40–70%, disengaged &lt;40% (per learner session average).
+            </p>
+            <div className="bg-slate-50/80 rounded-2xl p-5 border border-slate-200/80">
+              {pieDataNonZero.length === 0 ? (
+                <p className="text-center text-slate-500 py-12">No distribution data</p>
+              ) : (
+              <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
                   <Pie
-                    data={pieData}
+                    data={pieDataNonZero}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
                     label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
+                    outerRadius={88}
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {pieData.map((entry, index) => (
+                    {pieDataNonZero.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
+              )}
               
-              <div className="flex justify-center gap-6 mt-4">
+              <div className="flex flex-wrap justify-center gap-4 mt-4 text-sm text-slate-600">
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.attentive }} />
-                  <span className="text-sm text-gray-700">Attentive (&gt;70%)</span>
+                  <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: COLORS.attentive }} />
+                  <span>Attentive (&gt;70%)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.distracted }} />
-                  <span className="text-sm text-gray-700">Distracted (40-70%)</span>
+                  <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: COLORS.distracted }} />
+                  <span>Distracted (40–70%)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.disengaged }} />
-                  <span className="text-sm text-gray-700">Disengaged (&lt;40%)</span>
+                  <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: COLORS.disengaged }} />
+                  <span>Disengaged (&lt;40%)</span>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Relative to class mean */}
+          {(() => {
+            const relRows = relativePieData.rows.filter((r) => r.value > 0);
+            if (relRows.length === 0) return null;
+            return (
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-1">
+                vs class average
+              </h3>
+              <p className="text-sm text-slate-500 mb-3">
+                Per-learner mean vs session cohort: strong ≥{(relativePieData.hi * 100).toFixed(0)}%, weak ≤{(relativePieData.lo * 100).toFixed(0)}%.
+              </p>
+              <div className="bg-slate-50/80 rounded-2xl p-5 border border-slate-200/80">
+                <ResponsiveContainer width="100%" height={240}>
+                  <PieChart>
+                    <Pie
+                      data={relRows}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${String(name).split(' ')[0]} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={82}
+                      dataKey="value"
+                    >
+                      {relRows.map((entry, index) => (
+                        <Cell key={`rel-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            );
+          })()}
 
           {/* CONFUSION HOTSPOTS */}
           <div>
@@ -355,21 +513,35 @@ export default function SessionReport({
               </h3>
               {showPerStudent && (
                 <div className="space-y-4">
-                  {Object.entries(perStudentTimelines).map(([userId, data], idx) => (
-                    <div key={userId} className="bg-gray-50 rounded-lg p-4 border">
-                      <div className="text-sm font-medium text-gray-700 mb-2">
-                        {userId.slice(0, 12)}...
+                  {Object.entries(perStudentTimelines)
+                    .sort(([a], [b]) => {
+                      const simA = studentMeta[a]?.isSimulated ? 1 : 0;
+                      const simB = studentMeta[b]?.isSimulated ? 1 : 0;
+                      return simA - simB;
+                    })
+                    .map(([userId, data], idx) => {
+                      const sim = studentMeta[userId]?.isSimulated;
+                      const label = studentMeta[userId]?.displayName || userId.slice(0, 12);
+                      return (
+                    <div key={userId} className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm">
+                      <div className="text-sm font-semibold text-slate-800 mb-2 flex flex-wrap items-center gap-2">
+                        <span className="truncate max-w-[220px]">{label}</span>
+                        {sim && (
+                          <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 border border-violet-200">
+                            Simulated
+                          </span>
+                        )}
                       </div>
-                      <ResponsiveContainer width="100%" height={120}>
+                      <ResponsiveContainer width="100%" height={130}>
                         <LineChart data={data}>
-                          <XAxis dataKey="time" stroke="#6b7280" style={{ fontSize: '10px' }} />
-                          <YAxis domain={[0, 1]} ticks={[0, 0.5, 1]} tickFormatter={(v) => `${(v*100).toFixed(0)}%`} style={{ fontSize: '10px' }} />
-                          <Tooltip formatter={(v) => [`${(v*100).toFixed(0)}%`, 'Score']} />
+                          <XAxis dataKey="time" stroke="#94a3b8" tick={{ fontSize: 10 }} />
+                          <YAxis domain={[0, 1]} ticks={[0, 0.5, 1]} tickFormatter={(v) => `${(v*100).toFixed(0)}%`} tick={{ fontSize: 10 }} width={36} />
+                          <Tooltip formatter={(v) => [`${(Number(v)*100).toFixed(0)}%`, 'Engagement']} />
                           <Line type="monotone" dataKey="score" stroke={STUDENT_COLORS[idx % STUDENT_COLORS.length]} strokeWidth={2} dot={{ r: 2 }} />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
-                  ))}
+                  );})}
                 </div>
               )}
             </div>
@@ -435,24 +607,24 @@ export default function SessionReport({
         </div>
 
         {/* Actions */}
-        <div className="p-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+        <div className="p-6 border-t border-slate-200/90 bg-gradient-to-r from-slate-50 to-indigo-50/40 flex flex-wrap justify-end gap-3">
           <button
             onClick={handleExportPDF}
-            className="px-6 py-2.5 rounded-xl font-medium bg-red-600 text-white hover:bg-red-700 transition-all duration-200"
+            className="px-5 py-2.5 rounded-xl font-semibold bg-white text-slate-800 border border-slate-200 hover:bg-slate-50 shadow-sm transition"
           >
             Export PDF
           </button>
           <button
             onClick={onClose}
-            className="px-6 py-2.5 rounded-xl font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 transition-all duration-200"
+            className="px-5 py-2.5 rounded-xl font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 transition"
           >
             Close
           </button>
           <button
             onClick={onSave}
-            className="px-6 py-2.5 rounded-xl font-medium bg-indigo-600 text-white hover:bg-indigo-500 transition-all duration-200 shadow-md"
+            className="px-5 py-2.5 rounded-xl font-semibold bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/25 transition"
           >
-            Save Report
+            Save report
           </button>
         </div>
 
