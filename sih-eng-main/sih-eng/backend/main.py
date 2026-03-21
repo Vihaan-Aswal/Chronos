@@ -36,7 +36,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 app = FastAPI()
 
-# CORS: use CORS_ORIGINS env in production (e.g. "https://your-app.vercel.app")
+# CORS: use `CORS_ORIGINS` env in production (e.g. "https://your-frontend.example.com")
 # Default: localhost for dev
 _cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000")
 CORS_ORIGINS_LIST = [o.strip() for o in _cors_origins.split(",") if o.strip()] or ["http://localhost:5173", "http://localhost:3000"]
