@@ -9,7 +9,7 @@ import useClassroomSimulator, {
 } from "../hooks/useClassroomSimulator.js";
 import NudgeButton from "../components/NudgeButton.jsx";
 import HMSMeeting from "../hms/HMSMeeting.jsx";
-import JoinScreen from "../components/JoinScreen.jsx";
+
 import SessionReport from "../components/SessionReport.jsx";
 import { sendTeacherAction } from "../api/teacherActions.js";
 import { triggerLiveness } from "../api/liveness.js";
@@ -18,7 +18,14 @@ export default function TeacherPage() {
   const location = useLocation();
   const [params] = useSearchParams();
 
-  const user = location.state?.user;
+  let user = location.state?.user;
+  if (!user) {
+    try {
+      const raw = sessionStorage.getItem("chronos_user");
+      if (raw) user = JSON.parse(raw);
+    } catch {}
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6">
@@ -38,7 +45,7 @@ export default function TeacherPage() {
   const userName = user.email;
   const teacherId = user.id;
 
-  const [inMeeting, setInMeeting] = useState(false);
+  const [inMeeting, setInMeeting] = useState(true);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [sessionData, setSessionData] = useState(null);
@@ -672,7 +679,7 @@ export default function TeacherPage() {
               {loadingPast ? "Loading..." : "Past Sessions"}
             </button>
           </div>
-          <JoinScreen user={user} onJoin={handleJoinMeeting} />
+          {/* <JoinScreen /> previously here, removed per Phase 9 */}
         </div>
 
         {showPastSessions && (

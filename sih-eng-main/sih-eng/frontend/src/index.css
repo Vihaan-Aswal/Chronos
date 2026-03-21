@@ -2,20 +2,93 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Design tokens */
+/* ─────────────────────────────────────────────────────────────────────────────
+   Design Tokens — Digital Archivist (Midnight & Parchment)
+   These CSS custom properties mirror the Tailwind color tokens so that
+   non-Tailwind contexts (e.g. inline styles, third-party widgets) can
+   still consume the brand palette.
+
+   Light-mode (Parchment) values are the defaults.
+   Dark-mode overrides live inside a `.dark { … }` block below and are
+   activated by adding `class="dark"` to any ancestor element (typically
+   the page root div on SignInPage).
+───────────────────────────────────────────────────────────────────────────── */
 :root {
-  --primary: 99 102 241;      /* indigo-500 */
-  --primary-dark: 67 56 202;  /* indigo-700 */
-  --accent: 16 185 129;       /* emerald-500 */
-  --accent-warm: 245 158 11;  /* amber-500 */
-  --surface: 248 250 252;     /* slate-50 */
-  --surface-dark: 15 23 42;   /* slate-900 */
-  --border: 226 232 240;      /* slate-200 */
-  --text: 15 23 42;           /* slate-900 */
-  --text-muted: 100 116 139;  /* slate-400 */
+  /* Surface hierarchy */
+  --color-surface:                   #faf9f5;
+  --color-surface-dim:               #dbdad6;
+  --color-surface-bright:            #faf9f5;
+  --color-surface-container-lowest:  #ffffff;
+  --color-surface-container-low:     #f5f4f0;
+  --color-surface-container:         #efeeea;
+  --color-surface-container-high:    #e9e8e4;
+  --color-surface-container-highest: #e3e2df;
+
+  /* Primary */
+  --color-primary:                   #051624;
+  --color-primary-container:         #1b2b39;
+  --color-on-primary:                #ffffff;
+  --color-on-primary-fixed:          #0c1d2a;
+
+  /* Secondary */
+  --color-secondary:                 #48626e;
+  --color-secondary-container:       #cbe7f5;
+  --color-on-secondary:              #ffffff;
+
+  /* Gold accent (same in both modes) */
+  --color-tertiary-fixed-dim:        #dcc492;
+  --color-tertiary-fixed:            #fae0ab;
+
+  /* Background / text */
+  --color-background:                #faf9f5;
+  --color-on-background:             #1b1c1a;
+  --color-on-surface:                #1b1c1a;
+  --color-on-surface-variant:        #43474c;
+
+  /* Outlines */
+  --color-outline:                   #74777c;
+  --color-outline-variant:           #c4c7cc;
+
+  /* Feedback */
+  --color-error:                     #ba1a1a;
+  --color-error-container:           #ffdad6;
 }
 
-/* Force full-height layout */
+/* Dark-mode token overrides (Midnight palette) */
+.dark {
+  --color-surface:                   #041523;
+  --color-surface-dim:               #041523;
+  --color-surface-bright:            #2b3b4a;
+  --color-surface-container-lowest:  #000f1d;
+  --color-surface-container-low:     #0c1d2b;
+  --color-surface-container:         #10212f;
+  --color-surface-container-high:    #1b2b3a;
+  --color-surface-container-highest: #263645;
+
+  --color-primary:                   #f9e0ac;
+  --color-primary-container:         #dcc492;
+  --color-on-primary:                #3d2e09;
+  --color-on-primary-fixed:          #251a00;
+
+  --color-secondary:                 #afcbd9;
+  --color-secondary-container:       #304a56;
+  --color-on-secondary:              #19343f;
+
+  --color-background:                #041523;
+  --color-on-background:             #d3e4f8;
+  --color-on-surface:                #d3e4f8;
+  --color-on-surface-variant:        #cfc5b7;
+
+  --color-outline:                   #989082;
+  --color-outline-variant:           #4c463b;
+
+  --color-error:                     #ffb4ab;
+  --color-error-container:           #93000a;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Base Layout
+───────────────────────────────────────────────────────────────────────────── */
 html, body, #root {
   height: 100%;
   width: 100%;
@@ -23,68 +96,102 @@ html, body, #root {
   padding: 0;
 }
 
-/* Scrollbar styling */
+/* ─────────────────────────────────────────────────────────────────────────────
+   Material Symbols Outlined icon font settings
+   Icons are rendered as: <span className="material-symbols-outlined">icon_name</span>
+───────────────────────────────────────────────────────────────────────────── */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  display: inline-block;
+  line-height: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Scrollbar styling (neutral, works in both light and dark modes)
+───────────────────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgb(var(--surface));
+  background: var(--color-surface-container-low);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgb(var(--text-muted) / 0.3);
+  background: color-mix(in srgb, var(--color-on-surface-variant) 30%, transparent);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--text-muted) / 0.5);
+  background: color-mix(in srgb, var(--color-on-surface-variant) 50%, transparent);
 }
 
-/* Fade in-out animation for nudge notifications */
+/* ─────────────────────────────────────────────────────────────────────────────
+   Shared Utility Classes (extracted from Stitch HTML screens)
+───────────────────────────────────────────────────────────────────────────── */
+
+/* Subtle noise grain for hero sections — parchment mode */
+.grainy-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+}
+
+/* Elevated card shadow — atmospheric, not structural (per DESIGN.md) */
+.premium-shadow {
+  box-shadow:
+    0 30px 60px -12px rgba(4, 21, 35, 0.06),
+    0 18px 36px -18px rgba(4, 21, 35, 0.08);
+}
+
+/* Section vertical breathing room */
+.editorial-spacing {
+  padding-top: 12rem;
+  padding-bottom: 12rem;
+}
+
+/* Radial dot grid overlay for sign-in page background */
+.network-grid {
+  background-image: radial-gradient(rgba(220, 196, 146, 0.1) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Directional gradient scrim used on the sign-in hero left column */
+.hero-gradient {
+  background: linear-gradient(135deg, rgba(5, 22, 36, 0.8) 0%, rgba(4, 21, 35, 0.4) 100%);
+}
+
+/* Subtle 3-D tilt for the floating dashboard preview card on the homepage */
+.floating-plane {
+  transform: perspective(1000px) rotateX(1deg) rotateY(-1deg);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Animations
+   These are used by NudgeNotification.jsx and other student/teacher components.
+   DO NOT REMOVE — they must survive the palette migration.
+───────────────────────────────────────────────────────────────────────────── */
+
+/* Used by NudgeNotification.jsx */
 @keyframes fade-in-out {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, 20px);
-  }
-  10% {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-  90% {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -20px);
-  }
+  0%   { opacity: 0; transform: translate(-50%, 20px); }
+  10%  { opacity: 1; transform: translate(-50%, 0); }
+  90%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -20px); }
 }
 
 .animate-fade-in-out {
   animation: fade-in-out 3s ease-in-out;
 }
 
-/* Slide-in toast for nudge notifications */
+/* Slide-in toast — used in place of / alongside the fade animation */
 @keyframes nudge-slide-in {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, 24px);
-  }
-  15% {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-  85% {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -12px);
-  }
+  0%   { opacity: 0; transform: translate(-50%, 24px); }
+  15%  { opacity: 1; transform: translate(-50%, 0); }
+  85%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -12px); }
 }
 
 .animate-nudge-slide-in {

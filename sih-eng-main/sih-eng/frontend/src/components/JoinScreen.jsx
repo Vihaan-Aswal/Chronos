@@ -161,6 +161,10 @@ function JoinScreen({ user, onJoin }) {
   }
 
   async function handleJoin() {
+    if (userId === "unknown-user") {
+      return alert("User session not found or invalid. Please sign out and sign back in.");
+    }
+
     const canvas = cropCanvasRef.current;
     if (!canvas) return alert("Internal error: crop canvas missing");
     if (!facePresent) return alert("Please ensure your face is visible in the camera");
@@ -188,7 +192,7 @@ function JoinScreen({ user, onJoin }) {
       info = await fetchIdentity(userId);
     } catch (err) {
       console.error("fetchIdentity error:", err);
-      info = { exists: false };
+      info = { exists: false, error: err.message };
     }
 
     if (!info || !info.exists) {
@@ -197,7 +201,7 @@ function JoinScreen({ user, onJoin }) {
         alert("Face registered successfully! Welcome!");
         return onJoin?.();
       }
-      alert("Failed to register identity. Please try again.");
+      alert(`Failed to register identity: ${r?.message || info?.error || "Unknown server error"}.`);
       return;
     }
 
@@ -208,7 +212,7 @@ function JoinScreen({ user, onJoin }) {
         alert("Face registered! You may join now.");
         return onJoin?.();
       }
-      alert("Failed to register identity.");
+      alert(`Failed to register identity: ${r?.message || "Unknown error"}.`);
       return;
     }
 

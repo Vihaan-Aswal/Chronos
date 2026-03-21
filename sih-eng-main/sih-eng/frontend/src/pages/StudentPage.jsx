@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
 
-import JoinScreen from "../components/JoinScreen.jsx";
+
 import EngagementTracker from "../components/EngagementTracker.jsx";
 import NudgeNotification from "../components/NudgeNotification.jsx";
 import HMSMeeting from "../hms/HMSMeeting.jsx";
@@ -11,7 +11,13 @@ import useWebSocket from "../hooks/useWebSocket.js";
 
 export default function StudentPage() {
   const location = useLocation();
-  const user = location.state?.user;
+  let user = location.state?.user;
+  if (!user) {
+    try {
+      const raw = sessionStorage.getItem("chronos_user");
+      if (raw) user = JSON.parse(raw);
+    } catch {}
+  }
 
   if (!user) {
     return (
@@ -35,8 +41,8 @@ export default function StudentPage() {
   const sessionId = "default-session";
   const userName = user.email || userId;
 
-  const [inMeeting, setInMeeting] = useState(false);
-  const [nudgeMsg, setNudgeMsg] = useState(null);
+  const [inMeeting, setInMeeting] = useState(true);
+  const [nudgeState, setNudgeState] = useState(null);
   const nudgeTimeoutRef = useRef(null);
   const [showTracker, setShowTracker] = useState(true);
 
@@ -46,9 +52,6 @@ export default function StudentPage() {
 
   const { connected, send } = useWebSocket(wsUrl || "", null);
 
-  const handleJoin = () => {
-    setInMeeting(true);
-  };
 
   const handleNudge = (msg) => {
     if (nudgeTimeoutRef.current) clearTimeout(nudgeTimeoutRef.current);
@@ -60,25 +63,22 @@ export default function StudentPage() {
         ? "Attention Required!"
         : "Please pay attention!";
 
-    setNudgeMsg(text);
+    setNudgeState({ text, id: Date.now() });
 
-    nudgeTimeoutRef.current = setTimeout(() => setNudgeMsg(null), 5000);
+    nudgeTimeoutRef.current = setTimeout(() => setNudgeState(null), 5000);
   };
 
-  if (!inMeeting) {
-    return <JoinScreen user={user} onJoin={handleJoin} />;
-  }
 
   return (
     <>
-      <NudgeNotification message={nudgeMsg} />
+      <NudgeNotification message={nudgeState?.text} key={nudgeState?.id} />
 
       <div className="w-full h-screen flex overflow-hidden bg-slate-100">
         <div className="flex-1 bg-slate-900 relative overflow-hidden">
           <HMSMeeting
             userName={userName}
             role="guest"
-            onLeave={() => window.location.reload()}
+            onLeave={() => window.location.href = "/"}
           />
         </div>
 

@@ -509,6 +509,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
   const handleMessage = (message) => {
     console.log("[EngagementTracker] Received WebSocket message:", message);
     if (message.type === "nudge") {
+      if (onNudge) onNudge(message);
       const avg = engagementState?.smoothScore || 0;
       triggerAutoNudge(avg);
     }
@@ -532,6 +533,16 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       if (message.action === "mark_engaged") {
         strikeCountRef.current = 0;
         scoreBufferRef.current = [];
+        
+        identityState.status = "verified";
+        identityState.mismatchCount = 0;
+        setIdentityStatus("verified");
+        if (currentMetricsRef.current) {
+           currentMetricsRef.current.identityStatus = "verified";
+           currentMetricsRef.current.presence = "present";
+           currentMetricsRef.current.headPose = { yaw: 0, pitch: 0 };
+        }
+
         if (typeof send === "function") {
           send({
             type: "mark_engaged_ack",
@@ -543,6 +554,9 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       }
       if (message.action === "message" && message.message_text && onNudge) {
         onNudge({ nudge_type: "message", message_text: message.message_text });
+      }
+      if (message.action === "remove") {
+        window.location.href = "/";
       }
     }
   };

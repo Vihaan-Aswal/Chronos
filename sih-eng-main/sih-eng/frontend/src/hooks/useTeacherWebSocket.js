@@ -111,6 +111,18 @@ export default function useTeacherWebSocket(sessionId) {
                 };
               }
 
+              if (msg.type === "auto_nudge_response") {
+                return {
+                  ...prev,
+                  [uid]: {
+                    ...prevStudent,
+                    strikes: msg.strike_count,
+                    score: msg.score ?? prevStudent.score ?? 0,
+                    timestamp: msg.timestamp || prevStudent.timestamp,
+                  }
+                };
+              }
+
               if (msg.type === "nudge") {
                 return {
                   ...prev,
@@ -142,6 +154,12 @@ export default function useTeacherWebSocket(sessionId) {
                     disengaged: false,
                     manuallyMarkedEngaged: true,
                     timestamp: msg.timestamp || prevStudent.timestamp,
+                    antiCheatViolations: 0,
+                    lastViolationType: null,
+                    multiFaceDetected: false,
+                    livenessFailed: false,
+                    identityMismatchCount: 0,
+                    identityStatus: "verified",
                   }
                 };
               }
@@ -152,6 +170,7 @@ export default function useTeacherWebSocket(sessionId) {
                   [uid]: {
                     ...prevStudent,
                     livenessVerified: true,
+                    livenessFailed: false,
                     livenessLastCheck: msg.timestamp,
                   }
                 };
