@@ -36,6 +36,8 @@
 
 import { useNavigate, Link } from "react-router-dom";
 import JoinScreen from "../components/JoinScreen.jsx";
+import { motion } from "motion/react";
+import ChronosMark from "../components/ChronosMark.jsx";
 
 export default function ReadinessPage() {
   const navigate = useNavigate();
@@ -72,58 +74,57 @@ export default function ReadinessPage() {
   return (
     <div className="bg-surface font-body text-on-surface min-h-screen flex flex-col">
 
-      {/* ── Sticky parchment header ──────────────────────────────────────── */}
+      {/* ── Sticky dark header ──────────────────────────────────────── */}
       <header
-        className="w-full top-0 sticky backdrop-blur-sm z-50"
-        style={{ backgroundColor: "rgba(250,249,245,0.95)" }}
+        className="w-full top-0 sticky z-50 shadow-md"
+        style={{ backgroundColor: "#041523" }}
       >
         <div className="flex justify-between items-center px-8 py-6 max-w-7xl mx-auto">
           <Link
             to="/"
-            className="font-headline text-2xl font-bold tracking-tighter hover:opacity-70 transition-opacity"
-            style={{ color: "#041523" }}
+            className="flex items-center gap-2 hover:opacity-70 transition-opacity"
           >
-            Chronos
+            <ChronosMark size={24} variant="gold" />
+            <span className="font-headline text-2xl font-bold tracking-tighter" style={{ color: "#DCC492" }}>
+              Chronos
+            </span>
           </Link>
 
           <nav
-            className="hidden md:flex items-center gap-8 font-label text-[0.75rem] uppercase tracking-widest"
+            className="hidden md:flex items-center gap-8 font-label text-[0.75rem] uppercase tracking-widest font-bold"
             style={{ color: "#48626E" }}
           >
             <a
               href="#"
-              className="transition-colors duration-300 hover:text-tertiary-fixed-dim"
+              className="transition-colors duration-300 hover:text-[#DCC492]"
             >
-              Archives
+              Support
             </a>
             <a
               href="#"
-              className="transition-colors duration-300 hover:text-tertiary-fixed-dim"
+              className="transition-colors duration-300 hover:text-[#DCC492]"
             >
-              Research
+              Archive
             </a>
-            <a
-              href="#"
-              className="transition-colors duration-300 hover:text-tertiary-fixed-dim"
+            <button
+              onClick={() => {
+                sessionStorage.clear();
+                navigate("/");
+              }}
+              className="transition-colors duration-300 hover:text-[#DCC492] uppercase"
             >
-              Privacy
-            </a>
+              Sign Out
+            </button>
           </nav>
-
-          <div className="flex items-center gap-4">
-            <span className="material-symbols-outlined text-secondary text-xl">
-              account_circle
-            </span>
-          </div>
         </div>
       </header>
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
-      <main className="flex-grow max-w-7xl mx-auto w-full px-8 py-12 md:py-16">
+      <main className="flex-grow max-w-7xl mx-auto w-full px-8 py-6 md:py-8 lg:flex lg:flex-col lg:justify-center">
 
         {/* Page title */}
-        <div className="mb-12 text-center max-w-4xl mx-auto">
-          <h1 className="font-headline text-on-surface tracking-tight text-5xl md:text-7xl">
+        <div className="mb-8 text-center max-w-4xl mx-auto">
+          <h1 className="font-headline text-on-surface tracking-tight text-4xl md:text-5xl">
             Complete a quick readiness check
           </h1>
           {role && (
@@ -145,42 +146,33 @@ export default function ReadinessPage() {
              The user prop provides user.id / user.user_id for identity API.
              The onJoin prop is called after successful face verification.
         ────────────────────────────────────────────────────────────────── */}
-        <div className="max-w-5xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
           <JoinScreen user={user} onJoin={handleJoin} />
-        </div>
-
-        {/* Privacy assurance note (from Stitch HTML — kept as outer chrome) */}
-        <div className="mt-12 pt-8 border-t border-outline-variant/10 flex gap-4 items-center justify-center max-w-5xl mx-auto">
-          <span className="material-symbols-outlined text-secondary text-lg">
-            verified_user
-          </span>
-          <p
-            className="font-body text-[0.8rem] text-on-surface-variant opacity-80"
-          >
-            Privacy-aware verification. Only essential readiness signals are
-            checked.
-          </p>
-        </div>
+        </motion.div>
       </main>
 
-      {/* ── Footer ───────────────────────────────────────────────────────── */}
+      {/* ── Dark Footer ─────────────────────────────────────────────────── */}
       <footer
         className="w-full mt-20"
-        style={{ borderTop: "1px solid rgba(72,98,110,0.1)" }}
+        style={{ backgroundColor: "#041523", borderTop: "1px solid rgba(72,98,110,0.2)" }}
       >
         <div className="flex flex-col md:flex-row justify-between items-center px-12 py-10 w-full max-w-7xl mx-auto">
           <div
             className="font-headline font-bold text-xl mb-4 md:mb-0"
-            style={{ color: "#041523" }}
+            style={{ color: "#DCC492" }}
           >
             Chronos
           </div>
           <div className="flex gap-8 mb-6 md:mb-0">
-            {["Archives", "Research", "Privacy", "Terms"].map((label) => (
+            {["Support", "Archive", "Privacy", "Terms"].map((label) => (
               <a
                 key={label}
                 href="#"
-                className="font-body text-[0.75rem] uppercase tracking-widest transition-all"
+                className="font-body text-[0.75rem] uppercase tracking-widest transition-all hover:text-[#DCC492]"
                 style={{ color: "#48626E" }}
               >
                 {label}
@@ -191,7 +183,7 @@ export default function ReadinessPage() {
             className="font-body text-[0.7rem] uppercase tracking-widest text-center md:text-right"
             style={{ color: "rgba(72,98,110,0.6)" }}
           >
-            © 2024 Chronos Intelligence. All rights reserved.
+            © 2026 Chronos Intelligence. All rights reserved.
           </p>
         </div>
       </footer>

@@ -16,12 +16,16 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { motion } from "motion/react";
+import ChronosMark from "../components/ChronosMark.jsx";
 
 export default function SignUpPage() {
   const navigate = useNavigate();
 
   const [email, setEmail]         = useState("");
   const [password, setPassword]   = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState("");
   const [success, setSuccess]     = useState(false);
@@ -31,6 +35,12 @@ export default function SignUpPage() {
     setError("");
     setSuccess(false);
     setLoading(true);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      setLoading(false);
+      return;
+    }
 
     const { data, error: authError } = await supabase.auth.signUp({
       email: email.trim(),
@@ -130,15 +140,22 @@ export default function SignUpPage() {
         <header className="absolute top-0 left-0 p-8 md:p-12 w-full">
           <Link
             to="/"
-            className="text-2xl font-headline italic tracking-tighter hover:opacity-70 transition-opacity"
-            style={{ color: "#0F1E2B" }}
+            className="flex items-center gap-2"
           >
-            Chronos
+            <ChronosMark size={26} variant="dark" />
+            <span className="font-headline italic text-2xl tracking-tight hover:opacity-70 transition-opacity" style={{ color: "#0F1E2B" }}>
+              Chronos
+            </span>
           </Link>
         </header>
 
         {/* ── Left column: hero text (7/12) ──────────────────────────────── */}
-        <div className="col-span-12 md:col-span-7 flex flex-col justify-center px-8 md:pl-24 md:pr-12 pt-32 md:pt-0">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+          className="col-span-12 md:col-span-7 flex flex-col justify-center px-8 md:pl-24 md:pr-12 pt-32 md:pt-0"
+        >
           <div className="max-w-3xl space-y-8">
             <h1
               className="text-5xl md:text-8xl font-headline italic leading-[1.1] tracking-tight"
@@ -166,12 +183,15 @@ export default function SignUpPage() {
               </span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* ── Right column: warm form card (5/12) ────────────────────────── */}
         <div className="col-span-12 md:col-span-5 flex flex-col justify-center p-8 md:p-16">
-          <div
-            className="border p-8 md:p-12 rounded-xl space-y-8 shadow-xl scale-[1.1]"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            className="border p-10 md:p-14 rounded-xl space-y-8 shadow-xl"
             style={{
               backgroundColor: "#FAF7F2",
               borderColor: "#DEDAD4",
@@ -182,7 +202,7 @@ export default function SignUpPage() {
                 className="text-lg font-headline italic mb-4"
                 style={{ color: "#0F1E2B" }}
               >
-                Sign up to continue
+                Sign up for Chronos
               </h2>
             </div>
 
@@ -265,11 +285,47 @@ export default function SignUpPage() {
                     <input
                       id="password"
                       name="password"
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       required
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      className="w-full border pr-12 px-4 py-3 text-sm transition-all duration-300 outline-none rounded-sm"
+                      style={{
+                        backgroundColor: "#F5F1EA",
+                        borderColor: "#C8C2B8",
+                        color: "#1C2B35",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors mt-[10px]"
+                      style={{ color: "rgba(28,43,53,0.4)" }}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                        {showPassword ? "visibility_off" : "visibility"}
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <label
+                      className="block text-[9px] font-bold tracking-[0.2em] uppercase mb-1"
+                      htmlFor="confirmPassword"
+                      style={{ color: "#1C2B35" }}
+                    >
+                      CONFIRM PASSWORD
+                    </label>
+                    <input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                       className="w-full border px-4 py-3 text-sm transition-all duration-300 outline-none rounded-sm"
                       style={{
                         backgroundColor: "#F5F1EA",
@@ -289,7 +345,16 @@ export default function SignUpPage() {
                     color: "#0F1E2B",
                   }}
                 >
-                  {loading ? "CREATING ACCOUNT…" : "SIGN UP"}
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="#0F1E2B" strokeWidth="3" opacity="0.25"/>
+                        <path fill="#0F1E2B" opacity="0.8"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                      </svg>
+                      Creating Account…
+                    </span>
+                  ) : "SIGN UP"}
                 </button>
               </form>
             )}
@@ -307,7 +372,7 @@ export default function SignUpPage() {
                 </Link>
               </p>
             </div>
-          </div>
+          </motion.div>
         </div>
       </main>
 
@@ -317,7 +382,7 @@ export default function SignUpPage() {
           className="text-[9px] font-bold tracking-[0.2em] uppercase"
           style={{ color: "#8A8A80" }}
         >
-          © 2024 Chronos Intelligence — Built for Trust
+          © 2026 Chronos Intelligence — Built for Trust
         </div>
       </footer>
     </div>

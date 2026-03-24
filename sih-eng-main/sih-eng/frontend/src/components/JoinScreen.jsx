@@ -255,84 +255,120 @@ function JoinScreen({ user, onJoin }) {
       ? "Verify & Join as Teacher"
       : "Verify & Join Meeting";
 
-  const StatusRow = ({ label, ok }) => (
-    <div className={`flex items-center justify-between p-3.5 rounded-xl border transition-all duration-200 ${
-      ok ? "bg-emerald-500/10 border-emerald-400/30" : "bg-amber-500/10 border-amber-400/30"
-    }`}>
-      <span className="text-sm font-medium text-slate-700">{label}</span>
-      <span className={`flex items-center gap-2 text-sm font-semibold ${
-        ok ? "text-emerald-600" : "text-amber-600"
-      }`}>
-        {ok ? (
-          <>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Yes
-          </>
-        ) : (
-          <>
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
-            No
-          </>
-        )}
+  const StatusRow = ({ label, ok, statusText }) => (
+    <div className="flex items-center justify-between py-5 border-b border-surface-container-high/60 last:border-0">
+      <div className="flex items-center gap-4">
+        <span 
+          className={`material-symbols-outlined text-2xl ${ok ? "text-primary" : "text-secondary/30"}`}
+          style={{ fontVariationSettings: `'FILL' ${ok ? 1 : 0}` }}
+        >
+          check_circle
+        </span>
+        <span className="font-body text-base font-medium text-primary">{label}</span>
+      </div>
+      <span 
+        className={`font-label text-[0.7rem] uppercase tracking-[0.2em] font-bold ${
+          ok ? "text-primary" : "text-secondary/60"
+        }`}
+      >
+        {statusText}
       </span>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-slate-100 flex items-center justify-center p-6">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200/80 p-8 max-w-md w-full ring-1 ring-slate-900/5">
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Identity Verification</h2>
-          <p className="text-sm text-slate-600">Position your face in the center and ensure good lighting</p>
-        </div>
-
-        <div className="relative mb-6 rounded-xl overflow-hidden border-2 border-slate-200 shadow-inner">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            className="w-full bg-slate-900"
-            style={{ aspectRatio: "4/3" }}
+    <div className="w-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-8 md:gap-12 items-start">
+      {/* ── 1. Large Camera Preview Section ──────────────────────────────── */}
+      <div className="relative w-full aspect-video bg-surface-container-high rounded-2xl overflow-hidden shadow-2xl">
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          className="w-full h-full object-cover grayscale-[10%] brightness-95"
+          style={{ backgroundColor: "#0F1E2B" }}
+        />
+        
+        {/* Face Guide Overlay */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div 
+            className="w-1/4 aspect-[3/4] opacity-50"
+            style={{ 
+              border: "2px dashed rgba(220, 196, 146, 0.4)",
+              borderRadius: "50% / 60% 60% 40% 40%" 
+            }}
           />
-          <canvas ref={lightCanvasRef} width={300} height={220} style={{ display: "none" }} />
-          <canvas ref={cropCanvasRef} width={112} height={112} style={{ display: "none" }} />
         </div>
 
-        <div className="space-y-3 mb-6">
-          <StatusRow label="Face Detected" ok={facePresent} />
-          <StatusRow label="Face Centered" ok={isCentered} />
-          <div className={`flex items-center justify-between p-3.5 rounded-xl border transition-all duration-200 ${
-            lightStatus === "good" ? "bg-emerald-500/10 border-emerald-400/30" : "bg-amber-500/10 border-amber-400/30"
-          }`}>
-            <span className="text-sm font-medium text-slate-700">Lighting</span>
-            <span className={`text-sm font-semibold ${
-              lightStatus === "good" ? "text-emerald-600" :
-              lightStatus === "too_dark" ? "text-amber-600" : "text-red-600"
-            }`}>
-              {lightStatus === "good" ? "Good" :
-               lightStatus === "too_dark" ? "Too Dark" : "Too Bright"}
+        {/* Hidden canvases for logic */}
+        <canvas ref={lightCanvasRef} width={300} height={220} style={{ display: "none" }} />
+        <canvas ref={cropCanvasRef} width={112} height={112} style={{ display: "none" }} />
+      </div>
+
+      {/* ── 2. Checklist & Action Section ────────────────────────────────── */}
+      <div className="w-full">
+        <div 
+          className="p-8 md:p-10 rounded-2xl shadow-xl border"
+          style={{ backgroundColor: "#FAF7F2", borderColor: "rgba(222,218,212,0.4)" }}
+        >
+          <div className="flex flex-col gap-10">
+            <div className="space-y-6">
+              <h2 className="font-headline text-3xl text-center md:text-left text-primary">
+                Readiness Checklist
+              </h2>
+              
+              <div className="flex flex-col gap-1">
+                <StatusRow 
+                  label="Face Detected" 
+                  ok={facePresent} 
+                  statusText={facePresent ? "Ready" : "Searching..."} 
+                />
+                <StatusRow 
+                  label="Face Centered" 
+                  ok={isCentered} 
+                  statusText={isCentered ? "Ready" : "Please Center"} 
+                />
+                <StatusRow 
+                  label="Lighting" 
+                  ok={lightStatus === "good"} 
+                  statusText={
+                    lightStatus === "good" ? "Optimal" :
+                    lightStatus === "too_dark" ? "Too Dark" : 
+                    lightStatus === "too_bright" ? "Too Bright" : "Analyzing..."
+                  } 
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-6 items-center">
+              <button 
+                disabled={!ready}
+                onClick={handleJoin}
+                className="w-full max-w-sm py-6 rounded-sm font-label text-xs uppercase tracking-[0.25em] font-bold shadow-md transition-all active:scale-[0.98] disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed"
+                style={{ backgroundColor: "#DCC492", color: "#251A00" }}
+              >
+                {ready ? roleLabel : "Adjust your position"}
+              </button>
+              
+              <button 
+                type="button"
+                className="font-label text-[0.7rem] uppercase tracking-widest text-secondary hover:text-primary transition-colors underline underline-offset-8 decoration-outline-variant/40"
+                onClick={() => window.location.reload()}
+              >
+                Retry Check
+              </button>
+            </div>
+          </div>
+
+          {/* Privacy assurance note */}
+          <div className="mt-10 pt-6 border-t border-outline-variant/10 flex gap-4 items-start md:items-center justify-center">
+            <span className="material-symbols-outlined text-secondary text-lg mt-0.5 md:mt-0">
+              verified_user
             </span>
+            <p className="font-body text-[0.8rem] text-on-surface-variant opacity-80 leading-snug">
+              Privacy-aware verification. Only essential readiness signals are checked.
+            </p>
           </div>
         </div>
-
-        <button
-          disabled={!ready}
-          onClick={handleJoin}
-          className={`w-full py-3.5 px-6 rounded-xl font-semibold text-white transition-all duration-200 ${
-            ready
-              ? "bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 hover:scale-[1.02]"
-              : "bg-slate-300 cursor-not-allowed"
-          }`}
-        >
-          {ready ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-              {roleLabel}
-            </span>
-          ) : (
-            "Please adjust your position"
-          )}
-        </button>
       </div>
     </div>
   );

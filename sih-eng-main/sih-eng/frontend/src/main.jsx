@@ -3,6 +3,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AnimatePresence } from "motion/react";
 
 import { HMSRoomProvider } from "@100mslive/react-sdk";
 
@@ -24,8 +25,9 @@ import "./index.css";
 ReactDOM.createRoot(document.getElementById("root")).render(
   <HMSRoomProvider>
     <BrowserRouter>
-      <Routes>
-        {/* ── Phase 3: landing page ── */}
+      <AnimatePresence mode="wait">
+        <Routes>
+          {/* ── Phase 3: landing page ── */}
         <Route path="/" element={<HomePage />} />
 
         {/* ── Phase 4 & 5: auth pages ── */}
@@ -41,7 +43,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/teacher" element={<AuthGuard><TeacherPage /></AuthGuard>} />
 
         <Route path="/meeting" element={<MeetingRoom />} />
-      </Routes>
+        </Routes>
+      </AnimatePresence>
     </BrowserRouter>
   </HMSRoomProvider>
 );

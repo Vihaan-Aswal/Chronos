@@ -15,12 +15,15 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { motion } from "motion/react";
+import ChronosMark from "../components/ChronosMark.jsx";
 
 export default function SignInPage() {
   const navigate = useNavigate();
 
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
 
@@ -99,14 +102,22 @@ export default function SignInPage() {
         <header className="absolute top-0 left-0 p-8 md:p-12 w-full">
           <Link
             to="/"
-            className="text-midnight-primary text-2xl font-headline italic tracking-tighter hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2"
           >
-            Chronos
+            <ChronosMark size={26} variant="gold" />
+            <span className="font-headline italic text-2xl tracking-tight" style={{ color: "#DCC492" }}>
+              Chronos
+            </span>
           </Link>
         </header>
 
         {/* ── Left column: hero text (7/12) ─────────────────────────────── */}
-        <div className="col-span-12 md:col-span-7 flex flex-col justify-center px-8 md:pl-24 md:pr-12 pt-32 md:pt-0">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+          className="col-span-12 md:col-span-7 flex flex-col justify-center px-8 md:pl-24 md:pr-12 pt-32 md:pt-0"
+        >
           <div className="max-w-3xl space-y-8">
             <h1 className="text-5xl md:text-8xl font-headline italic text-midnight-on-surface leading-[1.1] tracking-tight">
               Fair signals,
@@ -125,11 +136,16 @@ export default function SignInPage() {
               </span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* ── Right column: glassmorphic form card (5/12) ───────────────── */}
         <div className="col-span-12 md:col-span-5 flex flex-col justify-center p-8 md:p-16">
-          <div className="bg-midnight-surface-container-low/40 backdrop-blur-xl border border-midnight-outline-variant/20 p-8 md:p-12 rounded-xl space-y-8 shadow-2xl scale-[1.1]">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            className="bg-midnight-surface-container-low/40 backdrop-blur-xl border border-midnight-outline-variant/20 p-10 md:p-14 rounded-xl space-y-8 shadow-2xl"
+          >
 
             <div className="space-y-1">
               <h2 className="text-lg font-headline italic text-midnight-on-surface mb-4">
@@ -139,11 +155,14 @@ export default function SignInPage() {
 
             {/* ── Error message ─────────────────────────────────────────── */}
             {error && (
-              <div className="bg-midnight-error-container/20 border border-midnight-error/30 rounded-sm px-4 py-3">
-                <p className="text-[11px] text-midnight-error font-medium">
-                  {error}
-                </p>
-              </div>
+              <motion.p
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-[11px] font-label py-2 px-3 rounded-sm"
+                style={{ color: "#ba1a1a", backgroundColor: "rgba(255,218,214,0.12)" }}
+              >
+                {error}
+              </motion.p>
             )}
 
             {/* ── Form ──────────────────────────────────────────────────── */}
@@ -178,13 +197,34 @@ export default function SignInPage() {
                   <input
                     id="password"
                     name="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-midnight-surface-container-high/50 border border-midnight-outline-variant/30 px-4 py-3 text-sm text-midnight-on-surface placeholder:text-midnight-outline-variant/50 focus:ring-1 focus:ring-midnight-primary focus:border-midnight-primary transition-all duration-300 outline-none rounded-sm"
+                    className="w-full pr-12 bg-midnight-surface-container-high/50 border border-midnight-outline-variant/30 px-4 py-3 text-sm text-midnight-on-surface placeholder:text-midnight-outline-variant/50 focus:ring-1 focus:ring-midnight-primary focus:border-midnight-primary transition-all duration-300 outline-none rounded-sm"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors mt-[10px]"
+                    style={{ color: "rgba(196,199,204,0.6)" }}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                      {showPassword ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
+                <div className="flex justify-end mt-1">
+                  <a href="#"
+                     className="text-[10px] font-label uppercase tracking-widest transition-colors"
+                     style={{ color: "rgba(176,185,194,0.45)" }}
+                     onMouseEnter={e => e.currentTarget.style.color = "#DCC492"}
+                     onMouseLeave={e => e.currentTarget.style.color = "rgba(176,185,194,0.45)"}
+                  >
+                    Forgot password?
+                  </a>
                 </div>
               </div>
 
@@ -193,7 +233,16 @@ export default function SignInPage() {
                 disabled={loading}
                 className="w-full bg-midnight-primary text-midnight-on-primary-fixed py-4 font-label font-bold text-xs tracking-widest uppercase rounded-sm hover:brightness-110 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {loading ? "SIGNING IN…" : "SIGN IN"}
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" stroke="#DCC492" strokeWidth="3" opacity="0.25"/>
+                      <path fill="#DCC492" opacity="0.8"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    Signing in…
+                  </span>
+                ) : "SIGN IN"}
               </button>
             </form>
 
@@ -209,14 +258,14 @@ export default function SignInPage() {
                 </Link>
               </p>
             </div>
-          </div>
+          </motion.div>
         </div>
       </main>
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <footer className="md:fixed md:bottom-0 w-full flex flex-col md:flex-row justify-center items-center px-12 py-8 bg-transparent gap-6 md:gap-0 z-20">
         <div className="text-[9px] font-bold tracking-[0.2em] text-midnight-on-surface-variant/40 uppercase">
-          © 2024 Chronos Intelligence — Built for Trust
+          © 2026 Chronos Intelligence — Built for Trust
         </div>
       </footer>
     </div>

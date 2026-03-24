@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="80 38 165 167" role="img" aria-label="Chronos mark">
+  <defs>
+    <clipPath id="wc2"><polygon points="120,120 320,102 320,320 -80,320 -80,-80 204,-61"/></clipPath>
+  </defs>
+  <g transform="translate(40, 0)">
+    <g clip-path="url(#wc2)">
+      <path d="M 120 40 A 80 80 0 1 1 120 200 A 80 80 0 1 1 120 40 Z M 132 54 A 62 66 0 1 0 132 186 A 62 66 0 1 0 132 54 Z" fill="#041523" fill-rule="evenodd"/>
+    </g>
+    <line x1="167.5" y1="86.7" x2="180.6" y2="77.6" stroke="#041523" stroke-width="5.5" stroke-linecap="butt"/>
+  </g>
+</svg>

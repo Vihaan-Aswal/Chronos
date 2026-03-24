@@ -13,6 +13,8 @@
 
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { motion } from "motion/react";
+import ChronosMark from "../components/ChronosMark.jsx";
 
 export default function ChooseRolePage() {
   const navigate = useNavigate();
@@ -23,6 +25,19 @@ export default function ChooseRolePage() {
     sessionStorage.removeItem("chronos_role");
     navigate("/", { replace: true });
   }
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } }
+  };
 
   function selectRole(role) {
     // role is "teacher" or "student" — lowercase, matches /teacher and /student routes
@@ -40,10 +55,12 @@ export default function ChooseRolePage() {
       >
         <Link
           to="/"
-          className="font-headline tracking-tighter text-2xl font-bold hover:opacity-80 transition-opacity"
-          style={{ color: "#DCC492" }}
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          Chronos
+          <ChronosMark size={24} variant="gold" />
+          <span className="font-headline tracking-tighter text-2xl font-bold" style={{ color: "#DCC492" }}>
+            Chronos
+          </span>
         </Link>
 
         {/* Desktop nav links */}
@@ -98,10 +115,16 @@ export default function ChooseRolePage() {
           </div>
 
           {/* ── Role Cards (Bento Style) ──────────────────────────────────── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 md:grid-cols-2 gap-8"
+          >
 
             {/* Teacher Card */}
-            <div
+            <motion.div
+              variants={itemVariants}
               className="group relative bg-surface-container-lowest p-10 rounded-xl transition-all duration-500 hover:bg-surface-container-high cursor-pointer flex flex-col justify-between min-h-[400px]"
               onClick={() => selectRole("teacher")}
               role="button"
@@ -138,8 +161,10 @@ export default function ChooseRolePage() {
               </div>
 
               <div className="mt-12">
-                <button
-                  className="inline-flex items-center gap-3 px-8 py-4 rounded-sm font-label uppercase tracking-widest text-xs font-bold hover:scale-[1.02] active:scale-95 transition-all"
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="inline-flex items-center gap-3 px-8 py-4 rounded-sm font-label uppercase tracking-widest text-xs font-bold transition-all"
                   style={{ backgroundColor: "#041523", color: "#DCC492" }}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -150,12 +175,13 @@ export default function ChooseRolePage() {
                   <span className="material-symbols-outlined text-sm">
                     arrow_forward
                   </span>
-                </button>
+                </motion.button>
               </div>
-            </div>
+            </motion.div>
 
             {/* Student Card */}
-            <div
+            <motion.div
+              variants={itemVariants}
               className="group relative bg-surface-container-lowest p-10 rounded-xl transition-all duration-500 hover:bg-surface-container-high cursor-pointer flex flex-col justify-between min-h-[400px]"
               onClick={() => selectRole("student")}
               role="button"
@@ -192,8 +218,10 @@ export default function ChooseRolePage() {
               </div>
 
               <div className="mt-12">
-                <button
-                  className="inline-flex items-center gap-3 px-8 py-4 rounded-sm font-label uppercase tracking-widest text-xs font-bold hover:scale-[1.02] active:scale-95 transition-all"
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="inline-flex items-center gap-3 px-8 py-4 rounded-sm font-label uppercase tracking-widest text-xs font-bold transition-all"
                   style={{ backgroundColor: "#041523", color: "#DCC492" }}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -204,10 +232,10 @@ export default function ChooseRolePage() {
                   <span className="material-symbols-outlined text-sm">
                     login
                   </span>
-                </button>
+                </motion.button>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           {/* Decorative vertical line */}
           <div className="mt-20 flex justify-center">
@@ -225,7 +253,7 @@ export default function ChooseRolePage() {
           className="font-label uppercase tracking-[0.1em] text-[10px]"
           style={{ color: "#48626E" }}
         >
-          © 2024 Chronos Archival Systems
+          © 2026 Chronos Archival Systems
         </div>
         <div className="flex gap-8">
           <a
