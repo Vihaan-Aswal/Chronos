@@ -17,6 +17,7 @@ import StudentCard from "../components/teacher/StudentCard.jsx";
 import SessionReport from "../components/SessionReport.jsx";
 import { sendTeacherAction } from "../api/teacherActions.js";
 import { triggerLiveness } from "../api/liveness.js";
+import "../styles/dashboard-shared.css";
 import "../styles/teacher-dashboard.css";
 
 export default function TeacherPage() {

@@ -8,6 +8,9 @@ import EngagementTracker from "../components/EngagementTracker.jsx";
 import NudgeNotification from "../components/NudgeNotification.jsx";
 import HMSMeeting from "../hms/HMSMeeting.jsx";
 import useWebSocket from "../hooks/useWebSocket.js";
+import StudentTopbar from "../components/student/StudentTopbar.jsx";
+import "../styles/dashboard-shared.css";
+import "../styles/student-meeting.css";
 
 export default function StudentPage() {
   const location = useLocation();
@@ -30,14 +33,14 @@ export default function StudentPage() {
   const [nudgeState, setNudgeState] = useState(null);
   const nudgeTimeoutRef = useRef(null);
   const readinessAutoJoinRef = useRef(false);
-  const [showTracker, setShowTracker] = useState(true);
+  const [showTracker, setShowTracker] = useState(false);
 
   const wsUrl =
     sessionId && userId
       ? `${import.meta.env.VITE_BACKEND_WS_URL || "ws://localhost:8000"}/ws/engagement/${sessionId}/${userId}`
       : null;
 
-  useWebSocket(wsUrl || "", null);
+  const { connected: wsConnected } = useWebSocket(wsUrl || "", null);
 
   const handleJoin = useCallback(() => {
     setInMeeting(true);
@@ -98,41 +101,75 @@ export default function StudentPage() {
     <>
       <NudgeNotification message={nudgeState?.text} key={nudgeState?.id} />
 
-      <div className="w-full h-screen flex overflow-hidden bg-slate-100">
-        <div className="flex-1 bg-slate-900 relative overflow-hidden">
-          <HMSMeeting
+      <div className="sd-app">
+        <div className="sd-frame">
+          <StudentTopbar
+            wsConnected={wsConnected}
+            sessionId={sessionId}
             userName={userName}
-            role="guest"
-            onLeave={() => (window.location.href = "/")}
           />
-        </div>
 
-        {showTracker && (
-          <div className="w-[420px] bg-white h-full border-l border-slate-200 overflow-y-auto shadow-xl">
-            <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white p-5 z-10 shadow-md">
-              <h2 className="text-xl font-bold mb-0.5">Engagement Monitor</h2>
-              <p className="text-sm text-indigo-100">
-                Real-time attention tracking
-              </p>
+          <div className="sd-status-bar" aria-label="Student session strip">
+            <div className="sd-status-left">
+              <span className="sd-session-id">{sessionId.toUpperCase()}</span>
+              <span className="sd-sep-line" />
+              <span className="sd-role-chip">STUDENT VIEW</span>
             </div>
 
-            <div className="p-4">
-              <EngagementTracker
-                sessionId={sessionId}
-                userId={userId}
-                onNudge={handleNudge}
-              />
+            <div className="sd-status-right">
+              <button
+                type="button"
+                onClick={() => setShowTracker(!showTracker)}
+                className="sd-tracker-toggle"
+                aria-expanded={showTracker}
+                aria-controls="student-tracker-rail"
+              >
+                <span className="sd-toggle-dot" aria-hidden="true" />
+                {showTracker ? "Hide Panel" : "Tracking Panel"}
+              </button>
             </div>
           </div>
-        )}
 
-        <button
-          onClick={() => setShowTracker(!showTracker)}
-          className="absolute top-4 left-4 bg-white/95 hover:bg-white text-slate-800 px-4 py-2 rounded-full text-sm font-medium shadow-lg border border-slate-200/80 flex items-center gap-2 z-40 transition-all duration-200"
-        >
-          <span>{showTracker ? "←" : "→"}</span>
-          <span>{showTracker ? "Hide" : "Show"} Panel</span>
-        </button>
+          <div className="sd-workspace">
+            <div className="sd-stage-area">
+              <div className="sd-stage-shell">
+                <div className="sd-hms-wrap">
+                  <HMSMeeting
+                    userName={userName}
+                    role="guest"
+                    onLeave={() => (window.location.href = "/")}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {showTracker && (
+              <aside className="sd-tracker-rail" id="student-tracker-rail">
+                <div className="sd-tracker-rail-inner">
+                  <div className="sd-tracker-rail-head">
+                    <div className="sd-rail-title-row">
+                      <h2 className="sd-rail-title">
+                        <span className="sd-rail-title-dot" />
+                        Engagement Monitor
+                      </h2>
+                    </div>
+                    <p className="sd-rail-subtitle">
+                      Your session focus signals
+                    </p>
+                  </div>
+
+                  <div className="sd-tracker-content">
+                    <EngagementTracker
+                      sessionId={sessionId}
+                      userId={userId}
+                      onNudge={handleNudge}
+                    />
+                  </div>
+                </div>
+              </aside>
+            )}
+          </div>
+        </div>
       </div>
     </>
   );

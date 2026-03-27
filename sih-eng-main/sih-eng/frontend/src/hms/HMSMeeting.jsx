@@ -181,6 +181,29 @@ function WarningIcon() {
 
 const MAX_TOTAL_TILES = 6;
 const MAX_STUDENT_SLOTS = MAX_TOTAL_TILES - 1;
+const HMS_TOKEN_TIMEOUT_MS = 10000;
+const HMS_JOIN_TIMEOUT_MS = 15000;
+
+function createTimeoutError(message) {
+  const err = new Error(message);
+  err.name = "TimeoutError";
+  return err;
+}
+
+function withTimeout(promise, ms, onTimeout) {
+  let timeoutId = null;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timeoutId = window.setTimeout(() => {
+        if (typeof onTimeout === "function") onTimeout();
+        reject(createTimeoutError("Operation timed out"));
+      }, ms);
+    }),
+  ]).finally(() => {
+    if (timeoutId) window.clearTimeout(timeoutId);
+  });
+}
 
 function getGridLayout(count) {
   if (count <= 1) return { cols: 1, rows: 1 };
@@ -359,10 +382,30 @@ export default function HMSMeeting({
   const [audioOn, setAudioOn] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const joinAttemptRef = useRef(false);
+  const connectionKeyRef = useRef("");
 
   useEffect(() => {
+    const nextConnectionKey = `${userName}::${role}`;
+    if (connectionKeyRef.current !== nextConnectionKey) {
+      connectionKeyRef.current = nextConnectionKey;
+      joinAttemptRef.current = false;
+    }
+
+    if (isConnected) {
+      setLoading(false);
+      setError(null);
+      joinAttemptRef.current = false;
+      return;
+    }
+
+    if (joinAttemptRef.current) {
+      return;
+    }
+
     const abortController = new AbortController();
     let disposed = false;
+    joinAttemptRef.current = true;
 
     async function join() {
       try {
@@ -374,17 +417,21 @@ export default function HMSMeeting({
           import.meta.env.VITE_HMS_TOKEN_ENDPOINT ||
           "http://localhost:8000/hms-token";
 
-        const response = await fetch(tokenEndpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          signal: abortController.signal,
-          body: JSON.stringify({
-            user_name: userName,
-            role: role,
+        const response = await withTimeout(
+          fetch(tokenEndpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            signal: abortController.signal,
+            body: JSON.stringify({
+              user_name: userName,
+              role: role,
+            }),
           }),
-        });
+          HMS_TOKEN_TIMEOUT_MS,
+          () => abortController.abort(),
+        );
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -398,14 +445,17 @@ export default function HMSMeeting({
           throw new Error("No token received from server");
         }
 
-        await hmsActions.join({
-          userName,
-          authToken,
-          settings: {
-            isAudioMuted: false,
-            isVideoMuted: false,
-          },
-        });
+        await withTimeout(
+          hmsActions.join({
+            userName,
+            authToken,
+            settings: {
+              isAudioMuted: false,
+              isVideoMuted: false,
+            },
+          }),
+          HMS_JOIN_TIMEOUT_MS,
+        );
 
         if (!disposed) {
           setLoading(false);
@@ -415,14 +465,19 @@ export default function HMSMeeting({
           return;
         }
         console.error("[HMS] Join error:", err);
-        setError(err.message);
+        if (err?.name === "TimeoutError") {
+          setError(
+            "Connection timed out. Check that backend HMS token service is running.",
+          );
+        } else {
+          setError(err.message || "Failed to join meeting");
+        }
         setLoading(false);
+        joinAttemptRef.current = false;
       }
     }
 
-    if (!isConnected) {
-      join();
-    }
+    join();
 
     return () => {
       disposed = true;

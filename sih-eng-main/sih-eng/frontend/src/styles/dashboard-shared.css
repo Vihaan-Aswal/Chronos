@@ -1,0 +1,12 @@
+:root {
+  --dash-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --dash-fast: 120ms;
+  --dash-mid: 200ms;
+  --dash-slow: 300ms;
+
+  --dash-bg: #020e18;
+  --dash-text: #d3e4f8;
+  --dash-gold: #dcc492;
+  --dash-border-soft: rgba(211, 228, 248, 0.09);
+  --dash-border-strong: rgba(211, 228, 248, 0.14);
+}

@@ -1,27 +1,4 @@
-function ShieldIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M12 2.75L18.25 6.35V13.55C18.25 16.86 15.88 19.9 12.62 20.98L12 21.18L11.38 20.98C8.12 19.9 5.75 16.86 5.75 13.55V6.35L12 2.75Z"
-        stroke="currentColor"
-        strokeWidth="1.4"
-      />
-      <path
-        d="M9.25 10.65L11.3 12.7L14.95 9.05"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+import ChronosMark from "../ChronosMark.jsx";
 
 function ClassIcon() {
   return (
@@ -166,7 +143,7 @@ export default function DashboardTopbar({
     <header className="td-topbar">
       <div className="td-brand-group">
         <div className="td-brand-mark" aria-label="Chronos">
-          <ShieldIcon />
+          <ChronosMark size={20} variant="gold" />
         </div>
         <div className="td-brand-copy">
           <div className="td-brand-name">Chronos</div>

@@ -8,12 +8,18 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const cropCanvasRef = useRef(null);
-  
+
   const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-  
+
   function computeEAR(landmarks, [upper, lower, inner, outer]) {
     if (!landmarks || landmarks.length === 0) return 0;
-    if (!landmarks[upper] || !landmarks[lower] || !landmarks[inner] || !landmarks[outer]) return 0;
+    if (
+      !landmarks[upper] ||
+      !landmarks[lower] ||
+      !landmarks[inner] ||
+      !landmarks[outer]
+    )
+      return 0;
     const vertical = distance(landmarks[upper], landmarks[lower]);
     const horizontal = distance(landmarks[inner], landmarks[outer]);
     return horizontal > 0 ? vertical / horizontal : 0;
@@ -42,7 +48,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
     ear: 0,
     headPose: { yaw: 0, pitch: 0 },
     presence: "unknown",
-    identityStatus: "checking"
+    identityStatus: "checking",
   });
 
   // IDENTITY VERIFICATION STATE - low-frequency checks (2-5 min)
@@ -57,7 +63,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
     consecutiveVerified: 0,
     unverifiedStreak: 0,
     lastDistance: null,
-    skipNextCheck: false // Skip checks when conditions aren't met
+    skipNextCheck: false, // Skip checks when conditions aren't met
   }).current;
 
   const [identityStatus, setIdentityStatus] = useState("checking");
@@ -120,15 +126,15 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       return;
     }
     if (identityState.status === "no_enrollment") return;
-    
+
     const now = performance.now();
     if (now - identityState.lastCheck < identityState.checkInterval) return;
-    
+
     // Skip if flagged
-    if (identityState.skipNextCheck) {      
+    if (identityState.skipNextCheck) {
       return;
     }
-    
+
     identityState.lastCheck = now;
 
     try {
@@ -136,7 +142,10 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       const cropCanvas = cropCanvasRef.current;
       if (!video || !cropCanvas) return;
 
-      let minX = 1, maxX = 0, minY = 1, maxY = 0;
+      let minX = 1,
+        maxX = 0,
+        minY = 1,
+        maxY = 0;
       landmarks.forEach((p) => {
         if (p.x < minX) minX = p.x;
         if (p.x > maxX) maxX = p.x;
@@ -168,14 +177,15 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
         const diff = MIN_DIM - sh;
         sy = Math.max(0, sy - Math.floor(diff / 2));
         sh = MIN_DIM;
-        if (sy + sh > video.videoHeight) sy = Math.max(0, video.videoHeight - sh);
+        if (sy + sh > video.videoHeight)
+          sy = Math.max(0, video.videoHeight - sh);
       }
 
       // Check if face is reasonably centered and frontal
       const centerX = (minX + maxX) / 2;
       const centerY = (minY + maxY) / 2;
-      const isCentered = Math.abs(centerX - 0.5) < 0.25 && Math.abs(centerY - 0.5) < 0.25;
-      
+      const isCentered =
+        Math.abs(centerX - 0.5) < 0.25 && Math.abs(centerY - 0.5) < 0.25;
 
       const ctx = cropCanvas.getContext("2d");
       ctx.clearRect(0, 0, 112, 112);
@@ -193,11 +203,13 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       const dist = l2Distance(normalizedEmb, storedNorm);
 
       // Simple, reliable thresholds (no hysteresis, no mid-range complexity)
-      const VERIFY_THRESHOLD = 0.50;    // below this = verified
-      const MISMATCH_THRESHOLD = 0.55;   // above this = mismatch
+      const VERIFY_THRESHOLD = 0.5; // below this = verified
+      const MISMATCH_THRESHOLD = 0.55; // above this = mismatch
       // Between 0.50-0.55 = uncertain zone (hold current status)
 
-      console.log(`[Identity] Distance: ${dist.toFixed(3)}, Status: ${identityState.status}`);
+      console.log(
+        `[Identity] Distance: ${dist.toFixed(3)}, Status: ${identityState.status}`,
+      );
 
       let prevStatus = identityState.status;
 
@@ -208,7 +220,10 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       } else if (dist > MISMATCH_THRESHOLD) {
         // Clear mismatch
         identityState.status = "mismatch";
-        identityState.mismatchCount = Math.min((identityState.mismatchCount || 0) + 1, 9999);
+        identityState.mismatchCount = Math.min(
+          (identityState.mismatchCount || 0) + 1,
+          9999,
+        );
       }
       // else: uncertain zone — keep current status
 
@@ -228,13 +243,12 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
             user_id: userId,
             identity_status: identityState.status,
             identity_mismatch_count: identityState.mismatchCount || 0,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           });
         } catch (err) {
           console.error("Failed to send identity_update:", err);
         }
       }
-
     } catch (err) {
       console.error("[Identity] Verification error:", err);
     }
@@ -242,21 +256,26 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
 
   // GAZE DIRECTION
   function gazeDirection(lm) {
-    const LEFT_IRIS = 473, RIGHT_IRIS = 468;
-    const LEFT_INNER = 263, LEFT_OUTER = 362;
-    const RIGHT_INNER = 133, RIGHT_OUTER = 33;
+    const LEFT_IRIS = 473,
+      RIGHT_IRIS = 468;
+    const LEFT_INNER = 263,
+      LEFT_OUTER = 362;
+    const RIGHT_INNER = 133,
+      RIGHT_OUTER = 33;
     const [L_UP, L_DOWN] = [386, 374];
     const [R_UP, R_DOWN] = [159, 145];
 
-    const horiz = ((lm[LEFT_IRIS].x - lm[LEFT_INNER].x) /
-      (lm[LEFT_OUTER].x - lm[LEFT_INNER].x) +
-      (lm[RIGHT_IRIS].x - lm[RIGHT_INNER].x) /
-      (lm[RIGHT_OUTER].x - lm[RIGHT_INNER].x)) / 2;
+    const horiz =
+      ((lm[LEFT_IRIS].x - lm[LEFT_INNER].x) /
+        (lm[LEFT_OUTER].x - lm[LEFT_INNER].x) +
+        (lm[RIGHT_IRIS].x - lm[RIGHT_INNER].x) /
+          (lm[RIGHT_OUTER].x - lm[RIGHT_INNER].x)) /
+      2;
 
-    const down = ((lm[LEFT_IRIS].y - lm[L_UP].y) /
-      (lm[L_DOWN].y - lm[L_UP].y) +
-      (lm[RIGHT_IRIS].y - lm[R_UP].y) /
-      (lm[R_DOWN].y - lm[R_UP].y)) / 2;
+    const down =
+      ((lm[LEFT_IRIS].y - lm[L_UP].y) / (lm[L_DOWN].y - lm[L_UP].y) +
+        (lm[RIGHT_IRIS].y - lm[R_UP].y) / (lm[R_DOWN].y - lm[R_UP].y)) /
+      2;
 
     gazeCalib.smoothHoriz = horiz;
     gazeCalib.smoothVert = down;
@@ -283,9 +302,15 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
     const nose = lm[1] ?? lm[4];
     const leftIris = lm[473];
     const rightIris = lm[468];
-    const eyeMid = { x: (leftIris.x + rightIris.x) / 2, y: (leftIris.y + rightIris.y) / 2 };
+    const eyeMid = {
+      x: (leftIris.x + rightIris.x) / 2,
+      y: (leftIris.y + rightIris.y) / 2,
+    };
 
-    let minX = 1, minY = 1, maxX = 0, maxY = 0;
+    let minX = 1,
+      minY = 1,
+      maxX = 0,
+      maxY = 0;
     for (let p of lm) {
       minX = Math.min(minX, p.x);
       minY = Math.min(minY, p.y);
@@ -316,7 +341,10 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
   // SMILE (mouth openness - MediaPipe indices 61, 291 corners, 13, 14 lips)
   function checkSmile(lm) {
     if (!lm || lm.length < 300) return false;
-    const p61 = lm[61], p291 = lm[291], p13 = lm[13], p14 = lm[14];
+    const p61 = lm[61],
+      p291 = lm[291],
+      p13 = lm[13],
+      p14 = lm[14];
     if (!p61 || !p291 || !p13 || !p14) return false;
     const vert = Math.abs(p13.y - p14.y);
     const horiz = Math.abs(p61.x - p291.x) || 0.01;
@@ -329,7 +357,10 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       presenceState.status = "no_face";
       return presenceState;
     }
-    let minX = 1, minY = 1, maxX = 0, maxY = 0;
+    let minX = 1,
+      minY = 1,
+      maxX = 0,
+      maxY = 0;
     for (let p of lm) {
       minX = Math.min(minX, p.x);
       minY = Math.min(minY, p.y);
@@ -346,15 +377,23 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
   // SCORING (class mode uses discrete gaze; exam uses continuous iris offset — applied in detect loop via classContextRef)
   const scoreFromGazeClass = (g) => (g.direction === "center" ? 1 : 0);
   const scoreFromHeadPose = (p) =>
-    (!p.turned && !p.lookingDown) ? 1 :
-      (p.turned && Math.abs(p.yaw) < 0.12) ? 0.6 : 0;
-  const scoreFromPresence = p => p.status === "present" ? 1 : 0;
-  const scoreFromEye = s =>
-    s === "eyes_open" ? 1 :
-      s === "blink" ? 0.9 :
-        s === "closed_brief" ? 0.6 :
-          s === "microsleep" ? 0.2 : 0;
-  const scoreFromIdentity = status => {
+    !p.turned && !p.lookingDown
+      ? 1
+      : p.turned && Math.abs(p.yaw) < 0.12
+        ? 0.6
+        : 0;
+  const scoreFromPresence = (p) => (p.status === "present" ? 1 : 0);
+  const scoreFromEye = (s) =>
+    s === "eyes_open"
+      ? 1
+      : s === "blink"
+        ? 0.9
+        : s === "closed_brief"
+          ? 0.6
+          : s === "microsleep"
+            ? 0.2
+            : 0;
+  const scoreFromIdentity = (status) => {
     if (status === "checking" || status === "no_enrollment") return 1;
     if (status === "verified") return 1;
     // Only penalize after confirmed repeated mismatches
@@ -377,7 +416,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
   const BLINK_THRESHOLD = 0.26;
   const CLOSED_THRESHOLD = 0.22;
 
-  // Auto-nudge config 
+  // Auto-nudge config
   const WINDOW_MS = 10 * 1000;
   const CHECK_INTERVAL = 10 * 1000;
   const AUTO_THRESHOLD_CLASS = 0.5;
@@ -386,13 +425,18 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
   const MAX_STRIKES = 3;
 
   const scoreBufferRef = useRef([]);
-  const pendingAutoRef = useRef({ pending: false, timeoutId: null, responseResolver: null });
+  const pendingAutoRef = useRef({
+    pending: false,
+    timeoutId: null,
+    responseResolver: null,
+  });
   const strikeCountRef = useRef(0);
 
   // WEBSOCKET
-  const wsUrl = sessionId && userId
-    ? `${import.meta.env.VITE_BACKEND_WS_URL || "ws://localhost:8000"}/ws/engagement/${sessionId}/${userId}`
-    : null;
+  const wsUrl =
+    sessionId && userId
+      ? `${import.meta.env.VITE_BACKEND_WS_URL || "ws://localhost:8000"}/ws/engagement/${sessionId}/${userId}`
+      : null;
 
   async function triggerAutoNudge(avgScore) {
     if (pendingAutoRef.current.pending) return;
@@ -533,14 +577,14 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       if (message.action === "mark_engaged") {
         strikeCountRef.current = 0;
         scoreBufferRef.current = [];
-        
+
         identityState.status = "verified";
         identityState.mismatchCount = 0;
         setIdentityStatus("verified");
         if (currentMetricsRef.current) {
-           currentMetricsRef.current.identityStatus = "verified";
-           currentMetricsRef.current.presence = "present";
-           currentMetricsRef.current.headPose = { yaw: 0, pitch: 0 };
+          currentMetricsRef.current.identityStatus = "verified";
+          currentMetricsRef.current.presence = "present";
+          currentMetricsRef.current.headPose = { yaw: 0, pitch: 0 };
         }
 
         if (typeof send === "function") {
@@ -584,7 +628,8 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [sessionMode, sessionId, userId, send]);
 
   // Send immediate identity update whenever identityStatus changes
@@ -597,7 +642,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
         user_id: userId,
         identity_status: identityState.status || identityStatus || "checking",
         identity_mismatch_count: identityState.mismatchCount || 0,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (err) {
       console.error("Failed to send identity_update on status change:", err);
@@ -606,12 +651,14 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
 
   // SEND METRICS
   useEffect(() => {
-    
     if (!sessionId || !userId || !wsUrl) return;
-    
 
     const interval = setInterval(() => {
-        if (connected && engagementState && engagementState.smoothScore !== undefined) {
+      if (
+        connected &&
+        engagementState &&
+        engagementState.smoothScore !== undefined
+      ) {
         const metrics = currentMetricsRef.current;
         send({
           type: "metrics",
@@ -690,9 +737,12 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
     let largestArea = 0;
     let nearestFace = null;
 
-    faceLandmarks.forEach(lm => {
-      let minX = 1, maxX = 0, minY = 1, maxY = 0;
-      lm.forEach(p => {
+    faceLandmarks.forEach((lm) => {
+      let minX = 1,
+        maxX = 0,
+        minY = 1,
+        maxY = 0;
+      lm.forEach((p) => {
         minX = Math.min(minX, p.x);
         maxX = Math.max(maxX, p.x);
         minY = Math.min(minY, p.y);
@@ -720,7 +770,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       if (!isMounted) return;
       const vision = await import("@mediapipe/tasks-vision");
       const filesetResolver = await vision.FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.4/wasm"
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.4/wasm",
       );
 
       faceLandmarker = await vision.FaceLandmarker.createFromOptions(
@@ -732,7 +782,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
           },
           runningMode: "video",
           numFaces: 5,
-        }
+        },
       );
 
       stream = await navigator.mediaDevices.getUserMedia({
@@ -750,7 +800,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
 
       const results = faceLandmarker.detectForVideo(
         videoRef.current,
-        performance.now()
+        performance.now(),
       );
 
       const canvas = canvasRef.current;
@@ -758,7 +808,11 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      if (!results || !results.faceLandmarks || results.faceLandmarks.length === 0) {
+      if (
+        !results ||
+        !results.faceLandmarks ||
+        results.faceLandmarks.length === 0
+      ) {
         presenceState.status = "no_face";
         engagementState.smoothScore = 0;
         scoreBufferRef.current.push({ ts: Date.now(), score: 0 });
@@ -767,7 +821,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
           ...currentMetricsRef.current,
           presence: "no_face",
           ear: 0,
-          headPose: { yaw: 0, pitch: 0 }
+          headPose: { yaw: 0, pitch: 0 },
         };
 
         ctx.fillStyle = "rgba(0,0,0,0.75)";
@@ -778,7 +832,8 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
         ctx.font = "bold 32px system-ui, -apple-system, sans-serif";
         ctx.fillText(
           `Score: ${Math.round((engagementState.smoothScore || 0) * 100)}%`,
-          28, 110
+          28,
+          110,
         );
 
         if (isMounted) loop = requestAnimationFrame(detect);
@@ -796,7 +851,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
           ...currentMetricsRef.current,
           presence: "no_face",
           ear: 0,
-          headPose: { yaw: 0, pitch: 0 }
+          headPose: { yaw: 0, pitch: 0 },
         };
 
         ctx.fillStyle = "rgba(0,0,0,0.75)";
@@ -807,7 +862,8 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
         ctx.font = "bold 32px system-ui, -apple-system, sans-serif";
         ctx.fillText(
           `Score: ${Math.round((engagementState.smoothScore || 0) * 100)}%`,
-          28, 110
+          28,
+          110,
         );
 
         if (isMounted) loop = requestAnimationFrame(detect);
@@ -864,14 +920,17 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       // Multi-face detection: flag when more than one face visible
       if (results.faceLandmarks.length > 1 && typeof send === "function") {
         const now = Date.now();
-        if (!identityState.multiFaceLastSent || now - identityState.multiFaceLastSent > 30000) {
+        if (
+          !identityState.multiFaceLastSent ||
+          now - identityState.multiFaceLastSent > 30000
+        ) {
           identityState.multiFaceLastSent = now;
           send({
             type: "multi_face_detected",
             session_id: sessionId,
             user_id: userId,
             face_count: results.faceLandmarks.length,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           });
         }
       }
@@ -933,16 +992,16 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
 
       scoreBufferRef.current.push({
         ts: Date.now(),
-        score: Number(engagementState.smoothScore || 0)
+        score: Number(engagementState.smoothScore || 0),
       });
-      
+
       if (gaze && pose && pres) {
         currentMetricsRef.current = {
           gazeDirection: gaze.direction || "center",
           ear: smooth || 0,
           headPose: { yaw: pose.yaw || 0, pitch: pose.pitch || 0 },
           presence: pres.status || "unknown",
-          identityStatus: identityState.status || "checking"
+          identityStatus: identityState.status || "checking",
         };
       }
 
@@ -967,12 +1026,17 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
           const smiling = checkSmile(lm);
           let passed = false;
           if (ch.action_id === "turn_head_left" && yaw < -0.15) passed = true;
-          else if (ch.action_id === "turn_head_right" && yaw > 0.15) passed = true;
-          else if (ch.action_id === "turn_head_up" && pitch < -0.08) passed = true;
-          else if (ch.action_id === "turn_head_down" && pitch > 0.08) passed = true;
+          else if (ch.action_id === "turn_head_right" && yaw > 0.15)
+            passed = true;
+          else if (ch.action_id === "turn_head_up" && pitch < -0.08)
+            passed = true;
+          else if (ch.action_id === "turn_head_down" && pitch > 0.08)
+            passed = true;
           else if (ch.action_id === "smile" && smiling) passed = true;
-          else if (ch.action_id === "look_right_smile" && yaw > 0.15 && smiling) passed = true;
-          else if (ch.action_id === "look_left_smile" && yaw < -0.15 && smiling) passed = true;
+          else if (ch.action_id === "look_right_smile" && yaw > 0.15 && smiling)
+            passed = true;
+          else if (ch.action_id === "look_left_smile" && yaw < -0.15 && smiling)
+            passed = true;
           if (passed) {
             send({
               type: "liveness_pass",
@@ -992,28 +1056,28 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       ctx.fillRect(8, 8, 540, 310);
       ctx.fillStyle = "white";
       ctx.font = "28px system-ui, -apple-system, sans-serif";
-      
+
       ctx.fillText(`Presence: ${pres.status}`, 28, 56);
       ctx.fillText(
         `Gaze: ${gaze.direction} (H:${gaze.horizontal.toFixed(2)})`,
-        28, 100
+        28,
+        100,
       );
-      ctx.fillText(
-        `Head: yaw ${pose.yaw.toFixed(2)}`, 
-        28, 144
-      );
-      ctx.fillText(
-        `Eye: ${blinkData.status}`, 
-        28, 188
-      );
-      
+      ctx.fillText(`Head: yaw ${pose.yaw.toFixed(2)}`, 28, 144);
+      ctx.fillText(`Eye: ${blinkData.status}`, 28, 188);
+
       // Score
       ctx.font = "bold 36px system-ui, -apple-system, sans-serif";
-      ctx.fillStyle = engagementState.smoothScore > 0.7 ? "#10b981" : 
-                      engagementState.smoothScore > 0.4 ? "#f59e0b" : "#ef4444";
+      ctx.fillStyle =
+        engagementState.smoothScore > 0.7
+          ? "#10b981"
+          : engagementState.smoothScore > 0.4
+            ? "#f59e0b"
+            : "#ef4444";
       ctx.fillText(
         `Score: ${Math.round(engagementState.smoothScore * 100)}%`,
-        28, 290
+        28,
+        290,
       );
 
       if (isMounted) loop = requestAnimationFrame(detect);
@@ -1024,43 +1088,41 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
     return () => {
       isMounted = false;
       cancelAnimationFrame(loop);
-      if (stream) stream.getTracks().forEach(t => t.stop());
+      if (stream) stream.getTracks().forEach((t) => t.stop());
     };
   }, []);
 
   return (
-    <div className="w-full">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Live Tracking</h3>
-        {wsUrl && (
-          <div className="px-3 py-1 rounded-lg text-sm font-medium">
-            {connected ? (
-              <span className="text-green-600 bg-green-100 px-3 py-1.5 rounded-lg">🟢 Connected</span>
-            ) : (
-              <span className="text-red-600 bg-red-100 px-3 py-1.5 rounded-lg">🔴 Disconnected</span>
-            )}
-          </div>
-        )}
+    <div className="sd-tracker">
+      <div className="sd-tracker-head">
+        <h3 className="sd-tracker-title">Live Tracking</h3>
       </div>
 
       {/* Identity Status Alert */}
       {identityStatus === "mismatch" && identityState.mismatchCount >= 2 && (
-        <div className="mb-4 p-4 bg-red-50 border-2 border-red-500 rounded-lg">
+        <div className="sd-alert-danger">
           <div className="flex items-center gap-3">
             <span className="text-2xl">⚠️</span>
             <div>
-              <div className="font-bold text-red-900">Identity Mismatch Detected</div>
-              <div className="text-sm text-red-700">
+              <p className="sd-alert-danger-title">
+                Identity Mismatch Detected
+              </p>
+              <p className="sd-alert-danger-copy">
                 The person in frame does not match the enrolled identity.
-              </div>
+              </p>
             </div>
           </div>
         </div>
       )}
 
-      <div className="relative w-full bg-black rounded-xl overflow-hidden shadow-lg" style={{ aspectRatio: "4/3" }}>
+      <div className="sd-tracker-canvas-shell" style={{ aspectRatio: "4/3" }}>
         <video ref={videoRef} style={{ display: "none" }} />
-        <canvas ref={cropCanvasRef} width={112} height={112} style={{ display: "none" }} />
+        <canvas
+          ref={cropCanvasRef}
+          width={112}
+          height={112}
+          style={{ display: "none" }}
+        />
         <canvas
           ref={canvasRef}
           width={720}
@@ -1072,16 +1134,16 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
 
       {/* AUTO-NUDGE MODAL */}
       {autoNudgeVisible && (
-        <div style={{
-          position: "fixed", left: 0, right: 0, top: 0, bottom: 0,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.5)", zIndex: 9999
-        }}>
-          <div style={{ background: "white", padding: 24, borderRadius: 12, width: 360, textAlign: "center" }}>
-            <h3 style={{ marginBottom: 12, fontSize: 20, fontWeight: 600 }}>You appear disengaged.</h3>
-            <p style={{ marginBottom: 20, color: "#444", fontSize: 15 }}>Tap "I'm Here" if you're paying attention.</p>
-            <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
-              <button onClick={handleAutoNudgeYes} style={{ padding: "10px 20px", background: "#10b981", color: "white", borderRadius: 8, fontSize: 15, fontWeight: 600 }}>YES</button>
+        <div className="sd-modal-backdrop">
+          <div className="sd-modal-card" role="dialog" aria-modal="true">
+            <h3 className="sd-modal-title">You appear disengaged.</h3>
+            <p className="sd-modal-copy">
+              Tap "I'm Here" if you're paying attention.
+            </p>
+            <div className="sd-modal-action">
+              <button onClick={handleAutoNudgeYes} className="sd-btn-positive">
+                YES
+              </button>
             </div>
           </div>
         </div>
@@ -1089,18 +1151,21 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
 
       {/* LIVENESS CHALLENGE */}
       {livenessChallenge && (
-        <div style={{
-          position: "fixed", left: 0, right: 0, top: 0, bottom: 0,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.7)", zIndex: 9998
-        }}>
-          <div style={{ background: "white", padding: 28, borderRadius: 12, width: 380, textAlign: "center" }}>
-            <h3 style={{ marginBottom: 12, fontSize: 22, fontWeight: 600 }}>Check Engagement</h3>
-            <p style={{ marginBottom: 16, color: "#333", fontSize: 18, fontWeight: 500 }}>
+        <div className="sd-modal-backdrop sd-modal-strong">
+          <div className="sd-modal-card" role="dialog" aria-modal="true">
+            <h3 className="sd-modal-title">Check Engagement</h3>
+            <p
+              className="sd-modal-copy"
+              style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}
+            >
               {livenessChallenge.action_label}
             </p>
-            <p style={{ color: "#666", fontSize: 14 }}>
-              {Math.max(0, Math.ceil((livenessChallenge.expires_at - Date.now()) / 1000))}s remaining
+            <p className="sd-modal-meta">
+              {Math.max(
+                0,
+                Math.ceil((livenessChallenge.expires_at - Date.now()) / 1000),
+              )}
+              s remaining
             </p>
           </div>
         </div>
@@ -1108,17 +1173,15 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
 
       {/* TAB SWITCH WARNING (Strict Mode) */}
       {tabSwitchPopup && (
-        <div style={{
-          position: "fixed", left: 0, right: 0, top: 0, bottom: 0,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.5)", zIndex: 9999
-        }}>
-          <div style={{ background: "white", padding: 24, borderRadius: 12, width: 360, textAlign: "center" }}>
-            <h3 style={{ marginBottom: 12, fontSize: 20, fontWeight: 600 }}>Return to class (Strict Mode)</h3>
-            <p style={{ marginBottom: 20, color: "#444", fontSize: 15 }}>Please keep the class window active and visible.</p>
+        <div className="sd-modal-backdrop">
+          <div className="sd-modal-card" role="dialog" aria-modal="true">
+            <h3 className="sd-modal-title">Return to class (Strict Mode)</h3>
+            <p className="sd-modal-copy">
+              Please keep the class window active and visible.
+            </p>
             <button
               onClick={() => setTabSwitchPopup(false)}
-              style={{ padding: "10px 24px", background: "#3b82f6", color: "white", borderRadius: 8, fontSize: 15, fontWeight: 600 }}
+              className="sd-btn-primary"
             >
               OK
             </button>
@@ -1130,4 +1193,3 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
 }
 
 export default EngagementTracker;
-

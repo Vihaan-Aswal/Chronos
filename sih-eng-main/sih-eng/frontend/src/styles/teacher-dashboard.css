@@ -1,15 +1,15 @@
 :root {
-  --td-ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --td-fast: 120ms;
-  --td-mid: 200ms;
-  --td-slow: 300ms;
+  --td-ease: var(--dash-ease, cubic-bezier(0.16, 1, 0.3, 1));
+  --td-fast: var(--dash-fast, 120ms);
+  --td-mid: var(--dash-mid, 200ms);
+  --td-slow: var(--dash-slow, 300ms);
 }
 
 .td-app {
   min-height: 100vh;
   height: 100vh;
   padding: 10px;
-  background: #020e18;
+  background: var(--dash-bg, #020e18);
   overflow: hidden;
   font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
 }
@@ -19,7 +19,7 @@
   z-index: 0;
   height: 100%;
   min-height: 0;
-  border: 1px solid rgba(211, 228, 248, 0.14);
+  border: 1px solid var(--dash-border-strong, rgba(211, 228, 248, 0.14));
   border-radius: 28px;
   overflow: hidden;
   display: flex;
@@ -85,7 +85,7 @@
   justify-content: space-between;
   gap: 8px;
   padding: 7px 12px;
-  border-bottom: 1px solid rgba(211, 228, 248, 0.09);
+  border-bottom: 1px solid var(--dash-border-soft, rgba(211, 228, 248, 0.09));
   background: linear-gradient(
     180deg,
     rgba(6, 22, 35, 0.98),
@@ -129,7 +129,7 @@
 }
 
 .td-brand-name {
-  color: #d3e4f8;
+  color: var(--dash-text, #d3e4f8);
   font-size: 14px;
   font-weight: 700;
   line-height: 1.2;
