@@ -30,7 +30,7 @@
  *   2. Read role from sessionStorage['chronos_role'].
  *   3. If role missing → redirect to /choose-role.
  *   4. Pass user to <JoinScreen user={user} onJoin={handleJoin} />.
- *   5. handleJoin: navigate to /${role} with { state: { user, role } }
+ *   5. handleJoin: navigate to /${role} with { state: { user, role, readinessCompleted: true } }
  *      for backward compatibility with StudentPage / TeacherPage.
  */
 
@@ -38,6 +38,8 @@ import { useNavigate, Link } from "react-router-dom";
 import JoinScreen from "../components/JoinScreen.jsx";
 import { motion } from "motion/react";
 import ChronosMark from "../components/ChronosMark.jsx";
+
+const MotionDiv = motion.div;
 
 export default function ReadinessPage() {
   const navigate = useNavigate();
@@ -67,13 +69,12 @@ export default function ReadinessPage() {
     // TeacherPage which still read location.state?.user as their primary source.
     navigate(`/${role}`, {
       replace: true,
-      state: { user, role },
+      state: { user, role, readinessCompleted: true },
     });
   }
 
   return (
     <div className="bg-surface font-body text-on-surface min-h-screen flex flex-col">
-
       {/* ── Sticky dark header ──────────────────────────────────────── */}
       <header
         className="w-full top-0 sticky z-50 shadow-md"
@@ -85,7 +86,10 @@ export default function ReadinessPage() {
             className="flex items-center gap-2 hover:opacity-70 transition-opacity"
           >
             <ChronosMark size={24} variant="gold" />
-            <span className="font-headline text-2xl font-bold tracking-tighter" style={{ color: "#DCC492" }}>
+            <span
+              className="font-headline text-2xl font-bold tracking-tighter"
+              style={{ color: "#DCC492" }}
+            >
               Chronos
             </span>
           </Link>
@@ -121,7 +125,6 @@ export default function ReadinessPage() {
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <main className="flex-grow max-w-7xl mx-auto w-full px-8 py-6 md:py-8 lg:flex lg:flex-col lg:justify-center">
-
         {/* Page title */}
         <div className="mb-8 text-center max-w-4xl mx-auto">
           <h1 className="font-headline text-on-surface tracking-tight text-4xl md:text-5xl">
@@ -146,19 +149,22 @@ export default function ReadinessPage() {
              The user prop provides user.id / user.user_id for identity API.
              The onJoin prop is called after successful face verification.
         ────────────────────────────────────────────────────────────────── */}
-        <motion.div
+        <MotionDiv
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
           <JoinScreen user={user} onJoin={handleJoin} />
-        </motion.div>
+        </MotionDiv>
       </main>
 
       {/* ── Dark Footer ─────────────────────────────────────────────────── */}
       <footer
         className="w-full mt-20"
-        style={{ backgroundColor: "#041523", borderTop: "1px solid rgba(72,98,110,0.2)" }}
+        style={{
+          backgroundColor: "#041523",
+          borderTop: "1px solid rgba(72,98,110,0.2)",
+        }}
       >
         <div className="flex flex-col md:flex-row justify-between items-center px-12 py-10 w-full max-w-7xl mx-auto">
           <div

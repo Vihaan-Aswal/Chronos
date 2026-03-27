@@ -1,9 +1,9 @@
 // src/pages/StudentPage.jsx
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 
-
+import JoinScreen from "../components/JoinScreen.jsx";
 import EngagementTracker from "../components/EngagementTracker.jsx";
 import NudgeNotification from "../components/NudgeNotification.jsx";
 import HMSMeeting from "../hms/HMSMeeting.jsx";
@@ -16,16 +16,69 @@ export default function StudentPage() {
     try {
       const raw = sessionStorage.getItem("chronos_user");
       if (raw) user = JSON.parse(raw);
-    } catch {}
+    } catch {
+      user = null;
+    }
   }
+
+  const userId = user?.id || "";
+  const sessionId = "default-session";
+  const userName = user?.email || userId || "Student";
+  const readinessCompleted = location.state?.readinessCompleted === true;
+
+  const [inMeeting, setInMeeting] = useState(false);
+  const [nudgeState, setNudgeState] = useState(null);
+  const nudgeTimeoutRef = useRef(null);
+  const readinessAutoJoinRef = useRef(false);
+  const [showTracker, setShowTracker] = useState(true);
+
+  const wsUrl =
+    sessionId && userId
+      ? `${import.meta.env.VITE_BACKEND_WS_URL || "ws://localhost:8000"}/ws/engagement/${sessionId}/${userId}`
+      : null;
+
+  useWebSocket(wsUrl || "", null);
+
+  const handleJoin = useCallback(() => {
+    setInMeeting(true);
+  }, []);
+
+  useEffect(() => {
+    if (!readinessCompleted || inMeeting || readinessAutoJoinRef.current) {
+      return;
+    }
+    readinessAutoJoinRef.current = true;
+    const timeoutId = window.setTimeout(() => {
+      handleJoin();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [readinessCompleted, inMeeting, handleJoin]);
+
+  const handleNudge = (msg) => {
+    if (nudgeTimeoutRef.current) clearTimeout(nudgeTimeoutRef.current);
+
+    const text = msg?.message_text
+      ? msg.message_text
+      : msg?.nudge_type === "hard"
+        ? "Attention Required!"
+        : "Please pay attention!";
+
+    setNudgeState({ text, id: Date.now() });
+
+    nudgeTimeoutRef.current = setTimeout(() => setNudgeState(null), 5000);
+  };
 
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 max-w-md text-center">
           <div className="text-red-500 text-5xl mb-4">!</div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Session Expired</h2>
-          <p className="text-slate-600 mb-4">No user found. Please login again.</p>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">
+            Session Expired
+          </h2>
+          <p className="text-slate-600 mb-4">
+            No user found. Please login again.
+          </p>
           <a
             href="/"
             className="inline-block px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-500 transition"
@@ -37,37 +90,9 @@ export default function StudentPage() {
     );
   }
 
-  const userId = user.id;
-  const sessionId = "default-session";
-  const userName = user.email || userId;
-
-  const [inMeeting, setInMeeting] = useState(true);
-  const [nudgeState, setNudgeState] = useState(null);
-  const nudgeTimeoutRef = useRef(null);
-  const [showTracker, setShowTracker] = useState(true);
-
-  const wsUrl = sessionId && userId
-    ? `${import.meta.env.VITE_BACKEND_WS_URL || "ws://localhost:8000"}/ws/engagement/${sessionId}/${userId}`
-    : null;
-
-  const { connected, send } = useWebSocket(wsUrl || "", null);
-
-
-  const handleNudge = (msg) => {
-    if (nudgeTimeoutRef.current) clearTimeout(nudgeTimeoutRef.current);
-
-    const text =
-      msg?.message_text
-        ? msg.message_text
-        : msg?.nudge_type === "hard"
-        ? "Attention Required!"
-        : "Please pay attention!";
-
-    setNudgeState({ text, id: Date.now() });
-
-    nudgeTimeoutRef.current = setTimeout(() => setNudgeState(null), 5000);
-  };
-
+  if (!inMeeting) {
+    return <JoinScreen user={user} onJoin={handleJoin} />;
+  }
 
   return (
     <>
@@ -78,16 +103,14 @@ export default function StudentPage() {
           <HMSMeeting
             userName={userName}
             role="guest"
-            onLeave={() => window.location.href = "/"}
+            onLeave={() => (window.location.href = "/")}
           />
         </div>
 
         {showTracker && (
           <div className="w-[420px] bg-white h-full border-l border-slate-200 overflow-y-auto shadow-xl">
             <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white p-5 z-10 shadow-md">
-              <h2 className="text-xl font-bold mb-0.5">
-                Engagement Monitor
-              </h2>
+              <h2 className="text-xl font-bold mb-0.5">Engagement Monitor</h2>
               <p className="text-sm text-indigo-100">
                 Real-time attention tracking
               </p>
