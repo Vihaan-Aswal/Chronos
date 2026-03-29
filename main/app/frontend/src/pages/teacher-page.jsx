@@ -62,6 +62,14 @@ export default function TeacherPage() {
   const pastReportRequestIdRef = useRef(0);
 
   const { connected, students } = useTeacherWebSocket(sessionId);
+
+  const [showDisconnect, setShowDisconnect] = useState(false);
+  useEffect(() => {
+    const targetVisible = inMeeting && !connected;
+    const delay = targetVisible ? 2000 : 0;
+    const t = setTimeout(() => setShowDisconnect(targetVisible), delay);
+    return () => clearTimeout(t);
+  }, [inMeeting, connected]);
   useClassroomSimulator(sessionId, inMeeting && simulateClassroom);
 
   useEffect(() => {
@@ -946,9 +954,20 @@ export default function TeacherPage() {
               </div>
               <div className="p-4 space-y-2">
                 {pastSessions.length === 0 ? (
-                  <p className="text-slate-500 text-center py-8">
-                    No past sessions found
-                  </p>
+                  <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                      <span className="material-symbols-outlined text-3xl text-slate-400">
+                        history
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-1">
+                      No Past Sessions
+                    </h3>
+                    <p className="text-sm text-slate-500 max-w-sm">
+                      You haven't hosted any recorded sessions yet. Start a
+                      session and it will appear here.
+                    </p>
+                  </div>
                 ) : (
                   pastSessions.map((s) => (
                     <div
@@ -984,6 +1003,47 @@ export default function TeacherPage() {
 
   return (
     <>
+      {showDisconnect && (
+        <div
+          style={{
+            backgroundColor: "#ba1a1a",
+            color: "#ffffff",
+            padding: "10px 0",
+            zIndex: 9999,
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "12px",
+            fontSize: "12px",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+          }}
+        >
+          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="3"
+              opacity="0.25"
+            />
+            <path
+              fill="currentColor"
+              opacity="0.8"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
+          </svg>
+          Connection lost. Reconnecting...
+        </div>
+      )}
+
       {inMeeting && !showReport && (
         <div className="td-app dark">
           <div className="td-frame">
@@ -1001,11 +1061,7 @@ export default function TeacherPage() {
               onCheckEngagement={handleCheckEngagement}
             />
 
-            {!connected && (
-              <div className="td-disconnect-banner">
-                WebSocket disconnected. Live updates may be delayed.
-              </div>
-            )}
+            {/* The previous td-disconnect-banner has been replaced by the global overlay via showDisconnect */}
 
             <div className="td-workspace">
               <main className="td-stage-area">
@@ -1096,10 +1152,21 @@ export default function TeacherPage() {
 
                   <div className="td-student-list">
                     {sortedStudents.length === 0 ? (
-                      <div className="td-empty">
-                        {showFlaggedOnly
-                          ? "No flagged students right now."
-                          : "Waiting for students..."}
+                      <div className="flex flex-col items-center justify-center p-8 text-center opacity-60 mt-10">
+                        <span
+                          className="material-symbols-outlined text-4xl mb-3"
+                          style={{ color: "var(--color-on-surface-variant)" }}
+                        >
+                          {showFlaggedOnly ? "check_circle" : "group"}
+                        </span>
+                        <p
+                          className="text-sm italic"
+                          style={{ color: "var(--color-on-surface-variant)" }}
+                        >
+                          {showFlaggedOnly
+                            ? "All clear. No priority flags right now."
+                            : "Waiting for students to join..."}
+                        </p>
                       </div>
                     ) : (
                       sortedStudents.map((s) => {

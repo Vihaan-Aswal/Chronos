@@ -4,6 +4,15 @@ import useWebSocket from "../hooks/use-websocket";
 import { getEmbedding, loadEmbedder } from "../utils/embedder";
 import { fetchIdentity } from "../api/identity";
 
+const DEBUG_LOGS =
+  import.meta.env.DEV && import.meta.env.VITE_DEBUG_LOGS === "true";
+
+function debugLog(...args) {
+  if (DEBUG_LOGS) {
+    console.log(...args);
+  }
+}
+
 function EngagementTracker({ sessionId, userId, onNudge }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -85,9 +94,9 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
           identityState.storedEmbedding = info.embedding;
           identityState.status = "checking";
           setIdentityStatus("checking");
-          console.log("[Identity] Stored embedding loaded");
+          debugLog("[Identity] Stored embedding loaded");
         } else {
-          console.log("[Identity] No stored embedding found");
+          debugLog("[Identity] No stored embedding found");
           identityState.status = "no_enrollment";
           setIdentityStatus("no_enrollment");
         }
@@ -181,12 +190,6 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
           sy = Math.max(0, video.videoHeight - sh);
       }
 
-      // Check if face is reasonably centered and frontal
-      const centerX = (minX + maxX) / 2;
-      const centerY = (minY + maxY) / 2;
-      const isCentered =
-        Math.abs(centerX - 0.5) < 0.25 && Math.abs(centerY - 0.5) < 0.25;
-
       const ctx = cropCanvas.getContext("2d");
       ctx.clearRect(0, 0, 112, 112);
       ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 112, 112);
@@ -207,7 +210,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       const MISMATCH_THRESHOLD = 0.55; // above this = mismatch
       // Between 0.50-0.55 = uncertain zone (hold current status)
 
-      console.log(
+      debugLog(
         `[Identity] Distance: ${dist.toFixed(3)}, Status: ${identityState.status}`,
       );
 
@@ -442,7 +445,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
     if (pendingAutoRef.current.pending) return;
 
     pendingAutoRef.current.pending = true;
-    console.log("[EngagementTracker] Auto-nudge triggered (avg)", avgScore);
+    debugLog("[EngagementTracker] Auto-nudge triggered (avg)", avgScore);
 
     const response = await new Promise((resolve) => {
       pendingAutoRef.current.responseResolver = resolve;
@@ -551,7 +554,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
   }
 
   const handleMessage = (message) => {
-    console.log("[EngagementTracker] Received WebSocket message:", message);
+    debugLog("[EngagementTracker] Received WebSocket message:", message);
     if (message.type === "nudge") {
       if (onNudge) onNudge(message);
       const avg = engagementState?.smoothScore || 0;

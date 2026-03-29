@@ -42,6 +42,14 @@ export default function StudentPage() {
 
   const { connected: wsConnected } = useWebSocket(wsUrl || "", null);
 
+  const [showDisconnect, setShowDisconnect] = useState(false);
+  useEffect(() => {
+    const targetVisible = inMeeting && !wsConnected;
+    const delay = targetVisible ? 2000 : 0;
+    const t = setTimeout(() => setShowDisconnect(targetVisible), delay);
+    return () => clearTimeout(t);
+  }, [inMeeting, wsConnected]);
+
   const handleJoin = useCallback(() => {
     setInMeeting(true);
   }, []);
@@ -101,6 +109,47 @@ export default function StudentPage() {
     <>
       <NudgeNotification message={nudgeState?.text} key={nudgeState?.id} />
 
+      {showDisconnect && (
+        <div
+          style={{
+            backgroundColor: "#ba1a1a",
+            color: "#ffffff",
+            padding: "10px 0",
+            zIndex: 9999,
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "12px",
+            fontSize: "12px",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+          }}
+        >
+          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="3"
+              opacity="0.25"
+            />
+            <path
+              fill="currentColor"
+              opacity="0.8"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
+          </svg>
+          Connection lost. Reconnecting...
+        </div>
+      )}
+
       <div className="sd-app">
         <div className="sd-frame">
           <StudentTopbar
@@ -143,31 +192,30 @@ export default function StudentPage() {
               </div>
             </div>
 
-            {showTracker && (
-              <aside className="sd-tracker-rail" id="student-tracker-rail">
-                <div className="sd-tracker-rail-inner">
-                  <div className="sd-tracker-rail-head">
-                    <div className="sd-rail-title-row">
-                      <h2 className="sd-rail-title">
-                        <span className="sd-rail-title-dot" />
-                        Engagement Monitor
-                      </h2>
-                    </div>
-                    <p className="sd-rail-subtitle">
-                      Your session focus signals
-                    </p>
+            <aside
+              className={`sd-tracker-rail ${showTracker ? "is-open" : "is-closed"}`}
+              id="student-tracker-rail"
+            >
+              <div className="sd-tracker-rail-inner">
+                <div className="sd-tracker-rail-head">
+                  <div className="sd-rail-title-row">
+                    <h2 className="sd-rail-title">
+                      <span className="sd-rail-title-dot" />
+                      Engagement Monitor
+                    </h2>
                   </div>
-
-                  <div className="sd-tracker-content">
-                    <EngagementTracker
-                      sessionId={sessionId}
-                      userId={userId}
-                      onNudge={handleNudge}
-                    />
-                  </div>
+                  <p className="sd-rail-subtitle">Your session focus signals</p>
                 </div>
-              </aside>
-            )}
+
+                <div className="sd-tracker-content">
+                  <EngagementTracker
+                    sessionId={sessionId}
+                    userId={userId}
+                    onNudge={handleNudge}
+                  />
+                </div>
+              </div>
+            </aside>
           </div>
         </div>
       </div>

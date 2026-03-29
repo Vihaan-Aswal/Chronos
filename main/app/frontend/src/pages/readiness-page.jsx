@@ -38,6 +38,7 @@ import { useNavigate, Link } from "react-router-dom";
 import JoinScreen from "../components/join-screen.jsx";
 import { motion } from "motion/react";
 import ChronosMark from "../components/chronos-mark.jsx";
+import { supabase } from "../supabase-client";
 
 const MotionDiv = motion.div;
 
@@ -111,7 +112,8 @@ export default function ReadinessPage() {
               Archive
             </a>
             <button
-              onClick={() => {
+              onClick={async () => {
+                await supabase.auth.signOut();
                 sessionStorage.clear();
                 navigate("/");
               }}

@@ -2,13 +2,12 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client, Client
-import os, json, math, time, jwt
+import os, json, math, time, jwt, sys
 from dotenv import load_dotenv
 from websocket_manager import manager
-import os
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 
 
@@ -23,13 +22,32 @@ HMS_ACCESS_KEY = os.getenv("HMS_ACCESS_KEY")
 HMS_SECRET = os.getenv("HMS_SECRET")
 HMS_ROOM_ID = os.getenv("HMS_ROOM_ID")  
 HMS_SPACE_ID = os.getenv("HMS_SPACE_ID")
+_hms_token_ttl_raw = os.getenv("HMS_TOKEN_TTL_MINUTES", "120")
+try:
+    HMS_TOKEN_TTL_MINUTES = int(_hms_token_ttl_raw)
+except ValueError:
+    print(
+        f"[HMS] Invalid HMS_TOKEN_TTL_MINUTES='{_hms_token_ttl_raw}', using default 120"
+    )
+    HMS_TOKEN_TTL_MINUTES = 120
 
-if not HMS_ACCESS_KEY or not HMS_SECRET or not HMS_ROOM_ID:
-    raise RuntimeError("Missing HMS_ACCESS_KEY / HMS_SECRET / HMS_ROOM_ID")
+missing_vars = []
+if not SUPABASE_URL: missing_vars.append("SUPABASE_URL")
+if not SUPABASE_SERVICE_ROLE_KEY: missing_vars.append("SUPABASE_SERVICE_ROLE_KEY")
+if not HMS_ACCESS_KEY: missing_vars.append("HMS_ACCESS_KEY")
+if not HMS_SECRET: missing_vars.append("HMS_SECRET")
+if not HMS_ROOM_ID: missing_vars.append("HMS_ROOM_ID")
 
-if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-    raise RuntimeError("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
-
+if missing_vars:
+    print("\n" + "="*60)
+    print("🚨 FATAL ERROR: Missing required environment variables 🚨")
+    print("="*60)
+    print("The following variables are missing from your .env file:")
+    for var in missing_vars:
+        print(f"  - {var}")
+    print("\nPlease copy .env.example to .env and fill in the values.")
+    print("="*60 + "\n")
+    sys.exit(1)
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
@@ -268,15 +286,23 @@ def hms_token(req: TokenRequest):
     Generate HMS auth token using JWT
     """
     import uuid
-    
-    now = datetime.utcnow()
-    exp = now + timedelta(hours=24)  # Token valid for 24 hours
+    user_name = (req.user_name or "").strip()
+    role = (req.role or "").strip()
+    if not user_name:
+        raise HTTPException(status_code=400, detail="user_name is required")
+    if not role:
+        raise HTTPException(status_code=400, detail="role is required")
+
+    ttl_minutes = max(HMS_TOKEN_TTL_MINUTES, 5)
+
+    now = datetime.now(timezone.utc)
+    exp = now + timedelta(minutes=ttl_minutes)
 
     payload = {
         "access_key": HMS_ACCESS_KEY,
         "room_id": HMS_ROOM_ID,
-        "user_id": req.user_name,
-        "role": req.role,
+        "user_id": user_name,
+        "role": role,
         "type": "app",
         "version": 2,
         "jti": str(uuid.uuid4()),  
@@ -285,8 +311,7 @@ def hms_token(req: TokenRequest):
         "exp": int(exp.timestamp())
     }
 
-    print(f"[HMS] Generating token for user: {req.user_name}, role: {req.role}")
-    print(f"[HMS] Payload: {payload}")
+    print(f"[HMS] Generating token for user: {user_name}, role: {role}, ttl_min: {ttl_minutes}")
 
     try:
         # Generate JWT token using HMS_SECRET as the signing key

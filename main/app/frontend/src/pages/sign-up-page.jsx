@@ -19,16 +19,18 @@ import { supabase } from "../supabase-client";
 import { motion } from "motion/react";
 import ChronosMark from "../components/chronos-mark.jsx";
 
+const MotionDiv = motion.div;
+
 export default function SignUpPage() {
   const navigate = useNavigate();
 
-  const [email, setEmail]         = useState("");
-  const [password, setPassword]   = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState("");
-  const [success, setSuccess]     = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -135,22 +137,21 @@ export default function SignUpPage() {
 
       {/* ── Main split layout ──────────────────────────────────────────────── */}
       <main className="relative z-10 min-h-screen flex flex-col md:grid md:grid-cols-12">
-
         {/* Chronos wordmark — top-left */}
         <header className="absolute top-0 left-0 p-8 md:p-12 w-full">
-          <Link
-            to="/"
-            className="flex items-center gap-2"
-          >
+          <Link to="/" className="flex items-center gap-2">
             <ChronosMark size={26} variant="dark" />
-            <span className="font-headline italic text-2xl tracking-tight hover:opacity-70 transition-opacity" style={{ color: "#0F1E2B" }}>
+            <span
+              className="font-headline italic text-2xl tracking-tight hover:opacity-70 transition-opacity"
+              style={{ color: "#0F1E2B" }}
+            >
               Chronos
             </span>
           </Link>
         </header>
 
         {/* ── Left column: hero text (7/12) ──────────────────────────────── */}
-        <motion.div
+        <MotionDiv
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
@@ -174,7 +175,10 @@ export default function SignUpPage() {
               educators and students alike.
             </p>
             <div className="flex items-center gap-6 pt-4">
-              <div className="h-[1px] w-12" style={{ backgroundColor: "#C8C2B8" }} />
+              <div
+                className="h-[1px] w-12"
+                style={{ backgroundColor: "#C8C2B8" }}
+              />
               <span
                 className="text-[10px] uppercase tracking-[0.3em] font-bold"
                 style={{ color: "#8A8A80" }}
@@ -183,11 +187,11 @@ export default function SignUpPage() {
               </span>
             </div>
           </div>
-        </motion.div>
+        </MotionDiv>
 
         {/* ── Right column: warm form card (5/12) ────────────────────────── */}
         <div className="col-span-12 md:col-span-5 flex flex-col justify-center p-8 md:p-16">
-          <motion.div
+          <MotionDiv
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
@@ -299,12 +303,17 @@ export default function SignUpPage() {
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword(v => !v)}
+                      onClick={() => setShowPassword((v) => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors mt-[10px]"
                       style={{ color: "rgba(28,43,53,0.4)" }}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                      <span
+                        className="material-symbols-outlined"
+                        style={{ fontSize: "18px" }}
+                      >
                         {showPassword ? "visibility_off" : "visibility"}
                       </span>
                     </button>
@@ -347,14 +356,30 @@ export default function SignUpPage() {
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="#0F1E2B" strokeWidth="3" opacity="0.25"/>
-                        <path fill="#0F1E2B" opacity="0.8"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                      <svg
+                        className="animate-spin h-3 w-3"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="#0F1E2B"
+                          strokeWidth="3"
+                          opacity="0.25"
+                        />
+                        <path
+                          fill="#0F1E2B"
+                          opacity="0.8"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        />
                       </svg>
                       Creating Account…
                     </span>
-                  ) : "SIGN UP"}
+                  ) : (
+                    "SIGN UP"
+                  )}
                 </button>
               </form>
             )}
@@ -372,7 +397,7 @@ export default function SignUpPage() {
                 </Link>
               </p>
             </div>
-          </motion.div>
+          </MotionDiv>
         </div>
       </main>
 

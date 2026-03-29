@@ -262,6 +262,20 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  transition:
+    width var(--sd-mid) var(--sd-ease),
+    border-left-width var(--sd-mid) var(--sd-ease),
+    border-left-color var(--sd-mid) var(--sd-ease),
+    background var(--sd-mid) var(--sd-ease);
+}
+
+.sd-tracker-rail.is-closed {
+  width: 0;
+  max-width: 0;
+  border-left-width: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: transparent;
 }
 
 .sd-tracker-rail-inner {
@@ -270,6 +284,19 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  transition:
+    opacity var(--sd-mid) var(--sd-ease),
+    transform var(--sd-mid) var(--sd-ease),
+    visibility var(--sd-mid) step-end;
+}
+
+.sd-tracker-rail.is-closed .sd-tracker-rail-inner {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(8px);
 }
 
 .sd-tracker-rail-head {

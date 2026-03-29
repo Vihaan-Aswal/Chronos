@@ -18,15 +18,17 @@ import { supabase } from "../supabase-client";
 import { motion } from "motion/react";
 import ChronosMark from "../components/chronos-mark.jsx";
 
+const MotionDiv = motion.div;
+const MotionP = motion.p;
+
 export default function SignInPage() {
   const navigate = useNavigate();
 
-  const [email, setEmail]       = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
-
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -97,22 +99,21 @@ export default function SignInPage() {
 
       {/* ── Main split layout ─────────────────────────────────────────────── */}
       <main className="relative z-10 min-h-screen flex flex-col md:grid md:grid-cols-12">
-
         {/* Chronos wordmark — top-left */}
         <header className="absolute top-0 left-0 p-8 md:p-12 w-full">
-          <Link
-            to="/"
-            className="flex items-center gap-2"
-          >
+          <Link to="/" className="flex items-center gap-2">
             <ChronosMark size={26} variant="gold" />
-            <span className="font-headline italic text-2xl tracking-tight" style={{ color: "#DCC492" }}>
+            <span
+              className="font-headline italic text-2xl tracking-tight"
+              style={{ color: "#DCC492" }}
+            >
               Chronos
             </span>
           </Link>
         </header>
 
         {/* ── Left column: hero text (7/12) ─────────────────────────────── */}
-        <motion.div
+        <MotionDiv
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
@@ -122,7 +123,9 @@ export default function SignInPage() {
             <h1 className="text-5xl md:text-8xl font-headline italic text-midnight-on-surface leading-[1.1] tracking-tight">
               Fair signals,
               <br />
-              <span className="text-midnight-primary/80">not surveillance.</span>
+              <span className="text-midnight-primary/80">
+                not surveillance.
+              </span>
             </h1>
             <p className="text-xl md:text-2xl text-midnight-on-surface-variant font-body font-light leading-relaxed max-w-2xl">
               Elevating the academic journey through transparent, explainable
@@ -136,17 +139,16 @@ export default function SignInPage() {
               </span>
             </div>
           </div>
-        </motion.div>
+        </MotionDiv>
 
         {/* ── Right column: glassmorphic form card (5/12) ───────────────── */}
         <div className="col-span-12 md:col-span-5 flex flex-col justify-center p-8 md:p-16">
-          <motion.div
+          <MotionDiv
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
             className="bg-midnight-surface-container-low/40 backdrop-blur-xl border border-midnight-outline-variant/20 p-10 md:p-14 rounded-xl space-y-8 shadow-2xl"
           >
-
             <div className="space-y-1">
               <h2 className="text-lg font-headline italic text-midnight-on-surface mb-4">
                 Sign in to continue
@@ -155,14 +157,17 @@ export default function SignInPage() {
 
             {/* ── Error message ─────────────────────────────────────────── */}
             {error && (
-              <motion.p
+              <MotionP
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="text-[11px] font-label py-2 px-3 rounded-sm"
-                style={{ color: "#ba1a1a", backgroundColor: "rgba(255,218,214,0.12)" }}
+                style={{
+                  color: "#ba1a1a",
+                  backgroundColor: "rgba(255,218,214,0.12)",
+                }}
               >
                 {error}
-              </motion.p>
+              </MotionP>
             )}
 
             {/* ── Form ──────────────────────────────────────────────────── */}
@@ -206,22 +211,32 @@ export default function SignInPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(v => !v)}
+                    onClick={() => setShowPassword((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors mt-[10px]"
                     style={{ color: "rgba(196,199,204,0.6)" }}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                   >
-                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                    <span
+                      className="material-symbols-outlined"
+                      style={{ fontSize: "18px" }}
+                    >
                       {showPassword ? "visibility_off" : "visibility"}
                     </span>
                   </button>
                 </div>
                 <div className="flex justify-end mt-1">
-                  <a href="#"
-                     className="text-[10px] font-label uppercase tracking-widest transition-colors"
-                     style={{ color: "rgba(176,185,194,0.45)" }}
-                     onMouseEnter={e => e.currentTarget.style.color = "#DCC492"}
-                     onMouseLeave={e => e.currentTarget.style.color = "rgba(176,185,194,0.45)"}
+                  <a
+                    href="#"
+                    className="text-[10px] font-label uppercase tracking-widest transition-colors"
+                    style={{ color: "rgba(176,185,194,0.45)" }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.color = "#DCC492")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.color = "rgba(176,185,194,0.45)")
+                    }
                   >
                     Forgot password?
                   </a>
@@ -235,14 +250,30 @@ export default function SignInPage() {
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
-                      <circle cx="12" cy="12" r="10" stroke="#DCC492" strokeWidth="3" opacity="0.25"/>
-                      <path fill="#DCC492" opacity="0.8"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    <svg
+                      className="animate-spin h-3 w-3"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="#DCC492"
+                        strokeWidth="3"
+                        opacity="0.25"
+                      />
+                      <path
+                        fill="#DCC492"
+                        opacity="0.8"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
                     </svg>
                     Signing in…
                   </span>
-                ) : "SIGN IN"}
+                ) : (
+                  "SIGN IN"
+                )}
               </button>
             </form>
 
@@ -258,7 +289,7 @@ export default function SignInPage() {
                 </Link>
               </p>
             </div>
-          </motion.div>
+          </MotionDiv>
         </div>
       </main>
 

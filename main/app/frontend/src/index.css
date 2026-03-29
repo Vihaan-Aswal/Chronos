@@ -94,6 +94,8 @@ html, body, #root {
   width: 100%;
   margin: 0;
   padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-on-surface-variant) 30%, transparent) var(--color-surface-container-low);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -109,6 +111,11 @@ html, body, #root {
 /* ─────────────────────────────────────────────────────────────────────────────
    Scrollbar styling (neutral, works in both light and dark modes)
 ───────────────────────────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-on-surface-variant) 30%, transparent) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

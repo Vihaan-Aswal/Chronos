@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_BACKEND_URL;
+const BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
 /**
  * Send nudge to a student
@@ -20,9 +20,3 @@ export async function sendNudge(sessionId, userId, type) {
 
   return response.json();
 }
-
-
-
-
-
-

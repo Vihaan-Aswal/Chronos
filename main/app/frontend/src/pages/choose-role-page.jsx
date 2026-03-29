@@ -16,6 +16,9 @@ import { supabase } from "../supabase-client";
 import { motion } from "motion/react";
 import ChronosMark from "../components/chronos-mark.jsx";
 
+const MotionDiv = motion.div;
+const MotionButton = motion.button;
+
 export default function ChooseRolePage() {
   const navigate = useNavigate();
 
@@ -30,13 +33,17 @@ export default function ChooseRolePage() {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
+      transition: { staggerChildren: 0.1 },
+    },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } }
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] },
+    },
   };
 
   function selectRole(role) {
@@ -47,7 +54,6 @@ export default function ChooseRolePage() {
 
   return (
     <div className="bg-surface text-on-surface font-body min-h-screen flex flex-col">
-
       {/* ── TopAppBar — dark Midnight bar matching Stitch screen ──────────── */}
       <header
         className="flex justify-between items-center w-full px-6 py-4 fixed top-0 z-50"
@@ -58,7 +64,10 @@ export default function ChooseRolePage() {
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
           <ChronosMark size={24} variant="gold" />
-          <span className="font-headline tracking-tighter text-2xl font-bold" style={{ color: "#DCC492" }}>
+          <span
+            className="font-headline tracking-tighter text-2xl font-bold"
+            style={{ color: "#DCC492" }}
+          >
             Chronos
           </span>
         </Link>
@@ -89,7 +98,10 @@ export default function ChooseRolePage() {
 
         {/* Mobile hamburger icon */}
         <div className="md:hidden">
-          <span className="material-symbols-outlined" style={{ color: "#DCC492" }}>
+          <span
+            className="material-symbols-outlined"
+            style={{ color: "#DCC492" }}
+          >
             menu
           </span>
         </div>
@@ -98,7 +110,6 @@ export default function ChooseRolePage() {
       {/* ── Main Content ──────────────────────────────────────────────────── */}
       <main className="flex-grow flex items-center justify-center pt-24 pb-12 px-6">
         <div className="max-w-5xl w-full">
-
           {/* Editorial asymmetric header */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 mb-16 items-end">
             <div className="md:col-span-7">
@@ -115,15 +126,14 @@ export default function ChooseRolePage() {
           </div>
 
           {/* ── Role Cards (Bento Style) ──────────────────────────────────── */}
-          <motion.div
+          <MotionDiv
             variants={containerVariants}
             initial="hidden"
             animate="show"
             className="grid grid-cols-1 md:grid-cols-2 gap-8"
           >
-
             {/* Teacher Card */}
-            <motion.div
+            <MotionDiv
               variants={itemVariants}
               className="group relative bg-surface-container-lowest p-10 rounded-xl transition-all duration-500 hover:bg-surface-container-high cursor-pointer flex flex-col justify-between min-h-[400px]"
               onClick={() => selectRole("teacher")}
@@ -161,7 +171,7 @@ export default function ChooseRolePage() {
               </div>
 
               <div className="mt-12">
-                <motion.button
+                <MotionButton
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="inline-flex items-center gap-3 px-8 py-4 rounded-sm font-label uppercase tracking-widest text-xs font-bold transition-all"
@@ -175,12 +185,12 @@ export default function ChooseRolePage() {
                   <span className="material-symbols-outlined text-sm">
                     arrow_forward
                   </span>
-                </motion.button>
+                </MotionButton>
               </div>
-            </motion.div>
+            </MotionDiv>
 
             {/* Student Card */}
-            <motion.div
+            <MotionDiv
               variants={itemVariants}
               className="group relative bg-surface-container-lowest p-10 rounded-xl transition-all duration-500 hover:bg-surface-container-high cursor-pointer flex flex-col justify-between min-h-[400px]"
               onClick={() => selectRole("student")}
@@ -218,7 +228,7 @@ export default function ChooseRolePage() {
               </div>
 
               <div className="mt-12">
-                <motion.button
+                <MotionButton
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="inline-flex items-center gap-3 px-8 py-4 rounded-sm font-label uppercase tracking-widest text-xs font-bold transition-all"
@@ -232,10 +242,10 @@ export default function ChooseRolePage() {
                   <span className="material-symbols-outlined text-sm">
                     login
                   </span>
-                </motion.button>
+                </MotionButton>
               </div>
-            </motion.div>
-          </motion.div>
+            </MotionDiv>
+          </MotionDiv>
 
           {/* Decorative vertical line */}
           <div className="mt-20 flex justify-center">

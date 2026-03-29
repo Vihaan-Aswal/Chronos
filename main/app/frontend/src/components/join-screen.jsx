@@ -13,6 +13,8 @@ function JoinScreen({ user, onJoin }) {
   const [isCentered, setIsCentered] = useState(false);
   const [lightStatus, setLightStatus] = useState("unknown");
   const [ready, setReady] = useState(false);
+  const [mediaError, setMediaError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const userId = user?.id || user?.user_id || "unknown-user";
 
@@ -40,7 +42,7 @@ function JoinScreen({ user, onJoin }) {
         const FaceLandmarker = vision.FaceLandmarker;
 
         const fileset = await FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.4/wasm"
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.4/wasm",
         );
 
         faceLandmarker = await FaceLandmarker.createFromOptions(fileset, {
@@ -55,6 +57,9 @@ function JoinScreen({ user, onJoin }) {
         detect();
       } catch (err) {
         console.error("init error:", err);
+        setMediaError(
+          "Camera access is required for AI engagement features. Please allow access in your browser.",
+        );
       }
     }
 
@@ -68,7 +73,9 @@ function JoinScreen({ user, onJoin }) {
       let light = "good";
 
       try {
-        const L = lightCanvasRef.current.getContext("2d", { willReadFrequently: true });
+        const L = lightCanvasRef.current.getContext("2d", {
+          willReadFrequently: true,
+        });
         L.drawImage(video, 0, 0, 300, 220);
         const frame = L.getImageData(0, 0, 300, 220);
 
@@ -81,7 +88,9 @@ function JoinScreen({ user, onJoin }) {
         if (brightness < 60) light = "too_dark";
         if (brightness > 180) light = "too_bright";
         setLightStatus(light);
-      } catch (err) {}
+      } catch {
+        // Brightness read can fail briefly before the camera stream is ready.
+      }
 
       try {
         const result = faceLandmarker.detectForVideo(video, performance.now());
@@ -99,7 +108,10 @@ function JoinScreen({ user, onJoin }) {
 
         const lm = faces[0];
 
-        let minX = 1, maxX = 0, minY = 1, maxY = 0;
+        let minX = 1,
+          maxX = 0,
+          minY = 1,
+          maxY = 0;
         lm.forEach((p) => {
           if (p.x < minX) minX = p.x;
           if (p.x > maxX) maxX = p.x;
@@ -139,7 +151,9 @@ function JoinScreen({ user, onJoin }) {
       if (stream) {
         try {
           stream.getTracks().forEach((t) => t.stop());
-        } catch (e) {}
+        } catch {
+          // Track stop may throw on already-ended streams; safe to ignore.
+        }
       }
       cancelAnimationFrame(animationFrameId);
     };
@@ -161,29 +175,47 @@ function JoinScreen({ user, onJoin }) {
   }
 
   async function handleJoin() {
+    if (loading) return;
+
     if (userId === "unknown-user") {
-      return alert("User session not found or invalid. Please sign out and sign back in.");
+      return alert(
+        "User session not found or invalid. Please sign out and sign back in.",
+      );
     }
 
     const canvas = cropCanvasRef.current;
     if (!canvas) return alert("Internal error: crop canvas missing");
-    if (!facePresent) return alert("Please ensure your face is visible in the camera");
+    if (!facePresent)
+      return alert("Please ensure your face is visible in the camera");
     if (!isCentered) return alert("Please center your face in the frame");
-    if (lightStatus !== "good") return alert("Please adjust lighting conditions before joining");
+    if (lightStatus !== "good")
+      return alert("Please adjust lighting conditions before joining");
+
+    setLoading(true);
 
     let emb;
     try {
       emb = await getEmbedding(canvas);
     } catch (err) {
       console.error("getEmbedding error:", err);
-      return alert("Face embedding failed. Try adjusting position or lighting.");
+      setLoading(false);
+      return alert(
+        "Face embedding failed. Try adjusting position or lighting.",
+      );
     }
 
-    if (!emb || !emb.length) return alert("Face not detected properly. Try again.");
+    if (!emb || !emb.length) {
+      setLoading(false);
+      return alert("Face not detected properly. Try again.");
+    }
 
     const arr = Array.from(emb).map((v) => Number(v));
-    if (arr.some((v) => !isFinite(v))) return alert("Bad face embedding. Adjust your face and try again.");
-    if (arr.length !== 128) console.warn("Unexpected embedding length:", arr.length);
+    if (arr.some((v) => !isFinite(v))) {
+      setLoading(false);
+      return alert("Bad face embedding. Adjust your face and try again.");
+    }
+    if (arr.length !== 128)
+      console.warn("Unexpected embedding length:", arr.length);
 
     const normalizedEmb = normalize(arr);
 
@@ -197,17 +229,21 @@ function JoinScreen({ user, onJoin }) {
 
     if (!info || !info.exists) {
       const r = await registerIdentity(userId, normalizedEmb);
+      setLoading(false);
       if (r && r.status === "success") {
         alert("Face registered successfully! Welcome!");
         return onJoin?.();
       }
-      alert(`Failed to register identity: ${r?.message || info?.error || "Unknown server error"}.`);
+      alert(
+        `Failed to register identity: ${r?.message || info?.error || "Unknown server error"}.`,
+      );
       return;
     }
 
     const stored = info.embedding || [];
     if (!stored || !stored.length) {
       const r = await registerIdentity(userId, normalizedEmb);
+      setLoading(false);
       if (r && r.status === "success") {
         alert("Face registered! You may join now.");
         return onJoin?.();
@@ -223,16 +259,18 @@ function JoinScreen({ user, onJoin }) {
     const uncertainThreshold = 0.65;
 
     if (dist < verifyThreshold) {
+      setLoading(false);
       alert("Identity verified! Welcome back!");
       return onJoin?.();
     } else if (dist < uncertainThreshold) {
+      setLoading(false);
       const retry = confirm(
-        `Face verification uncertain. This might be due to lighting or angle. Try again?`
+        `Face verification uncertain. This might be due to lighting or angle. Try again?`,
       );
       if (retry) return;
 
       const override = confirm(
-        "Would you like to re-register your face? This will replace your stored identity."
+        "Would you like to re-register your face? This will replace your stored identity.",
       );
       if (override) {
         const r = await registerIdentity(userId, normalizedEmb);
@@ -243,8 +281,9 @@ function JoinScreen({ user, onJoin }) {
       }
       return;
     } else {
+      setLoading(false);
       alert(
-        `Face verification failed! The face doesn't match the registered identity. Please ensure you're using the correct account.`
+        `Face verification failed! The face doesn't match the registered identity. Please ensure you're using the correct account.`,
       );
       return;
     }
@@ -258,15 +297,17 @@ function JoinScreen({ user, onJoin }) {
   const StatusRow = ({ label, ok, statusText }) => (
     <div className="flex items-center justify-between py-5 border-b border-surface-container-high/60 last:border-0">
       <div className="flex items-center gap-4">
-        <span 
+        <span
           className={`material-symbols-outlined text-2xl ${ok ? "text-primary" : "text-secondary/30"}`}
           style={{ fontVariationSettings: `'FILL' ${ok ? 1 : 0}` }}
         >
           check_circle
         </span>
-        <span className="font-body text-base font-medium text-primary">{label}</span>
+        <span className="font-body text-base font-medium text-primary">
+          {label}
+        </span>
       </div>
-      <span 
+      <span
         className={`font-label text-[0.7rem] uppercase tracking-[0.2em] font-bold ${
           ok ? "text-primary" : "text-secondary/60"
         }`}
@@ -287,69 +328,142 @@ function JoinScreen({ user, onJoin }) {
           className="w-full h-full object-cover grayscale-[10%] brightness-95"
           style={{ backgroundColor: "#0F1E2B" }}
         />
-        
+
         {/* Face Guide Overlay */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div 
-            className="w-1/4 aspect-[3/4] opacity-50"
-            style={{ 
-              border: "2px dashed rgba(220, 196, 146, 0.4)",
-              borderRadius: "50% / 60% 60% 40% 40%" 
-            }}
-          />
+          {mediaError ? (
+            <div
+              className="px-6 py-4 rounded-xl text-center max-w-sm pointer-events-auto"
+              style={{
+                backgroundColor: "rgba(186, 26, 26, 0.9)",
+                color: "#ffffff",
+              }}
+            >
+              <span className="material-symbols-outlined text-4xl mb-2">
+                videocam_off
+              </span>
+              <p className="font-body text-sm font-medium">{mediaError}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-4 px-4 py-2 rounded-full text-xs uppercase tracking-wider transition-colors"
+                style={{ backgroundColor: "rgba(255, 255, 255, 0.2)" }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor =
+                    "rgba(255, 255, 255, 0.3)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor =
+                    "rgba(255, 255, 255, 0.2)")
+                }
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
+            <div
+              className="w-1/4 aspect-[3/4] opacity-50"
+              style={{
+                border: "2px dashed rgba(220, 196, 146, 0.4)",
+                borderRadius: "50% / 60% 60% 40% 40%",
+              }}
+            />
+          )}
         </div>
 
         {/* Hidden canvases for logic */}
-        <canvas ref={lightCanvasRef} width={300} height={220} style={{ display: "none" }} />
-        <canvas ref={cropCanvasRef} width={112} height={112} style={{ display: "none" }} />
+        <canvas
+          ref={lightCanvasRef}
+          width={300}
+          height={220}
+          style={{ display: "none" }}
+        />
+        <canvas
+          ref={cropCanvasRef}
+          width={112}
+          height={112}
+          style={{ display: "none" }}
+        />
       </div>
 
       {/* ── 2. Checklist & Action Section ────────────────────────────────── */}
       <div className="w-full">
-        <div 
+        <div
           className="p-8 md:p-10 rounded-2xl shadow-xl border"
-          style={{ backgroundColor: "#FAF7F2", borderColor: "rgba(222,218,212,0.4)" }}
+          style={{
+            backgroundColor: "#FAF7F2",
+            borderColor: "rgba(222,218,212,0.4)",
+          }}
         >
           <div className="flex flex-col gap-10">
             <div className="space-y-6">
               <h2 className="font-headline text-3xl text-center md:text-left text-primary">
                 Readiness Checklist
               </h2>
-              
+
               <div className="flex flex-col gap-1">
-                <StatusRow 
-                  label="Face Detected" 
-                  ok={facePresent} 
-                  statusText={facePresent ? "Ready" : "Searching..."} 
+                <StatusRow
+                  label="Face Detected"
+                  ok={facePresent}
+                  statusText={facePresent ? "Ready" : "Searching..."}
                 />
-                <StatusRow 
-                  label="Face Centered" 
-                  ok={isCentered} 
-                  statusText={isCentered ? "Ready" : "Please Center"} 
+                <StatusRow
+                  label="Face Centered"
+                  ok={isCentered}
+                  statusText={isCentered ? "Ready" : "Please Center"}
                 />
-                <StatusRow 
-                  label="Lighting" 
-                  ok={lightStatus === "good"} 
+                <StatusRow
+                  label="Lighting"
+                  ok={lightStatus === "good"}
                   statusText={
-                    lightStatus === "good" ? "Optimal" :
-                    lightStatus === "too_dark" ? "Too Dark" : 
-                    lightStatus === "too_bright" ? "Too Bright" : "Analyzing..."
-                  } 
+                    lightStatus === "good"
+                      ? "Optimal"
+                      : lightStatus === "too_dark"
+                        ? "Too Dark"
+                        : lightStatus === "too_bright"
+                          ? "Too Bright"
+                          : "Analyzing..."
+                  }
                 />
               </div>
             </div>
 
             <div className="flex flex-col gap-6 items-center">
-              <button 
-                disabled={!ready}
+              <button
+                disabled={!ready || loading}
                 onClick={handleJoin}
-                className="w-full max-w-sm py-6 rounded-sm font-label text-xs uppercase tracking-[0.25em] font-bold shadow-md transition-all active:scale-[0.98] disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed"
+                className="w-full max-w-sm py-6 rounded-sm font-label text-xs uppercase tracking-[0.25em] font-bold shadow-md transition-all active:scale-[0.98] disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-3"
                 style={{ backgroundColor: "#DCC492", color: "#251A00" }}
               >
-                {ready ? roleLabel : "Adjust your position"}
+                {loading && (
+                  <svg
+                    className="animate-spin h-4 w-4 text-[#251A00]"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                )}
+                {loading
+                  ? "Verifying..."
+                  : ready
+                    ? roleLabel
+                    : "Adjust your position"}
               </button>
-              
-              <button 
+
+              <button
                 type="button"
                 className="font-label text-[0.7rem] uppercase tracking-widest text-secondary hover:text-primary transition-colors underline underline-offset-8 decoration-outline-variant/40"
                 onClick={() => window.location.reload()}
@@ -365,7 +479,8 @@ function JoinScreen({ user, onJoin }) {
               verified_user
             </span>
             <p className="font-body text-[0.8rem] text-on-surface-variant opacity-80 leading-snug">
-              Privacy-aware verification. Only essential readiness signals are checked.
+              Privacy-aware verification. Only essential readiness signals are
+              checked.
             </p>
           </div>
         </div>

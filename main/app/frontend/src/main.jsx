@@ -22,7 +22,26 @@ import MeetingRoom from "./pages/meeting-room.jsx";
 
 import "./index.css";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
+const missingEnv = [];
+if (!import.meta.env.VITE_SUPABASE_URL) missingEnv.push('VITE_SUPABASE_URL');
+if (!import.meta.env.VITE_SUPABASE_ANON_KEY) missingEnv.push('VITE_SUPABASE_ANON_KEY');
+if (!import.meta.env.VITE_BACKEND_URL) missingEnv.push('VITE_BACKEND_URL');
+if (!import.meta.env.VITE_BACKEND_WS_URL) missingEnv.push('VITE_BACKEND_WS_URL');
+if (!import.meta.env.VITE_HMS_TOKEN_ENDPOINT) missingEnv.push('VITE_HMS_TOKEN_ENDPOINT');
+
+if (missingEnv.length > 0) {
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    <div style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif', color: '#ba1a1a', background: '#ffebee', minHeight: '100vh' }}>
+      <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>🚨 Environment Configuration Error</h1>
+      <p style={{ marginTop: '1rem' }}>The application cannot start because the following required environment variables are missing:</p>
+      <ul style={{ marginTop: '1rem', listStyle: 'disc', paddingLeft: '2rem' }}>
+        {missingEnv.map(env => <li key={env}><strong>{env}</strong></li>)}
+      </ul>
+      <p style={{ marginTop: '1rem' }}>Please copy <code>.env.example</code> to <code>.env</code> in the <code>frontend</code> directory and provide the necessary values.</p>
+    </div>
+  );
+} else {
+  ReactDOM.createRoot(document.getElementById("root")).render(
   <HMSRoomProvider>
     <BrowserRouter>
       <AnimatePresence mode="wait">
@@ -47,4 +66,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       </AnimatePresence>
     </BrowserRouter>
   </HMSRoomProvider>
-);
+  );
+}
