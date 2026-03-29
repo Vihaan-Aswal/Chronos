@@ -1,36 +1,82 @@
 # Chronos
 
-Chronos is a privacy-first engagement and identity intelligence layer for online classrooms. It runs computer-vision inference client-side and stores embeddings and engagement analytics rather than raw video frames.
+Chronos is a privacy-first engagement and identity intelligence layer for online classrooms.
 
-Built with React + Vite, FastAPI, WebSockets, Supabase, TensorFlow.js, and MediaPipe.
+It performs computer-vision inference on the client side and stores only embeddings and engagement analytics, not raw video frames.
+
+## Tech stack
+
+- **Frontend:** React, Vite, TensorFlow.js, MediaPipe
+- **Backend:** FastAPI, WebSockets
+- **Database/Auth:** Supabase
+- **Video infrastructure:** 100ms
 
 ---
 
-## Zero to Running: Tester Walkthrough
+## Table of contents
 
-Follow these instructions to spin up the entire Chronos stack locally in under 10 minutes.
+- [Overview](#overview)
+- [Local setup](#local-setup)
+  - [1. Supabase setup](#1-supabase-setup)
+  - [2. 100ms setup](#2-100ms-setup)
+  - [3. Environment configuration](#3-environment-configuration)
+  - [4. Run locally](#4-run-locally)
+  - [5. Sanity check](#5-sanity-check)
+  - [6. Troubleshooting](#6-troubleshooting)
+  - [7. Pre-PR verification](#7-pre-pr-verification)
+- [Complete testing guide](#complete-testing-guide)
+  - [Prerequisites](#prerequisites)
+  - [End-to-end validation flow](#end-to-end-validation-flow)
+  - [Completion criteria](#completion-criteria)
 
-### 1. Supabase Setup
+---
 
-Chronos relies on Supabase for Auth and Database persistence.
+## Overview
 
-1. Create a new project on [Supabase.com](https://supabase.com/).
-2. **Disable Email Confirmations:**
-   - Go to **Authentication** > **Providers** > **Email**.
-   - Toggle **Confirm email** to OFF. This allows testers to create dummy accounts and login instantly without verifying emails.
-3. **Database Schema Setup:**
-   - Go to the **SQL Editor** in Supabase.
-   - Run the following snippet to create the required tables:
+Chronos is designed for real-time classroom engagement monitoring and identity-aware participation workflows, with privacy built into the architecture from the start.
+
+### Core principles
+
+- Client-side inference for privacy-sensitive processing
+- No storage of raw video frames
+- Persistence of embeddings and analytics only
+- Real-time classroom telemetry via WebSockets
+- End-to-end flow across teacher and student experiences
+
+---
+
+## Local setup
+
+Use the steps below to run the full Chronos stack locally.
+
+## 1. Supabase setup
+
+Chronos uses Supabase for authentication and database persistence.
+
+### Create a project
+
+Create a new project at [Supabase](https://supabase.com/).
+
+### Disable email confirmations
+
+For local testing, disable email confirmation so test accounts can sign up and log in immediately.
+
+1. Go to **Authentication**
+2. Open **Providers**
+3. Select **Email**
+4. Turn **Confirm email** off
+
+### Create the required tables
+
+Open the **SQL Editor** in Supabase and run the following SQL:
 
 ```sql
--- Create Identity Embeddings Table
 CREATE TABLE IF NOT EXISTS identity_embeddings (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   embedding JSONB NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Create Session Analytics Table
 CREATE TABLE IF NOT EXISTS session_analytics (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   session_id TEXT NOT NULL,
@@ -48,23 +94,42 @@ CREATE TABLE IF NOT EXISTS session_analytics (
 );
 ```
 
-### 2. 100ms (HMS) Setup
+---
 
-Chronos uses 100ms for WebRTC video conferencing.
+## 2. 100ms setup
 
-1. Create a free account at [100ms.live](https://100ms.live/).
-2. Create a new App / Workspace.
-3. Access your **Developer** settings to get your **App Access Key** and **App Secret**.
-4. In the 100ms dashboard, navigate to **Rooms** and create one. Copy the **Room ID**. (Optional: Space ID if needed by your config).
+Chronos uses 100ms for WebRTC-based video conferencing.
 
-### 3. Environment Configuration
+### Create and configure your 100ms app
 
-The project is split into `backend` and `frontend`. You must configure environment variables for both.
+1. Create a free account at [100ms](https://100ms.live/)
+2. Create a new app or workspace
+3. Open **Developer settings**
+4. Copy the following credentials:
+   - **App Access Key**
+   - **App Secret**
 
-**Backend (`main/app/backend/`):**
-Copy `.env.example` to `.env`:
+5. In the 100ms dashboard, create a room and copy:
+   - **Room ID**
+   - **Space ID** if your setup requires it
 
+---
+
+## 3. Environment configuration
+
+Chronos has separate environment files for the backend and frontend.
+
+### Backend
+
+Path:
+
+```bash
+main/app/backend/
 ```
+
+Copy `.env.example` to `.env` and add the following values:
+
+```env
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
@@ -72,16 +137,25 @@ HMS_ACCESS_KEY=your-hms-access-key
 HMS_SECRET=your-hms-secret
 HMS_ROOM_ID=your-hms-room-id
 HMS_SPACE_ID=your-hms-space-id
-# Optional: token lifetime in minutes (defaults to 120)
+
+# Optional: token lifetime in minutes (default: 120)
 HMS_TOKEN_TTL_MINUTES=120
-# Optional: set allowed frontend origin(s) in production (comma-separated)
+
+# Optional: allowed frontend origin(s) in production, comma-separated
 # CORS_ORIGINS=https://your-frontend.example.com
 ```
 
-**Frontend (`main/app/frontend/`):**
-Copy `.env.example` to `.env`:
+### Frontend
 
+Path:
+
+```bash
+main/app/frontend/
 ```
+
+Copy `.env.example` to `.env` and add the following values:
+
+```env
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 
@@ -89,15 +163,18 @@ VITE_BACKEND_URL=http://localhost:8000
 VITE_BACKEND_WS_URL=ws://localhost:8000
 VITE_HMS_TOKEN_ENDPOINT=http://localhost:8000/hms-token
 VITE_HMS_ENV=dev
+
 # Optional: enable verbose engagement debug logs in development
 VITE_DEBUG_LOGS=false
 ```
 
-### 4. Running Locally
+---
 
-You'll need two terminal windows open.
+## 4. Run locally
 
-**Terminal 1: Start the Backend (FastAPI)**
+You will need two terminal sessions.
+
+### Start the backend
 
 ```bash
 cd main/app/backend
@@ -105,14 +182,15 @@ python -m venv venv
 
 # Windows
 venv\Scripts\activate
-# Mac/Linux
+
+# macOS / Linux
 # source venv/bin/activate
 
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-**Terminal 2: Start the Frontend (Vite)**
+### Start the frontend
 
 ```bash
 cd main/app/frontend
@@ -120,113 +198,157 @@ npm install
 npm run dev
 ```
 
-The app will now be available at `http://localhost:5173`.
+Once both services are running, open: [http://localhost:5173](http://localhost:5173)
 
-### 5. Quick Sanity Check (2 Minutes)
+---
 
-1. Backend terminal should start without the `Missing required environment variables` fatal error.
-2. Frontend should open normally and must not show the red `Environment Configuration Error` screen.
-3. Teacher can sign up/sign in, select role, and enter dashboard.
-4. Student can open invite link in incognito and appear in teacher dashboard metrics.
-5. Ending a teacher session should generate a report and show in Past Sessions.
+## 5. Sanity check
 
-### 6. Troubleshooting
+Use this quick validation before deeper testing.
 
-1. `token is expired` during meeting join:
+### Expected behavior
 
-- Ensure system clock/timezone is correct on your machine.
-- Verify backend has valid HMS keys and `HMS_TOKEN_TTL_MINUTES` is a positive integer.
+1. The backend starts without a `Missing required environment variables` error
+2. The frontend loads without the red `Environment Configuration Error` screen
+3. A teacher can sign up, sign in, choose a role, and access the dashboard
+4. A student can join from an incognito window and appear in teacher metrics
+5. Ending a session generates a report that appears under **Past Sessions**
 
-2. Frontend shows environment error overlay on load:
+---
 
-- Confirm `main/app/frontend/.env` exists and all `VITE_*` variables are set.
-- Restart `npm run dev` after editing `.env`.
+## 6. Troubleshooting
 
-3. Student not visible or engagement not updating:
+### `token is expired` during join
 
-- Confirm student granted camera permission and completed readiness.
-- Confirm backend is running and websocket URL in frontend `.env` points to backend.
+- Check that your system clock and timezone are correct
+- Confirm your HMS credentials are valid
+- Make sure `HMS_TOKEN_TTL_MINUTES` is set to a positive integer
 
-4. Cross-origin request errors in deployed environment:
+### Frontend shows environment configuration error
 
-- Set `CORS_ORIGINS` in backend `.env` to your deployed frontend URL(s).
+- Verify that `main/app/frontend/.env` exists
+- Confirm all required `VITE_*` variables are present
+- Restart the frontend after updating `.env`
 
-### 7. Contributor Verification Commands
+### Student is not visible or engagement is not updating
 
-Run these before opening a PR:
+- Make sure camera permissions were granted
+- Confirm the student completed readiness checks
+- Verify that the backend is running
+- Confirm the frontend WebSocket URL points to the correct backend
+
+### Cross-origin request errors in deployment
+
+- Set `CORS_ORIGINS` in the backend `.env`
+- Include the deployed frontend origin(s), comma-separated if more than one
+
+---
+
+## 7. Pre-PR verification
+
+Run these checks before opening a pull request.
+
+### Frontend
 
 ```bash
-# frontend
 cd main/app/frontend
 npm run lint
 npm run build
+```
 
-# backend (from a shell with backend venv activated)
+### Backend
+
+Run from a shell where the backend virtual environment is activated:
+
+```bash
 cd main/app/backend
 python -m compileall .
 ```
 
 ---
 
-## Complete Testing Guide
+## Complete testing guide
 
-Use this deterministic flow to validate the full product experience end-to-end.
+Use the following flow to validate the product end to end.
 
-### Prerequisites
+## Prerequisites
 
-1. Backend and frontend are both running locally.
-2. Environment setup is completed using the sections above.
+Before testing, confirm:
 
-### The Golden Path
+1. Backend is running locally
+2. Frontend is running locally
+3. Environment configuration is complete
 
-### Step 1: Initialize the Teacher Dashboard
+---
 
-1. Open a **standard Chrome window** (recommended for MediaPipe compatibility).
-2. Navigate to `http://localhost:5173`.
-3. Click **Sign Up** and create a dummy teacher account (example: `teacher@chronos.local` / `password123`).
-4. On role selection, choose **Teacher**.
-5. Complete the readiness check and grant camera permission.
-6. Click **Verify & Join as Teacher**.
+## End-to-end validation flow
 
-### Step 2: Retrieve the Session Link
+### Step 1: Set up the teacher session
 
-1. In the Teacher Dashboard, locate the **Meeting ID / Copy Link** control.
-2. Copy the invite link.
+1. Open a standard Chrome window
+2. Go to `http://localhost:5173`
+3. Click **Sign Up**
+4. Create a dummy teacher account
+   Example: `teacher@chronos.local` / `password123`
+5. Choose the **Teacher** role
+6. Complete the readiness flow
+7. Grant camera permission
+8. Click **Verify & Join as Teacher**
 
-### Step 3: Initialize the Student Environment
+### Step 2: Copy the session link
 
-1. Open a **Chrome Incognito window** (isolates local session/camera context).
-2. Paste the copied link.
-3. Sign up with a separate dummy account (example: `student@chronos.local` / `password123`).
-4. Select **Student**.
+1. In the teacher dashboard, find the **Meeting ID / Copy Link** control
+2. Copy the invite link
 
-### Step 4: Validate Identity and Readiness
+### Step 3: Set up the student session
 
-1. Complete student readiness checks.
-2. Confirm camera permission is granted.
-3. Ensure face is centered and lighting is acceptable.
-4. Click Verify to enter class.
+1. Open a Chrome incognito window
+2. Paste the invite link
+3. Sign up with a different dummy account
+   Example: `student@chronos.local` / `password123`
+4. Choose the **Student** role
 
-### Step 5: Validate Real-Time Tracking
+### Step 4: Complete readiness and identity checks
 
-1. Keep teacher and student windows side by side.
-2. As student, look at the screen: teacher should show attentive/high score.
-3. Look away for 10-15 seconds: teacher should see score drop and/or disengagement behavior.
-4. Confirm nudges and teacher actions behave as expected.
+1. Finish the student readiness flow
+2. Grant camera permission
+3. Make sure the face is clearly visible and centered
+4. Click **Verify** to enter the session
 
-### Step 6: Validate Network Resilience
+### Step 5: Validate real-time tracking
 
-1. In student window, open DevTools (F12) > Network.
-2. Set throttling to **Offline**.
-3. Confirm the red reconnect banner appears.
-4. Set throttling back to **No throttling** and confirm recovery.
+1. Keep the teacher and student windows visible side by side
+2. As the student, look directly at the screen
+3. Confirm the teacher sees attentive behavior or a higher score
+4. Look away for 10 to 15 seconds
+5. Confirm the teacher sees the score drop or disengagement indicators
+6. Validate that nudges and teacher actions behave as expected
 
-### Step 7: Validate Session Report Persistence
+### Step 6: Validate network resilience
 
-1. End session from teacher dashboard.
-2. Confirm session report appears.
-3. Open **Past Sessions** and verify data persists.
+1. In the student window, open DevTools with `F12`
+2. Open the **Network** tab
+3. Set throttling to **Offline**
+4. Confirm the reconnect banner appears
+5. Switch back to **No throttling**
+6. Confirm the session recovers successfully
 
-### Completion Criteria
+### Step 7: Validate session report persistence
 
-If all steps above pass, the core Chronos experience (auth, readiness, live tracking, websocket resilience, analytics persistence) is working end-to-end.
+1. End the session from the teacher dashboard
+2. Confirm the session report is generated
+3. Open **Past Sessions**
+4. Verify that session data persists correctly
+
+---
+
+## Completion criteria
+
+Chronos can be considered working end to end when all of the following pass successfully:
+
+- Authentication
+- Teacher and student readiness flows
+- Real-time engagement tracking
+- WebSocket recovery behavior
+- Session analytics persistence
+- Report visibility in past sessions
