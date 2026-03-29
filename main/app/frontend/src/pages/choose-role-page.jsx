@@ -12,9 +12,9 @@
  */
 
 import { useNavigate, Link } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { supabase } from "../supabase-client";
 import { motion } from "motion/react";
-import ChronosMark from "../components/ChronosMark.jsx";
+import ChronosMark from "../components/chronos-mark.jsx";
 
 export default function ChooseRolePage() {
   const navigate = useNavigate();

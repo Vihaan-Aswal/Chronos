@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useSearchParams } from "react-router-dom";
-import HMSMeeting from "../hms/HMSMeeting.jsx";
+import HMSMeeting from "../meeting/hms-meeting.jsx";
 
 export default function MeetingRoom() {
   const [params] = useSearchParams();

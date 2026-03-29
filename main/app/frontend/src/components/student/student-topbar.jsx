@@ -1,4 +1,4 @@
-import ChronosMark from "../ChronosMark.jsx";
+import ChronosMark from "../chronos-mark.jsx";
 
 export default function StudentTopbar({ wsConnected, sessionId, userName }) {
   return (

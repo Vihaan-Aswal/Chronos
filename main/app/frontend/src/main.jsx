@@ -8,17 +8,17 @@ import { AnimatePresence } from "motion/react";
 import { HMSRoomProvider } from "@100mslive/react-sdk";
 
 // ── New pages (Phase 3+) ──────────────────────────────────────────────────
-import HomePage        from "./pages/HomePage.jsx";
-import SignInPage      from "./pages/SignInPage.jsx";
-import SignUpPage      from "./pages/SignUpPage.jsx";
-import ChooseRolePage  from "./pages/ChooseRolePage.jsx";
-import ReadinessPage   from "./pages/ReadinessPage.jsx";
-import AuthGuard       from "./components/AuthGuard.jsx";
+import HomePage        from "./pages/home-page.jsx";
+import SignInPage      from "./pages/sign-in-page.jsx";
+import SignUpPage      from "./pages/sign-up-page.jsx";
+import ChooseRolePage  from "./pages/choose-role-page.jsx";
+import ReadinessPage   from "./pages/readiness-page.jsx";
+import AuthGuard       from "./components/auth-guard.jsx";
 
 // ── Core app pages (Phase 8/9 protected routes) ──────────────────────────
-import StudentPage from "./pages/StudentPage.jsx";
-import TeacherPage from "./pages/TeacherPage.jsx";
-import MeetingRoom from "./pages/MeetingRoom.jsx";
+import StudentPage from "./pages/student-page.jsx";
+import TeacherPage from "./pages/teacher-page.jsx";
+import MeetingRoom from "./pages/meeting-room.jsx";
 
 import "./index.css";
 

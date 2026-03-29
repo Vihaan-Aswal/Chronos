@@ -1,5 +1,5 @@
-import NudgeButton from "../NudgeButton.jsx";
-import { ActionIconButton } from "./TeacherButtons.jsx";
+import NudgeButton from "../nudge-button.jsx";
+import { ActionIconButton } from "./teacher-buttons.jsx";
 
 function initials(value) {
   if (!value) return "ST";

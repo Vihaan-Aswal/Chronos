@@ -1,6 +1,6 @@
 // src/components/EngagementTracker.jsx
 import { useEffect, useRef, useState } from "react";
-import useWebSocket from "../hooks/useWebSocket";
+import useWebSocket from "../hooks/use-websocket";
 import { getEmbedding, loadEmbedder } from "../utils/embedder";
 import { fetchIdentity } from "../api/identity";
 

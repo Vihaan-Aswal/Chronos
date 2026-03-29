@@ -35,9 +35,9 @@
  */
 
 import { useNavigate, Link } from "react-router-dom";
-import JoinScreen from "../components/JoinScreen.jsx";
+import JoinScreen from "../components/join-screen.jsx";
 import { motion } from "motion/react";
-import ChronosMark from "../components/ChronosMark.jsx";
+import ChronosMark from "../components/chronos-mark.jsx";
 
 const MotionDiv = motion.div;
 

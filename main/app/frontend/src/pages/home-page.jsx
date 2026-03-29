@@ -11,7 +11,7 @@
 
 import { Link } from "react-router-dom";
 import { useEffect, useRef } from "react";
-import ChronosMark from "../components/ChronosMark.jsx";
+import ChronosMark from "../components/chronos-mark.jsx";
 
 export default function HomePage() {
   const headerRef = useRef(null);

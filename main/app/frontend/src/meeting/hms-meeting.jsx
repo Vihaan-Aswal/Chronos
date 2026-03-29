@@ -1,4 +1,4 @@
-// src/hms/HMSMeeting.jsx
+// src/meeting/hms-meeting.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   selectIsConnectedToRoom,
@@ -6,7 +6,7 @@ import {
   useHMSActions,
   useHMSStore,
 } from "@100mslive/react-sdk";
-import { MediaControlButton } from "../components/teacher/TeacherButtons.jsx";
+import { MediaControlButton } from "../components/teacher/teacher-buttons.jsx";
 
 function MicIcon() {
   return (

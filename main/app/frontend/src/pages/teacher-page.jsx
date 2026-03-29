@@ -3,19 +3,19 @@
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useState, useRef, useEffect, useCallback } from "react";
 
-import useTeacherWebSocket from "../hooks/useTeacherWebSocket";
+import useTeacherWebSocket from "../hooks/use-teacher-websocket";
 import useClassroomSimulator, {
   isSimulatedStudentId,
-} from "../hooks/useClassroomSimulator.js";
-import HMSMeeting from "../hms/HMSMeeting.jsx";
-import JoinScreen from "../components/JoinScreen.jsx";
-import DashboardTopbar from "../components/teacher/DashboardTopbar.jsx";
-import StatusStrip from "../components/teacher/StatusStrip.jsx";
-import SummaryCards from "../components/teacher/SummaryCards.jsx";
-import StudentCard from "../components/teacher/StudentCard.jsx";
+} from "../hooks/use-classroom-simulator.js";
+import HMSMeeting from "../meeting/hms-meeting.jsx";
+import JoinScreen from "../components/join-screen.jsx";
+import DashboardTopbar from "../components/teacher/dashboard-topbar.jsx";
+import StatusStrip from "../components/teacher/status-strip.jsx";
+import SummaryCards from "../components/teacher/summary-cards.jsx";
+import StudentCard from "../components/teacher/student-card.jsx";
 
-import SessionReport from "../components/SessionReport.jsx";
-import { sendTeacherAction } from "../api/teacherActions.js";
+import SessionReport from "../components/session-report.jsx";
+import { sendTeacherAction } from "../api/teacher-actions.js";
 import { triggerLiveness } from "../api/liveness.js";
 import "../styles/dashboard-shared.css";
 import "../styles/teacher-dashboard.css";

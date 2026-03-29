@@ -3,12 +3,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 
-import JoinScreen from "../components/JoinScreen.jsx";
-import EngagementTracker from "../components/EngagementTracker.jsx";
-import NudgeNotification from "../components/NudgeNotification.jsx";
-import HMSMeeting from "../hms/HMSMeeting.jsx";
-import useWebSocket from "../hooks/useWebSocket.js";
-import StudentTopbar from "../components/student/StudentTopbar.jsx";
+import JoinScreen from "../components/join-screen.jsx";
+import EngagementTracker from "../components/engagement-tracker.jsx";
+import NudgeNotification from "../components/nudge-notification.jsx";
+import HMSMeeting from "../meeting/hms-meeting.jsx";
+import useWebSocket from "../hooks/use-websocket.js";
+import StudentTopbar from "../components/student/student-topbar.jsx";
 import "../styles/dashboard-shared.css";
 import "../styles/student-meeting.css";
 
