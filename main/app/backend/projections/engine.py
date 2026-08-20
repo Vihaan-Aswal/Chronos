@@ -14,6 +14,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from observation.config import get_config
+from observation.state_machine import ObservationStateMachine
+from observation.case_manager import CaseManager
+
 
 class ProjectionEngine:
     """Pure, deterministic state reducer engine for Chronos event streams."""
@@ -76,61 +80,48 @@ class ProjectionEngine:
             coverage = float(payload.get("coverage_ratio", 1.0))
             state["coverage_ratio"] = round(coverage, 2)
 
-            # Check for stale evidence expiration (5 mins of NO_DATA)
+            is_demo = bool(event.get("is_demo", False))
+            config = get_config(is_demo=is_demo)
+            sm = ObservationStateMachine(
+                config=config,
+                initial_warning_streak=state.get("warning_streak", 0),
+                initial_clean_streak=state.get("clean_streak", 0),
+                initial_attention_pattern=state.get("attention_pattern", "UNKNOWN"),
+                initial_case_state=state.get("case_state", "NONE"),
+            )
             if state.get("no_data_start_iso"):
                 try:
-                    start_dt = datetime.fromisoformat(state["no_data_start_iso"].replace("Z", "+00:00"))
-                    curr_dt = datetime.fromisoformat(event.get("occurred_at", "").replace("Z", "+00:00"))
-                    if (curr_dt - start_dt).total_seconds() >= 300:
-                        state["warning_streak"] = 0
-                        state["no_data_start_iso"] = None
+                    sm.no_data_start_time = datetime.fromisoformat(state["no_data_start_iso"].replace("Z", "+00:00"))
                 except Exception:
-                    pass
+                    sm.no_data_start_time = None
 
-            if obs_state == "NO_DATA" or classification == "NOT_EVALUATED":
-                # INVARIANT: NO_DATA is neither warning nor recovery.
-                # Must NEVER increment streaks and must NEVER count as recovery.
+            occurred_at = event.get("occurred_at")
+            eval_res = sm.evaluate_window(payload, timestamp=occurred_at)
+
+            # Synchronize state from state machine evaluation
+            if eval_res.get("observation_state") == "NO_DATA" or classification == "NOT_EVALUATED":
                 state["observation_state"] = "NO_DATA"
+                state["warning_streak"] = sm.warning_streak
                 tech_reasons = payload.get("technical_reasons") or []
                 for tr in tech_reasons:
                     if tr not in state["technical_reasons"]:
                         state["technical_reasons"].append(tr)
-
-            elif classification in ("VALID_WARNING", "WARNING"):
+                if sm.no_data_start_time is None:
+                    state["no_data_start_iso"] = None
+                elif not state.get("no_data_start_iso") and occurred_at:
+                    state["no_data_start_iso"] = occurred_at
+            else:
                 state["observation_state"] = "OBSERVABLE"
-                state["warning_streak"] = state.get("warning_streak", 0) + 1
-                state["clean_streak"] = 0
-                state["active_reason_codes"] = list(payload.get("reason_codes") or ["ORIENTATION_AWAY"])
-                
-                streak = state["warning_streak"]
-                if streak == 1:
-                    state["attention_pattern"] = "VARIABLE"
-                    state["case_state"] = "SELF_RECOVERY"
-                elif streak == 2:
-                    state["attention_pattern"] = "VARIABLE"
-                    state["case_state"] = "MONITOR"
-                else:  # >= 3
-                    state["attention_pattern"] = "SUSTAINED_CONCERN"
-                    state["case_state"] = "ACTION_REQUIRED"
+                state["warning_streak"] = sm.warning_streak
+                state["clean_streak"] = sm.clean_streak
+                state["attention_pattern"] = sm.attention_pattern
+                state["case_state"] = sm.case_state
+                state["no_data_start_iso"] = None
 
-            elif classification in ("VALID_CLEAN", "CLEAN"):
-                state["observation_state"] = "OBSERVABLE"
-                state["clean_streak"] = state.get("clean_streak", 0) + 1
-                state["active_reason_codes"] = []
-                clean = state["clean_streak"]
-
-                if clean == 1:
-                    # Partial recovery
-                    if state.get("attention_pattern") == "SUSTAINED_CONCERN":
-                        state["attention_pattern"] = "VARIABLE"
-                elif clean >= 2:
-                    # Stable recovery
-                    state["warning_streak"] = 0
-                    state["attention_pattern"] = "STABLE"
-                    if state.get("case_state") not in ("NONE", "ACTION_REQUIRED"):
-                        state["case_state"] = "RESOLVED"
-                    elif state.get("case_state") == "ACTION_REQUIRED":
-                        state["case_state"] = "RESOLVED"
+                if classification in ("VALID_WARNING", "WARNING"):
+                    state["active_reason_codes"] = list(payload.get("reason_codes") or ["ORIENTATION_AWAY"])
+                elif classification in ("VALID_CLEAN", "CLEAN"):
+                    state["active_reason_codes"] = []
 
         elif event_type == "IDENTITY_RESULT":
             # INVARIANT: Identity never changes attention score or streak
@@ -226,62 +217,9 @@ class ProjectionEngine:
     def build_session_cases(cls, events: List[Dict[str, Any]], session_id: str) -> List[Dict[str, Any]]:
         """
         Groups repeated events into distinct teacher triage cases.
-        (e.g., 10 camera disconnect events -> 1 grouped TECHNICAL_CAMERA case).
+        Delegates to pure CaseManager aggregator.
         """
-        cases: Dict[str, Dict[str, Any]] = {}
-        sorted_events = sorted(events, key=lambda x: (x.get("server_sequence") or 0, x.get("occurred_at") or ""))
-
-        for evt in sorted_events:
-            etype = evt.get("event_type", "")
-            pid = evt.get("participant_id") or "session"
-            payload = evt.get("payload") or {}
-
-            # Determine category
-            category = None
-            if etype in ("CAMERA_STATE_CHANGED", "NO_DATA_ENTERED") and "CAMERA" in str(payload):
-                category = "TECHNICAL_CAMERA"
-            elif etype == "NETWORK_STATE_CHANGED" or "NETWORK" in str(payload):
-                category = "TECHNICAL_NETWORK"
-            elif etype == "WINDOW_FINALIZED" and payload.get("classification") in ("VALID_WARNING", "WARNING"):
-                category = "ATTENTION_CONCERN"
-            elif etype == "IDENTITY_RESULT" and payload.get("identity_state") in ("LOW_CONFIDENCE", "QUALITY_FAIL", "MISMATCH"):
-                category = "IDENTITY_UNCERTAINTY"
-            elif etype in ("PAGE_HIDDEN", "WINDOW_BLURRED") and payload.get("duration_ms", 0) >= 60000:
-                category = "BROWSER_VISIBILITY"
-            elif etype == "STUDENT_CONTEXT_ADDED" and payload.get("requested_help"):
-                category = "STUDENT_HELP_REQUEST"
-
-            if category:
-                case_key = f"{pid}:{category}"
-                if case_key not in cases:
-                    cases[case_key] = {
-                        "case_id": f"case-{pid[:8] if len(pid) > 8 else pid}-{category.lower()}",
-                        "session_id": session_id,
-                        "participant_id": None if pid == "session" else pid,
-                        "category": category,
-                        "started_at": evt.get("occurred_at", datetime.now(timezone.utc).isoformat()),
-                        "last_updated_at": evt.get("occurred_at", datetime.now(timezone.utc).isoformat()),
-                        "duration_ms": 0,
-                        "status": "OPEN",
-                        "priority": "MONITOR" if category != "ATTENTION_CONCERN" else "ACTION_REQUIRED",
-                        "event_ids": [evt.get("event_id")],
-                        "self_recovery_attempted": False,
-                        "student_context_count": 0,
-                        "teacher_action_count": 0,
-                    }
-                else:
-                    c = cases[case_key]
-                    c["event_ids"].append(evt.get("event_id"))
-                    c["last_updated_at"] = evt.get("occurred_at", c["last_updated_at"])
-
-            # Self recovery resolution
-            if etype == "WINDOW_FINALIZED" and payload.get("classification") in ("VALID_CLEAN", "CLEAN"):
-                att_key = f"{pid}:ATTENTION_CONCERN"
-                if att_key in cases and payload.get("clean_streak", 0) >= 2:
-                    cases[att_key]["status"] = "RESOLVED"
-                    cases[att_key]["self_recovery_attempted"] = True
-
-        return list(cases.values())
+        return CaseManager.build_session_cases(events, session_id)
 
     @classmethod
     def build_session_summary(
