@@ -58,6 +58,8 @@ from models import (
     PolicyId,
     SessionStatus,
 )
+from contracts import EventEnvelope, EventType, ActorRole, EventSource
+from projections.engine import ProjectionEngine
 
 load_dotenv()
 logger = get_logger("chronos.backend")
@@ -986,4 +988,176 @@ async def send_nudge(
     if not ok:
         return {"status": "error", "message": "student not found"}
     return {"status": "success"}
+
+
+# ===========================================================================
+# Workstream W2: Domain Contracts & Event Persistence Endpoints
+# ===========================================================================
+
+@app.post("/api/v1/events/ingest")
+async def ingest_event(
+    event: EventEnvelope,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Authoritative event ingestion gateway:
+    - Enforces tenant and session scoping.
+    - Validates actor_id matches authenticated user (or service role/admin).
+    - Validates demo/live consistency with session.
+    - Rejects invalid actor/source combinations.
+    - Persists event with server_sequence allocation and idempotency.
+    - Updates materialized projections.
+    """
+    session = repository.get_session(event.session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+
+    # Actor validation: authenticated caller cannot forge a different actor_id
+    if not (auth.is_admin or auth.is_service_role):
+        if event.actor_id != auth.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Actor ID does not match authenticated identity",
+            )
+        # Check source/role combinations
+        if auth.role == UserRole.STUDENT:
+            if str(event.actor_role).lower() not in ("participant", "student"):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Participant cannot emit non-participant events",
+                )
+            if str(event.source).lower() not in ("browser", "camera"):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Participant source must be browser or camera",
+                )
+            if str(event.event_type) in (
+                "TEACHER_ACTION_RECORDED", "POLICY_CHANGED",
+                "WINDOW_FINALIZED", "CASE_CREATED", "CASE_RESOLVED", "RESOURCE_PUBLISHED"
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Unauthorized event type for participant",
+                )
+
+    # Demo/live alignment validation
+    session_is_demo = session.get("is_demo", False)
+    if session_is_demo != event.is_demo:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Demo/live mixing mismatch between event and session",
+        )
+
+    # Convert pydantic model to dict
+    event_dict = event.dict()
+    persisted = repository.append_event(event_dict)
+    return {"status": "success", "event": persisted}
+
+
+@app.get("/api/v1/sessions/{session_id}/events")
+async def get_session_events(
+    session_id: str,
+    since_sequence: Optional[int] = Query(None, alias="since_sequence"),
+    limit: int = Query(1000, ge=1, le=50000),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Fetch ordered event stream for a session from since_sequence.
+    Supports reconnect catch-up and offline synchronization.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+
+    if auth.role == UserRole.STUDENT:
+        # Students only see own events and session-wide broadcasts
+        events = repository.get_participant_events(
+            session_id=session_id,
+            participant_id=auth.user_id,
+            from_sequence=since_sequence,
+        )
+    else:
+        _verify_session_teacher(session, auth)
+        events = repository.get_session_events(
+            session_id=session_id,
+            from_sequence=since_sequence,
+            limit=limit,
+        )
+
+    return {
+        "session_id": session_id,
+        "count": len(events),
+        "events": events,
+    }
+
+
+@app.get("/api/v1/sessions/{session_id}/projections/participant/{participant_id}")
+async def get_participant_projection(
+    session_id: str,
+    participant_id: str,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Fetch consolidated projection for a participant."""
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+
+    if auth.role == UserRole.STUDENT and auth.user_id != participant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot access another participant's state",
+        )
+
+    projection = repository.get_participant_projection(session_id, participant_id)
+    if not projection:
+        events = repository.get_session_events(session_id)
+        projection = ProjectionEngine.build_participant_projection(events, participant_id, session_id)
+
+    return {"status": "success", "projection": projection}
+
+
+@app.get("/api/v1/sessions/{session_id}/projections/participants", dependencies=[Depends(require_teacher)])
+async def list_participant_projections(
+    session_id: str,
+    auth: AuthContext = Depends(require_teacher),
+):
+    """List all participant projections in a session for teacher triage rail."""
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+    _verify_session_teacher(session, auth)
+
+    projections = repository.list_session_participant_projections(session_id)
+    return {"status": "success", "count": len(projections), "projections": projections}
+
+
+@app.post("/api/v1/sessions/{session_id}/projections/rebuild", dependencies=[Depends(require_teacher)])
+async def rebuild_session_projections(
+    session_id: str,
+    auth: AuthContext = Depends(require_teacher),
+):
+    """Deterministically rebuild all projections from durable append-only event stream."""
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+    _verify_session_teacher(session, auth)
+
+    result = repository.rebuild_projections_for_session(session_id)
+    return {"status": "success", "result": result}
+
 

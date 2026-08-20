@@ -119,6 +119,8 @@ class MockTableQueryBuilder:
         self.table_name = table_name
         self.store = store
         self._filters: List[tuple[str, Any]] = []
+        self._gte_filters: List[tuple[str, Any]] = []
+        self._in_filters: List[tuple[str, List[Any]]] = []
         self._pending_insert: Optional[List[Dict[str, Any]]] = None
         self._pending_upsert: Optional[List[Dict[str, Any]]] = None
         self._pending_update: Optional[Dict[str, Any]] = None
@@ -132,6 +134,14 @@ class MockTableQueryBuilder:
 
     def eq(self, column: str, value: Any):
         self._filters.append((column, value))
+        return self
+
+    def gte(self, column: str, value: Any):
+        self._gte_filters.append((column, value))
+        return self
+
+    def in_(self, column: str, values: List[Any]):
+        self._in_filters.append((column, list(values)))
         return self
 
     def order(self, column: str, desc: bool = False):
@@ -168,7 +178,7 @@ class MockTableQueryBuilder:
             saved = []
             for r in self._pending_insert:
                 row = dict(r)
-                if "id" not in row and "session_id" not in row and "user_id" not in row:
+                if "id" not in row and "session_id" not in row and "user_id" not in row and "event_id" not in row:
                     row["id"] = str(uuid.uuid4())
                 table_rows.append(row)
                 saved.append(row)
@@ -191,6 +201,16 @@ class MockTableQueryBuilder:
                 row = dict(r)
                 match_idx = None
                 for idx, existing in enumerate(table_rows):
+                    # Composite key: (session_id, participant_id) for participant_projections
+                    if "session_id" in row and "participant_id" in row:
+                        if (
+                            existing.get("session_id") == row["session_id"]
+                            and existing.get("participant_id") == row["participant_id"]
+                        ):
+                            if "version" in row and existing.get("version") != row.get("version"):
+                                continue
+                            match_idx = idx
+                            break
                     # Composite key check for session_participants (session_id, user_id)
                     if "session_id" in row and "user_id" in row:
                         if (
@@ -199,20 +219,32 @@ class MockTableQueryBuilder:
                         ):
                             match_idx = idx
                             break
+                    if "case_id" in row and existing.get("case_id") == row["case_id"]:
+                        match_idx = idx
+                        break
+                    if "resource_id" in row and existing.get("resource_id") == row["resource_id"]:
+                        match_idx = idx
+                        break
+                    if "answer_id" in row and existing.get("answer_id") == row["answer_id"]:
+                        match_idx = idx
+                        break
+                    if "event_id" in row and existing.get("event_id") == row["event_id"]:
+                        match_idx = idx
+                        break
                     if "id" in row and existing.get("id") == row["id"]:
                         match_idx = idx
                         break
-                    if "session_id" in row and existing.get("session_id") == row["session_id"]:
+                    if "session_id" in row and existing.get("session_id") == row["session_id"] and self.table_name in ("session_summaries", "report_read_models", "sessions"):
                         match_idx = idx
                         break
-                    if "user_id" in row and existing.get("user_id") == row["user_id"]:
+                    if "user_id" in row and existing.get("user_id") == row["user_id"] and self.table_name in ("users", "identity_embeddings"):
                         match_idx = idx
                         break
                 if match_idx is not None:
                     table_rows[match_idx].update(row)
                     saved.append(table_rows[match_idx])
                 else:
-                    if "id" not in row and "user_id" not in row and "session_id" not in row:
+                    if "id" not in row and "user_id" not in row and "session_id" not in row and "event_id" not in row and "case_id" not in row and "resource_id" not in row and "answer_id" not in row:
                         row["id"] = str(uuid.uuid4())
                     table_rows.append(row)
                     saved.append(row)
@@ -236,11 +268,15 @@ class MockTableQueryBuilder:
         filtered = table_rows
         for col, val in self._filters:
             filtered = [r for r in filtered if r.get(col) == val]
+        for col, val in self._gte_filters:
+            filtered = [r for r in filtered if r.get(col) is not None and r.get(col) >= val]
+        for col, vals in self._in_filters:
+            filtered = [r for r in filtered if r.get(col) in vals]
 
         if self._order_col:
             filtered = sorted(
                 filtered,
-                key=lambda x: str(x.get(self._order_col, "")),
+                key=lambda x: (x.get(self._order_col) if x.get(self._order_col) is not None else 0),
                 reverse=self._order_desc,
             )
 
@@ -248,6 +284,41 @@ class MockTableQueryBuilder:
             filtered = filtered[: self._limit_val]
 
         return MockResponse(data=filtered)
+
+
+class MockEventStore:
+    """In-memory append-only event store with idempotency and monotonic sequence allocation."""
+    def __init__(self):
+        self.events: List[Dict[str, Any]] = []
+        self.event_id_set: set[str] = set()
+        self.session_sequences: Dict[str, int] = {}
+
+    def insert_event(self, event_data: Dict[str, Any]) -> tuple[Dict[str, Any], bool]:
+        """
+        Returns (persisted_event, is_duplicate).
+        Handles idempotency: if event_id exists, return existing record without updating sequence.
+        """
+        evt_id = event_data["event_id"]
+        session_id = event_data["session_id"]
+
+        if evt_id in self.event_id_set:
+            existing = next(e for e in self.events if e["event_id"] == evt_id)
+            return existing, True
+
+        curr_seq = self.session_sequences.get(session_id, 0) + 1
+        self.session_sequences[session_id] = curr_seq
+
+        persisted = dict(event_data)
+        persisted["server_sequence"] = curr_seq
+        self.events.append(persisted)
+        self.event_id_set.add(evt_id)
+        return persisted, False
+
+    def query_events(self, session_id: str, participant_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        res = [e for e in self.events if e["session_id"] == session_id]
+        if participant_id:
+            res = [e for e in res if e["participant_id"] == participant_id]
+        return sorted(res, key=lambda x: x["server_sequence"])
 
 
 class MockSupabaseClient:
@@ -261,6 +332,14 @@ class MockSupabaseClient:
             "sessions": [],
             "session_participants": [],
             "events": [],
+            "session_events": [],
+            "participant_projections": [],
+            "finalized_windows": [],
+            "session_cases": [],
+            "session_summaries": [],
+            "resource_projections": [],
+            "answer_projections": [],
+            "report_read_models": [],
             "cases": [],
             "resources": [],
             "answers": [],
