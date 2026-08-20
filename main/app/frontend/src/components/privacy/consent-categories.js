@@ -1,0 +1,58 @@
+export const CONSENT_CATEGORIES = [
+  {
+    id: "LIVE_SESSION_PARTICIPATION",
+    label: "Live Session Participation",
+    description: "Join the live interactive room and receive classroom announcements.",
+    required: true,
+    defaultGranted: true,
+  },
+  {
+    id: "CAMERA_LOCAL_PROCESSING",
+    label: "Local Camera Processing (On-Device)",
+    description: "MediaPipe computer vision runs strictly in your browser. No video frames leave your device.",
+    required: false,
+    defaultGranted: true,
+  },
+  {
+    id: "IDENTITY_ENROLLMENT",
+    label: "Temporary Identity Verification (24h Max)",
+    description: "Store a temporary biometric vector deleted automatically within 24 hours.",
+    required: false,
+    defaultGranted: true,
+  },
+  {
+    id: "IDENTITY_VERIFICATION",
+    label: "Identity Verification Matching",
+    description: "Compare periodic check-ins against temporary reference vector.",
+    required: false,
+    defaultGranted: true,
+  },
+  {
+    id: "ACTIVE_PRESENCE_CHECKS",
+    label: "Active Presence Prompts",
+    description: "Participate in quick, random interactive liveness and check-in challenges.",
+    required: false,
+    defaultGranted: true,
+  },
+  {
+    id: "ATTENTION_TELEMETRY",
+    label: "Attention & Gaze Metrics",
+    description: "Send discrete numerical aggregate metrics (5-second intervals) to the teacher triage view.",
+    required: false,
+    defaultGranted: true,
+  },
+  {
+    id: "BROWSER_CONTEXT_TELEMETRY",
+    label: "Browser Window Visibility",
+    description: "Track window focus duration. Specific URLs, tabs, and window titles are NEVER captured.",
+    required: false,
+    defaultGranted: true,
+  },
+  {
+    id: "ANSWER_STORAGE",
+    label: "Answer Artifact & Draft Storage",
+    description: "Save auto-saved typed drafts and uploaded submission files.",
+    required: false,
+    defaultGranted: true,
+  },
+];

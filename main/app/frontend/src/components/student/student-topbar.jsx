@@ -1,6 +1,7 @@
+import React from "react";
 import ChronosMark from "../chronos-mark.jsx";
 
-export default function StudentTopbar({ wsConnected, sessionId, userName }) {
+export default function StudentTopbar({ wsConnected, sessionId, userName, onOpenPrivacy }) {
   return (
     <header className="sd-topbar" aria-label="Student meeting header">
       <div className="sd-brand-group">
@@ -19,7 +20,18 @@ export default function StudentTopbar({ wsConnected, sessionId, userName }) {
         </div>
       </div>
 
-      <div className="sd-topbar-right">
+      <div className="sd-topbar-right flex items-center gap-3">
+        {onOpenPrivacy && (
+          <button
+            type="button"
+            onClick={onOpenPrivacy}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-300 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 transition-colors"
+            title="Privacy, Consent, and Technical Context"
+          >
+            <span className="material-symbols-outlined text-sm text-emerald-400">shield</span>
+            <span>Privacy & Context</span>
+          </button>
+        )}
         <span className={`sd-ws-badge ${wsConnected ? "" : "disconnected"}`}>
           <span className="sd-ws-dot" aria-hidden="true" />
           {wsConnected ? "Connected" : "Offline"}
@@ -28,3 +40,4 @@ export default function StudentTopbar({ wsConnected, sessionId, userName }) {
     </header>
   );
 }
+

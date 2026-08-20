@@ -1,10 +1,10 @@
-// src/components/JoinScreen.jsx
-
 import { useEffect, useRef, useState } from "react";
 import { loadEmbedder, getEmbedding } from "../utils/embedder";
 import { fetchIdentity, registerIdentity } from "../api/identity";
+import PreJoinNoticeModal from "./privacy/pre-join-notice-modal";
+import { recordConsent } from "../api/privacy";
 
-function JoinScreen({ user, onJoin }) {
+function JoinScreen({ user, onJoin, token }) {
   const videoRef = useRef(null);
   const cropCanvasRef = useRef(null);
   const lightCanvasRef = useRef(null);
@@ -15,6 +15,8 @@ function JoinScreen({ user, onJoin }) {
   const [ready, setReady] = useState(false);
   const [mediaError, setMediaError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [consents, setConsents] = useState({});
 
   const userId = user?.id || user?.user_id || "unknown-user";
 
@@ -463,19 +465,27 @@ function JoinScreen({ user, onJoin }) {
                     : "Adjust your position"}
               </button>
 
-              {/* Alternative Verification / Accessibility Fallback */}
-              {!ready && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    sessionStorage.setItem("chronos_alternative_verification", "true");
-                    onJoin?.();
-                  }}
-                  className="font-label text-[0.7rem] uppercase tracking-widest text-[#DCC492]/80 hover:text-[#DCC492] transition-colors underline underline-offset-4"
-                >
-                  Join with Alternative / Manual Verification
-                </button>
-              )}
+              {/* Camera-Optional / Manual Fallback button */}
+              <button
+                type="button"
+                onClick={() => {
+                  sessionStorage.setItem("chronos_camera_optional", "true");
+                  sessionStorage.setItem("chronos_alternative_verification", "true");
+                  onJoin?.();
+                }}
+                className="font-label text-[0.7rem] uppercase tracking-widest text-[#DCC492]/80 hover:text-[#DCC492] transition-colors underline underline-offset-4"
+              >
+                Join in Camera-Optional / Manual Mode
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowPrivacyModal(true)}
+                className="font-label text-[0.7rem] uppercase tracking-widest text-emerald-400/90 hover:text-emerald-300 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">shield</span>
+                <span>Review Privacy & Consent Choices</span>
+              </button>
 
               <button
                 type="button"
@@ -493,14 +503,35 @@ function JoinScreen({ user, onJoin }) {
               verified_user
             </span>
             <p className="font-body text-[0.8rem] text-on-surface-variant opacity-80 leading-snug">
-              Privacy-aware verification. Only essential readiness signals are
-              checked.
+              Zero raw video persisted. All facial landmarks run strictly on your device.
             </p>
           </div>
         </div>
       </div>
+
+      <PreJoinNoticeModal
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+        initialConsents={consents}
+        onConfirm={async (selectedConsents) => {
+          setConsents(selectedConsents);
+          setShowPrivacyModal(false);
+          if (token) {
+            try {
+              await recordConsent(token, { scopes: selectedConsents });
+            } catch (e) {
+              console.warn("Failed to persist consent:", e);
+            }
+          }
+          if (!selectedConsents.CAMERA_LOCAL_PROCESSING || !selectedConsents.IDENTITY_ENROLLMENT) {
+            sessionStorage.setItem("chronos_camera_optional", "true");
+            onJoin?.();
+          }
+        }}
+      />
     </div>
   );
 }
 
 export default JoinScreen;
+

@@ -83,6 +83,15 @@ class AnswerService:
                 f"Cannot save draft for session in '{status}' status"
             )
 
+        # Consent Check for ANSWER_STORAGE
+        consent_status = self.repository.get_consent_status(
+            tenant_id, participant_id, "ANSWER_STORAGE", session_id
+        )
+        if consent_status and consent_status.get("grant_or_decline") == "DECLINE":
+            raise StorageValidationError(
+                "Cannot store answer draft: ANSWER_STORAGE consent was declined by participant."
+            )
+
         content_str = typed_content or ""
         content_bytes = content_str.encode("utf-8")
         content_hash = compute_content_hash(content_bytes)
@@ -152,6 +161,7 @@ class AnswerService:
         Submits an answer artifact (file or typed text) as a versioned submission.
         Enforces:
         - Session tenancy, existence, and active state (rejected if ENDED/EXPIRED).
+        - Granular consent check for ANSWER_STORAGE.
         - Idempotency with client_submission_id & matching content hash.
         - Maximum 3 submitted versions per participant (rejecting 4th version with ValueError).
         - Automatic version increment (1 -> 2 -> 3).
@@ -170,6 +180,15 @@ class AnswerService:
         if session_status in ("ENDED", "EXPIRED"):
             raise ValueError(
                 f"Cannot submit answer for session with status '{session_status}'"
+            )
+
+        # 2b. Consent Check for ANSWER_STORAGE
+        consent_status = self.repository.get_consent_status(
+            tenant_id, participant_id, "ANSWER_STORAGE", session_id
+        )
+        if consent_status and consent_status.get("grant_or_decline") == "DECLINE":
+            raise StorageValidationError(
+                "Cannot submit answer: ANSWER_STORAGE consent was declined by participant."
             )
 
         # 3. Artifact payload validation

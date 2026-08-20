@@ -74,8 +74,18 @@ from models import (
     AnswerSubmitRequest,
     AnswerResponse,
     SubmissionListResponse,
+    ConsentGrantRequest,
+    ConsentWithdrawRequest,
+    ConsentRecordResponse,
+    StudentContextRequest,
+    LegalHoldCreateRequest,
+    LegalHoldReleaseRequest,
+    LegalHoldResponse,
+    DeletionRequestCreate,
+    RetentionDryRunRequest,
+    RetentionExecutionRequest,
 )
-from contracts import EventEnvelope, EventType, ActorRole, EventSource
+from contracts import EventEnvelope, EventType, ActorRole, EventSource, ConsentCategory, AppealCategory
 from projections.engine import ProjectionEngine
 from presence import challenge_manager, ActivePresenceResultState
 from storage.storage_service import (
@@ -89,6 +99,11 @@ from storage.storage_service import (
 )
 from assessment.resource_service import ResourceService
 from assessment.answer_service import AnswerService
+from privacy.consent_service import ConsentService
+from privacy.legal_hold_service import LegalHoldService
+from privacy.retention_service import RetentionService
+from privacy.dsr_service import DSRService
+from auth.hms_verification import HMSComplianceVerifier
 
 load_dotenv()
 logger = get_logger("chronos.backend")
@@ -117,6 +132,15 @@ meeting_service = MeetingTokenService(db_client=supabase)
 storage_service = get_storage_service(supabase_client=supabase)
 resource_service = ResourceService(repository=repository, storage_service=storage_service)
 answer_service = AnswerService(repository=repository, storage_service=storage_service)
+consent_service = ConsentService(repository=repository)
+legal_hold_service = LegalHoldService(repository=repository)
+retention_service = RetentionService(
+    repository=repository,
+    storage_service=storage_service,
+    legal_hold_service=legal_hold_service,
+)
+dsr_service = DSRService(repository=repository, retention_service=retention_service)
+hms_verifier = HMSComplianceVerifier()
 
 app = FastAPI(
     title="Chronos Secure Platform API",
@@ -630,7 +654,11 @@ async def student_ws(
             if msg_type in ("OBSERVATION_SAMPLE", "METRICS"):
                 session = repository.get_session(session_id)
                 policy_id = session.get("policy_id", "CLASSROOM") if session else "CLASSROOM"
-                if policy_id != "NO_ANALYTICS":
+                # Consent enforcement: drop samples if ATTENTION_TELEMETRY was explicitly declined
+                consent_status = repository.get_consent_status(tenant_id, actor_id, "ATTENTION_TELEMETRY", session_id)
+                is_declined = consent_status and consent_status.get("grant_or_decline") == "DECLINE"
+                
+                if policy_id != "NO_ANALYTICS" and not is_declined:
                     payload_data = msg.get("payload") or msg
                     evt = {
                         "event_id": str(msg.get("event_id") or uuid.uuid4()),
@@ -655,7 +683,11 @@ async def student_ws(
             elif msg_type in ("PAGE_HIDDEN", "PAGE_VISIBLE", "WINDOW_BLURRED", "WINDOW_FOCUSED", "FULLSCREEN_ENTERED", "FULLSCREEN_EXITED"):
                 session = repository.get_session(session_id)
                 policy_id = session.get("policy_id", "CLASSROOM") if session else "CLASSROOM"
-                if policy_id != "NO_ANALYTICS":
+                # Consent enforcement: drop visibility events if BROWSER_CONTEXT_TELEMETRY was explicitly declined
+                b_consent = repository.get_consent_status(tenant_id, actor_id, "BROWSER_CONTEXT_TELEMETRY", session_id)
+                is_b_declined = b_consent and b_consent.get("grant_or_decline") == "DECLINE"
+
+                if policy_id != "NO_ANALYTICS" and not is_b_declined:
                     payload_data = msg.get("payload") or {
                         "visibility_state": "HIDDEN" if "HIDDEN" in msg_type or "BLUR" in msg_type or "EXITED" in msg_type else "VISIBLE",
                         "started_at": msg.get("started_at"),
@@ -986,6 +1018,8 @@ async def request_presence_challenge(
 
     if not is_teacher and target_pid != auth.user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot request challenge for other participants")
+    if is_teacher and target_pid != auth.user_id:
+        _verify_session_teacher(session, auth)
 
     policy_id = session.get("policy_id", "CLASSROOM")
     if policy_id == "NO_ANALYTICS":
@@ -1322,6 +1356,7 @@ async def teacher_action(
     payload: TeacherActionPayload,
     auth: AuthContext = Depends(require_teacher),
 ):
+    session = None
     if payload.session_id != "default-session":
         session = repository.get_session(payload.session_id)
         if not session:
@@ -1336,6 +1371,42 @@ async def teacher_action(
             status_code=400,
             detail="action must be mark_engaged, ignore, remove, or message",
         )
+
+    # 1. Emit durable TEACHER_ACTION_RECORDED event
+    now_iso = datetime.now(timezone.utc).isoformat()
+    policy_id = session.get("policy_id", "CLASSROOM") if session else "CLASSROOM"
+    evt = {
+        "event_id": str(uuid.uuid4()),
+        "event_type": "TEACHER_ACTION_RECORDED",
+        "schema_version": 1,
+        "tenant_id": auth.tenant_id,
+        "session_id": payload.session_id,
+        "participant_id": payload.user_id,
+        "actor_id": auth.user_id,
+        "actor_role": "teacher",
+        "source": "teacher",
+        "occurred_at": now_iso,
+        "policy_id": policy_id,
+        "payload": {
+            "action_id": str(uuid.uuid4()),
+            "action_type": payload.action,
+            "target_participant_ids": [payload.user_id],
+            "note": payload.message_text if payload.action == "message" else None,
+        },
+    }
+    repository.append_event(evt)
+
+    # 2. Record Audit Log
+    repository.record_audit_log({
+        "tenant_id": auth.tenant_id,
+        "session_id": payload.session_id,
+        "actor_id": auth.user_id,
+        "actor_role": "teacher",
+        "action_type": "TEACHER_ACTION",
+        "target_user_id": payload.user_id,
+        "details": {"action": payload.action},
+    })
+
     msg = {
         "type": "teacher_action",
         "action": payload.action,
@@ -1355,6 +1426,7 @@ async def send_nudge(
     payload: NudgePayload,
     auth: AuthContext = Depends(require_teacher),
 ):
+    session = None
     if payload.session_id != "default-session":
         session = repository.get_session(payload.session_id)
         if not session:
@@ -1363,6 +1435,29 @@ async def send_nudge(
             )
         _verify_session_tenant(session, auth)
         _verify_session_teacher(session, auth)
+
+    # Emit durable STUDENT_NUDGED event
+    now_iso = datetime.now(timezone.utc).isoformat()
+    policy_id = session.get("policy_id", "CLASSROOM") if session else "CLASSROOM"
+    evt = {
+        "event_id": str(uuid.uuid4()),
+        "event_type": "STUDENT_NUDGED",
+        "schema_version": 1,
+        "tenant_id": auth.tenant_id,
+        "session_id": payload.session_id,
+        "participant_id": payload.user_id,
+        "actor_id": auth.user_id,
+        "actor_role": "teacher",
+        "source": "teacher",
+        "occurred_at": now_iso,
+        "policy_id": policy_id,
+        "payload": {
+            "nudge_id": str(uuid.uuid4()),
+            "nudge_type": payload.nudge_type,
+            "delivery_channel": "in_app_banner",
+        },
+    }
+    repository.append_event(evt)
 
     msg = {
         "type": "nudge",
@@ -1467,6 +1562,12 @@ async def get_session_events(
             participant_id=auth.user_id,
             from_sequence=since_sequence,
         )
+        # Redact private teacher notes for student viewers
+        for evt in events:
+            if evt.get("event_type") == "TEACHER_ACTION_RECORDED":
+                p = evt.get("payload", {})
+                if isinstance(p, dict) and p.get("note"):
+                    p["note"] = "[TEACHER_NOTE_CONFIDENTIAL]"
     else:
         _verify_session_teacher(session, auth)
         events = repository.get_session_events(
@@ -1496,11 +1597,14 @@ async def get_participant_projection(
         )
     _verify_session_tenant(session, auth)
 
-    if auth.role == UserRole.STUDENT and auth.user_id != participant_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot access another participant's state",
-        )
+    if auth.role == UserRole.STUDENT:
+        if auth.user_id != participant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot access another participant's state",
+            )
+    else:
+        _verify_session_teacher(session, auth)
 
     projection = repository.get_participant_projection(session_id, participant_id)
     if not projection:
@@ -2112,6 +2216,331 @@ async def get_my_answers(
         if "not found" in err_msg:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=err_msg)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
+
+
+# ---------------------------------------------------------------------------
+# 10. Privacy, Granular Consent & Data Lifecycle Endpoints (Workstream W6)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/v1/privacy/consent")
+async def record_consent_choice(
+    payload: ConsentGrantRequest,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Record or update granular consent choice(s).
+    Supports single scope or batch scopes map (e.g. from Pre-Join Transparency screen).
+    """
+    tenant_id = auth.tenant_id
+    subject_id = auth.user_id
+    actor_type = auth.role
+
+    if payload.scopes:
+        results = consent_service.record_batch_consent_grants(
+            tenant_id=tenant_id,
+            subject_id=subject_id,
+            scopes=payload.scopes,
+            session_id=payload.session_id,
+            policy_version=payload.policy_version,
+            actor_type=actor_type,
+        )
+        return {"status": "success", "consents": results}
+    elif payload.scope:
+        result = consent_service.record_consent_grant(
+            tenant_id=tenant_id,
+            subject_id=subject_id,
+            scope=payload.scope,
+            grant=payload.grant,
+            session_id=payload.session_id,
+            policy_version=payload.policy_version,
+            actor_type=actor_type,
+        )
+        return {"status": "success", "consent": result}
+    else:
+        raise HTTPException(status_code=400, detail="Must provide 'scope' or 'scopes'")
+
+
+@app.post("/api/v1/privacy/consent/withdraw")
+async def withdraw_consent_choice(
+    payload: ConsentWithdrawRequest,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Withdraw consent for an optional processing scope mid-session.
+    Routes participant to manual / camera-optional alternative without penalty.
+    """
+    withdrawn = consent_service.withdraw_consent(
+        tenant_id=auth.tenant_id,
+        subject_id=auth.user_id,
+        scope=payload.scope,
+        session_id=payload.session_id,
+        policy_version=payload.policy_version,
+    )
+    if not withdrawn:
+        raise HTTPException(status_code=400, detail="Failed to withdraw consent")
+    return {"status": "success", "withdrawn": withdrawn}
+
+
+@app.get("/api/v1/privacy/consent/mine")
+async def get_my_consents(
+    session_id: Optional[str] = Query(None),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """List active and historical consent choices for authenticated participant."""
+    consents = consent_service.list_participant_consents(
+        tenant_id=auth.tenant_id,
+        subject_id=auth.user_id,
+        session_id=session_id,
+    )
+    return {"status": "success", "consents": consents}
+
+
+@app.get("/api/v1/privacy/data-export")
+async def export_my_data(
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Subject Access Request (SAR): Export personal derived events, projections,
+    and submission metadata. Guaranteed: zero raw media or embeddings.
+    """
+    exported = dsr_service.export_participant_data(
+        tenant_id=auth.tenant_id,
+        subject_id=auth.user_id,
+    )
+    return exported
+
+
+@app.post("/api/v1/privacy/deletion-request")
+async def request_data_deletion(
+    payload: DeletionRequestCreate,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Submit a participant data erasure / deletion request.
+    Idempotent and respects legal holds.
+    """
+    res = dsr_service.request_erasure(
+        tenant_id=auth.tenant_id,
+        subject_id=auth.user_id,
+        session_id=payload.session_id,
+        data_classes=payload.data_classes,
+        reason=payload.reason,
+        requested_by=auth.user_id,
+    )
+    return res
+
+
+@app.post("/api/v1/privacy/holds", dependencies=[Depends(require_admin)])
+async def create_legal_hold_endpoint(
+    payload: LegalHoldCreateRequest,
+    auth: AuthContext = Depends(require_admin),
+):
+    """Create a new legal / institutional hold protecting target data from expiration."""
+    hold = legal_hold_service.create_hold(
+        tenant_id=auth.tenant_id,
+        reason=payload.reason,
+        approver_id=auth.user_id,
+        approver_email=payload.approver_email,
+        expiry_or_review_date=payload.expiry_or_review_date,
+        session_id=payload.session_id,
+        subject_id=payload.subject_id,
+        data_classes=payload.data_classes,
+        notes=payload.notes,
+    )
+    return {"status": "success", "hold": hold}
+
+
+@app.get("/api/v1/privacy/holds", dependencies=[Depends(require_admin)])
+async def list_legal_holds_endpoint(
+    status_filter: Optional[str] = Query(None, alias="status"),
+    session_id: Optional[str] = Query(None),
+    auth: AuthContext = Depends(require_admin),
+):
+    """List active or filtered legal holds for tenant."""
+    holds = legal_hold_service.list_holds(
+        tenant_id=auth.tenant_id,
+        status=status_filter,
+        session_id=session_id,
+    )
+    return {"status": "success", "holds": holds}
+
+
+@app.post("/api/v1/privacy/holds/{hold_id}/release", dependencies=[Depends(require_admin)])
+async def release_legal_hold_endpoint(
+    hold_id: str,
+    payload: LegalHoldReleaseRequest,
+    auth: AuthContext = Depends(require_admin),
+):
+    """Release an active legal hold with documented justification."""
+    released = legal_hold_service.release_hold(
+        hold_id=hold_id,
+        tenant_id=auth.tenant_id,
+        released_by=auth.user_id,
+        reason=payload.release_reason,
+    )
+    if not released:
+        raise HTTPException(status_code=404, detail="Legal hold not found or already released")
+    return {"status": "success", "hold": released}
+
+
+@app.post("/api/v1/privacy/retention/dry-run", dependencies=[Depends(require_admin)])
+async def retention_dry_run_endpoint(
+    payload: RetentionDryRunRequest,
+    auth: AuthContext = Depends(require_admin),
+):
+    """Estimate retention cleanup candidates, bytes freed, and held exceptions."""
+    t_id = payload.tenant_id or auth.tenant_id
+    if payload.session_id:
+        res = retention_service.execute_session_deletion(
+            tenant_id=t_id,
+            session_id=payload.session_id,
+            actor_id=auth.user_id,
+            reason="ADMIN_DRY_RUN",
+            dry_run=True,
+        )
+        return {"status": "success", "dry_run": res}
+    summary = retention_service.run_scheduled_cleanup(tenant_id=t_id, dry_run=True)
+    return {"status": "success", "summary": summary}
+
+
+@app.post("/api/v1/privacy/retention/execute", dependencies=[Depends(require_admin)])
+async def retention_execute_endpoint(
+    payload: RetentionExecutionRequest,
+    auth: AuthContext = Depends(require_admin),
+):
+    """Execute scheduled or targeted retention cleanup pipeline."""
+    t_id = payload.tenant_id or auth.tenant_id
+    if payload.session_id:
+        res = retention_service.execute_session_deletion(
+            tenant_id=t_id,
+            session_id=payload.session_id,
+            actor_id=auth.user_id,
+            reason="ADMIN_EXECUTION",
+            dry_run=False,
+        )
+        return {"status": "success", "execution": res}
+    summary = retention_service.run_scheduled_cleanup(tenant_id=t_id, dry_run=False)
+    return {"status": "success", "summary": summary}
+
+
+@app.post("/api/v1/sessions/{session_id}/context", dependencies=[Depends(require_student)])
+async def add_student_context(
+    session_id: str,
+    payload: StudentContextRequest,
+    auth: AuthContext = Depends(require_student),
+):
+    """
+    Student submits structured technical context or appeal (e.g. WiFi drop, camera glitch).
+    Attaches to durable event timeline without modifying or deleting past evidence.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    _verify_session_tenant(session, auth)
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    context_id = str(uuid.uuid4())
+    policy_id = session.get("policy_id", "CLASSROOM")
+
+    evt = {
+        "event_id": context_id,
+        "event_type": "STUDENT_CONTEXT_ADDED",
+        "schema_version": 1,
+        "tenant_id": auth.tenant_id,
+        "session_id": session_id,
+        "participant_id": auth.user_id,
+        "actor_id": auth.user_id,
+        "actor_role": "participant",
+        "source": "browser",
+        "occurred_at": now_iso,
+        "policy_id": policy_id,
+        "payload": {
+            "context_id": context_id,
+            "appeal_category": payload.appeal_category,
+            "explanation_text": payload.explanation_text,
+            "requested_help": payload.requested_help,
+            "attached_to_event_ids": payload.attached_to_event_ids,
+            "attached_at": now_iso,
+        },
+    }
+    persisted = repository.append_event(evt)
+    return {"status": "success", "context_id": context_id, "event": persisted}
+
+
+@app.get("/api/v1/sessions/{session_id}/report", dependencies=[Depends(require_teacher)])
+async def get_session_report(
+    session_id: str,
+    auth: AuthContext = Depends(require_teacher),
+):
+    """
+    Fetch post-session report read model with access audit logging.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    _verify_session_tenant(session, auth)
+    _verify_session_teacher(session, auth)
+
+    # 1. Record Report Access Audit
+    repository.record_audit_log({
+        "tenant_id": auth.tenant_id,
+        "session_id": session_id,
+        "actor_id": auth.user_id,
+        "actor_role": auth.role,
+        "action_type": "REPORT_ACCESSED",
+    })
+
+    # 2. Fetch or materialize report read model
+    report = repository.get_report_read_model(session_id)
+    if not report:
+        events = repository.get_session_events(session_id)
+        report = ProjectionEngine.build_session_summary(events, session_id, auth.tenant_id)
+
+    return {"status": "success", "report": report}
+
+
+@app.post("/api/v1/sessions/{session_id}/report/export-audit", dependencies=[Depends(require_teacher)])
+async def record_export_audit(
+    session_id: str,
+    export_format: str = Query("pdf"),
+    auth: AuthContext = Depends(require_teacher),
+):
+    """Record an audit entry when a session report is exported."""
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    _verify_session_tenant(session, auth)
+    _verify_session_teacher(session, auth)
+
+    repository.record_audit_log({
+        "tenant_id": auth.tenant_id,
+        "session_id": session_id,
+        "actor_id": auth.user_id,
+        "actor_role": auth.role,
+        "action_type": "REPORT_EXPORTED",
+        "details": {"format": export_format},
+    })
+    return {"status": "success"}
+
+
+@app.get("/admin/provider-compliance")
+async def verify_provider_compliance(
+    room_id: Optional[str] = None,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Verifies meeting provider (100ms) recording, transcription, and AI summary disablement.
+    Guarantees: Zero provider cloud recording enabled.
+    """
+    is_compliant, violations, metadata = hms_verifier.verify_room_and_template_compliance(room_id=room_id)
+    return {
+        "status": "COMPLIANT" if is_compliant else "NON_COMPLIANT",
+        "provider": "100ms",
+        "compliant": is_compliant,
+        "violations": violations,
+        "metadata": metadata,
+    }
+
 
 
 

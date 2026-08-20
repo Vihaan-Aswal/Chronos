@@ -11,6 +11,7 @@ BANNED_KEY_PATTERNS = [
     r"password",
     r"token",
     r"jwt",
+    r"signature",
     r"api[_-]?key",
     r"service[_-]?role",
     r"authorization",
@@ -23,6 +24,10 @@ BANNED_KEY_PATTERNS = [
     r"raw[_-]?image",
     r"audio",
     r"answer[_-]?text",
+    r"typed[_-]?content",
+    r"typed[_-]?text",
+    r"student[_-]?response",
+    r"raw[_-]?answer",
     r"essay",
     r"submission[_-]?content",
 ]
@@ -79,6 +84,14 @@ class ChronosJSONFormatter(logging.Formatter):
             "latency_ms": getattr(record, "latency_ms", None),
             "message": record.getMessage(),
         }
+
+        # Sanitize any extra attributes on record
+        for k, v in record.__dict__.items():
+            if k not in log_entry and not k.startswith("_") and k not in ("msg", "args", "exc_info", "exc_text", "stack_info", "created", "msecs", "relativeCreated", "levelno", "levelname", "name", "pathname", "filename", "module", "lineno", "funcName", "process", "processName", "thread", "threadName"):
+                if BANNED_KEY_RE.search(str(k)):
+                    log_entry[k] = "[REDACTED_PRIVACY_SENSITIVE]"
+                else:
+                    log_entry[k] = redact_payload(v)
 
         # Attach and sanitize extra structured payload if provided
         data = getattr(record, "data", None)

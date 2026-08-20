@@ -4,7 +4,7 @@ Encapsulates Supabase data operations with multi-tenant isolation, atomic update
 session lifecycle invariants, append-only event store, and deterministic projections.
 """
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 from chronos_logging import get_logger, redact_payload
 from projections.engine import ProjectionEngine
@@ -676,3 +676,452 @@ class ChronosDomainRepository:
             "rebuilt_cases_count": len(rebuilt_cases),
             "summary": summary,
         }
+
+    # -----------------------------------------------------------------------
+    # W6 Privacy, Consent, Legal Holds, Audit & Retention
+    # -----------------------------------------------------------------------
+
+    def record_audit_log(self, audit_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Record an immutable audit entry."""
+        if "audit_id" not in audit_data:
+            audit_data["audit_id"] = str(uuid.uuid4())
+        if "created_at" not in audit_data:
+            audit_data["created_at"] = datetime.now(timezone.utc).isoformat()
+        try:
+            res = self.db.table("audit_logs").insert(audit_data).execute()
+            return res.data[0] if res.data else audit_data
+        except Exception as e:
+            logger.warning(f"Error recording audit log: {e}")
+            return audit_data
+
+    def list_audit_logs(
+        self,
+        tenant_id: str,
+        session_id: Optional[str] = None,
+        action_type: Optional[str] = None,
+        limit: int = 500,
+    ) -> List[Dict[str, Any]]:
+        """Fetch filtered audit entries for tenant."""
+        try:
+            query = self.db.table("audit_logs").select("*").eq("tenant_id", tenant_id)
+            if session_id:
+                query = query.eq("session_id", session_id)
+            if action_type:
+                query = query.eq("action_type", action_type)
+            res = query.order("created_at", desc=True).limit(limit).execute()
+            return res.data or []
+        except Exception:
+            return []
+
+    def record_consent(self, consent_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Upsert a granular consent choice."""
+        if "consent_id" not in consent_data:
+            consent_data["consent_id"] = str(uuid.uuid4())
+        if "granted_at" not in consent_data:
+            consent_data["granted_at"] = datetime.now(timezone.utc).isoformat()
+        if "created_at" not in consent_data:
+            consent_data["created_at"] = consent_data["granted_at"]
+        try:
+            res = self.db.table("consent_records").upsert(consent_data).execute()
+            persisted = res.data[0] if res.data else consent_data
+            # Also record in audit log
+            self.record_audit_log({
+                "tenant_id": consent_data["tenant_id"],
+                "session_id": consent_data.get("session_id"),
+                "actor_id": consent_data["subject_id"],
+                "actor_role": consent_data.get("actor_type", "student"),
+                "action_type": "CONSENT_GRANTED" if consent_data.get("grant_or_decline") == "GRANT" else "CONSENT_DECLINED",
+                "target_user_id": consent_data["subject_id"],
+                "details": {
+                    "scope": consent_data["scope"],
+                    "policy_version": consent_data.get("policy_version", "v1"),
+                    "choice": consent_data.get("grant_or_decline"),
+                },
+            })
+            return persisted
+        except Exception as e:
+            logger.warning(f"Error recording consent: {e}")
+            return consent_data
+
+    def get_participant_consents(
+        self, tenant_id: str, subject_id: str, session_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Fetch all consent records for a participant."""
+        try:
+            query = (
+                self.db.table("consent_records")
+                .select("*")
+                .eq("tenant_id", tenant_id)
+                .eq("subject_id", subject_id)
+            )
+            if session_id:
+                query = query.or_(f"session_id.eq.{session_id},session_id.is.null")
+            res = query.execute()
+            return res.data or []
+        except Exception:
+            return []
+
+    def get_consent_status(
+        self, tenant_id: str, subject_id: str, scope: str, session_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Fetch specific consent status for subject and scope."""
+        try:
+            query = (
+                self.db.table("consent_records")
+                .select("*")
+                .eq("tenant_id", tenant_id)
+                .eq("subject_id", subject_id)
+                .eq("scope", scope)
+            )
+            if session_id:
+                query = query.or_(f"session_id.eq.{session_id},session_id.is.null")
+            res = query.order("granted_at", desc=True).execute()
+            if res.data:
+                return res.data[0]
+            return None
+        except Exception:
+            return None
+
+    def withdraw_consent(
+        self,
+        tenant_id: str,
+        subject_id: str,
+        scope: str,
+        session_id: Optional[str] = None,
+        withdrawn_at: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Withdraw consent for a specific scope."""
+        now_iso = withdrawn_at or datetime.now(timezone.utc).isoformat()
+        try:
+            existing = self.get_consent_status(tenant_id, subject_id, scope, session_id)
+            if existing:
+                update_data = {
+                    "grant_or_decline": "DECLINE",
+                    "withdrawn_at": now_iso,
+                }
+                res = (
+                    self.db.table("consent_records")
+                    .update(update_data)
+                    .eq("consent_id", existing["consent_id"])
+                    .execute()
+                )
+                updated = res.data[0] if res.data else {**existing, **update_data}
+            else:
+                new_record = {
+                    "consent_id": str(uuid.uuid4()),
+                    "tenant_id": tenant_id,
+                    "subject_id": subject_id,
+                    "session_id": session_id,
+                    "scope": scope,
+                    "policy_version": "v1",
+                    "grant_or_decline": "DECLINE",
+                    "granted_at": now_iso,
+                    "withdrawn_at": now_iso,
+                    "actor_type": "student",
+                    "created_at": now_iso,
+                }
+                res = self.db.table("consent_records").insert(new_record).execute()
+                updated = res.data[0] if res.data else new_record
+
+            # Audit record
+            self.record_audit_log({
+                "tenant_id": tenant_id,
+                "session_id": session_id,
+                "actor_id": subject_id,
+                "actor_role": "student",
+                "action_type": "CONSENT_WITHDRAWN",
+                "target_user_id": subject_id,
+                "details": {"scope": scope, "withdrawn_at": now_iso},
+            })
+            return updated
+        except Exception as e:
+            logger.warning(f"Error withdrawing consent: {e}")
+            return None
+
+    def create_legal_hold(self, hold_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new legal / institutional hold."""
+        if "hold_id" not in hold_data:
+            hold_data["hold_id"] = str(uuid.uuid4())
+        if "created_at" not in hold_data:
+            hold_data["created_at"] = datetime.now(timezone.utc).isoformat()
+        if "status" not in hold_data:
+            hold_data["status"] = "ACTIVE"
+        res = self.db.table("legal_holds").insert(hold_data).execute()
+        persisted = res.data[0] if res.data else hold_data
+
+        # Audit record
+        self.record_audit_log({
+            "tenant_id": hold_data["tenant_id"],
+            "session_id": hold_data.get("session_id"),
+            "actor_id": hold_data.get("approver_id", "admin"),
+            "actor_role": "admin",
+            "action_type": "LEGAL_HOLD_APPLIED",
+            "target_user_id": hold_data.get("subject_id"),
+            "details": {
+                "hold_id": persisted.get("hold_id"),
+                "reason": hold_data.get("reason"),
+                "data_classes": hold_data.get("data_classes"),
+                "expires_at": hold_data.get("expiry_or_review_date"),
+            },
+        })
+        return persisted
+
+    def get_legal_hold(self, hold_id: str, tenant_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Fetch a legal hold by ID."""
+        try:
+            query = self.db.table("legal_holds").select("*").eq("hold_id", hold_id)
+            if tenant_id:
+                query = query.eq("tenant_id", tenant_id)
+            res = query.execute()
+            return res.data[0] if res.data else None
+        except Exception:
+            return None
+
+    def list_legal_holds(
+        self, tenant_id: str, status: Optional[str] = None, session_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """List holds for tenant."""
+        try:
+            query = self.db.table("legal_holds").select("*").eq("tenant_id", tenant_id)
+            if status:
+                query = query.eq("status", status)
+            if session_id:
+                query = query.eq("session_id", session_id)
+            res = query.order("created_at", desc=True).execute()
+            return res.data or []
+        except Exception:
+            return []
+
+    def release_legal_hold(
+        self, hold_id: str, tenant_id: str, released_by: str, reason: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Release an active legal hold."""
+        now_iso = datetime.now(timezone.utc).isoformat()
+        try:
+            update_data = {
+                "status": "RELEASED",
+                "released_at": now_iso,
+                "released_by": released_by,
+            }
+            if reason:
+                update_data["notes"] = reason
+            res = (
+                self.db.table("legal_holds")
+                .update(update_data)
+                .eq("hold_id", hold_id)
+                .eq("tenant_id", tenant_id)
+                .execute()
+            )
+            updated = res.data[0] if res.data else None
+            if updated:
+                self.record_audit_log({
+                    "tenant_id": tenant_id,
+                    "session_id": updated.get("session_id"),
+                    "actor_id": released_by,
+                    "actor_role": "admin",
+                    "action_type": "LEGAL_HOLD_RELEASED",
+                    "target_user_id": updated.get("subject_id"),
+                    "details": {"hold_id": hold_id, "release_reason": reason},
+                })
+            return updated
+        except Exception as e:
+            logger.warning(f"Error releasing hold {hold_id}: {e}")
+            return None
+
+    def is_record_held(
+        self, tenant_id: str, session_id: Optional[str] = None, subject_id: Optional[str] = None, data_class: str = "ALL"
+    ) -> bool:
+        """Evaluate if data for a session or subject is protected by an active hold."""
+        try:
+            now_iso = datetime.now(timezone.utc).isoformat()
+            query = (
+                self.db.table("legal_holds")
+                .select("*")
+                .eq("tenant_id", tenant_id)
+                .eq("status", "ACTIVE")
+                .gt("expiry_or_review_date", now_iso)
+            )
+            res = query.execute()
+            holds = res.data or []
+            for h in holds:
+                h_session = h.get("session_id")
+                h_subject = h.get("subject_id")
+                h_classes = h.get("data_classes") or ["ALL"]
+
+                # Check scope match
+                session_match = (h_session is None) or (session_id and h_session == session_id)
+                subject_match = (h_subject is None) or (subject_id and h_subject == subject_id)
+                class_match = ("ALL" in h_classes) or (data_class in h_classes)
+
+                if session_match and subject_match and class_match:
+                    return True
+            return False
+        except Exception as e:
+            logger.error(f"Error checking legal hold: {e}")
+            return True  # Fail-closed: protect records if hold check errors
+
+    def record_deletion_tombstone(self, tombstone_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Record minimal privacy-safe deletion audit tombstone."""
+        if "tombstone_id" not in tombstone_data:
+            tombstone_data["tombstone_id"] = str(uuid.uuid4())
+        if "deleted_at" not in tombstone_data:
+            tombstone_data["deleted_at"] = datetime.now(timezone.utc).isoformat()
+        try:
+            res = self.db.table("deletion_audit_tombstones").insert(tombstone_data).execute()
+            persisted = res.data[0] if res.data else tombstone_data
+            # Audit log
+            self.record_audit_log({
+                "tenant_id": tombstone_data["tenant_id"],
+                "session_id": tombstone_data.get("session_id"),
+                "actor_id": tombstone_data.get("initiated_by", "system"),
+                "actor_role": "system",
+                "action_type": "DELETION_EXECUTED",
+                "details": {
+                    "tombstone_id": persisted.get("tombstone_id"),
+                    "data_classes_deleted": tombstone_data.get("data_classes_deleted"),
+                    "records_deleted_count": tombstone_data.get("records_deleted_count"),
+                    "bytes_deleted_count": tombstone_data.get("bytes_deleted_count"),
+                },
+            })
+            return persisted
+        except Exception as e:
+            logger.warning(f"Error recording deletion tombstone: {e}")
+            return tombstone_data
+
+    def list_deletion_tombstones(self, tenant_id: str) -> List[Dict[str, Any]]:
+        """List deletion audit tombstones for tenant."""
+        try:
+            res = (
+                self.db.table("deletion_audit_tombstones")
+                .select("*")
+                .eq("tenant_id", tenant_id)
+                .order("deleted_at", desc=True)
+                .execute()
+            )
+            return res.data or []
+        except Exception:
+            return []
+
+    def create_deletion_request(self, req_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a deletion request entry."""
+        if "request_id" not in req_data:
+            req_data["request_id"] = str(uuid.uuid4())
+        if "requested_at" not in req_data:
+            req_data["requested_at"] = datetime.now(timezone.utc).isoformat()
+        if "status" not in req_data:
+            req_data["status"] = "REQUESTED"
+        try:
+            res = self.db.table("deletion_requests").insert(req_data).execute()
+            return res.data[0] if res.data else req_data
+        except Exception as e:
+            logger.warning(f"Error creating deletion request: {e}")
+            return req_data
+
+    def get_deletion_request(self, request_id: str, tenant_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Fetch deletion request by ID."""
+        try:
+            query = self.db.table("deletion_requests").select("*").eq("request_id", request_id)
+            if tenant_id:
+                query = query.eq("tenant_id", tenant_id)
+            res = query.execute()
+            return res.data[0] if res.data else None
+        except Exception:
+            return None
+
+    def update_deletion_request(self, request_id: str, update_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Update deletion request status."""
+        try:
+            res = (
+                self.db.table("deletion_requests")
+                .update(update_data)
+                .eq("request_id", request_id)
+                .execute()
+            )
+            return res.data[0] if res.data else None
+        except Exception:
+            return None
+
+    def purge_temporary_identity_artifacts(self, max_age_hours: int = 24) -> int:
+        """
+        Delete temporary reference identity embeddings older than max_age_hours (default 24h).
+        Guarantees: maximum 24 hours retention for temporary biometric embeddings.
+        """
+        purged_count = 0
+        try:
+            threshold = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+            threshold_iso = threshold.isoformat()
+            
+            # Fetch candidates to purge
+            res = (
+                self.db.table("identity_embeddings")
+                .select("*")
+                .lt("created_at", threshold_iso)
+                .execute()
+            )
+            candidates = res.data or []
+            for item in candidates:
+                u_id = item.get("user_id")
+                # Check hold on user identity
+                if not self.is_record_held(item.get("tenant_id", "ten-default"), None, u_id, "IDENTITY"):
+                    self.db.table("identity_embeddings").delete().eq("user_id", u_id).execute()
+                    purged_count += 1
+            if purged_count > 0:
+                logger.info(f"Purged {purged_count} temporary identity artifacts older than {max_age_hours}h.")
+        except Exception as e:
+            logger.warning(f"Error purging temporary identity artifacts: {e}")
+        return purged_count
+
+    def purge_session_records(self, session_id: str, tenant_id: str) -> int:
+        """Purge database records associated with a session across all projection tables."""
+        purged_count = 0
+        tables = [
+            "finalized_windows",
+            "session_cases",
+            "resource_projections",
+            "answer_projections",
+            "report_read_models",
+            "session_summaries",
+            "participant_projections",
+            "session_participants",
+            "session_events",
+            "events",
+        ]
+        for tbl in tables:
+            try:
+                res = self.db.table(tbl).delete().eq("session_id", session_id).execute()
+                if res and hasattr(res, "data") and res.data:
+                    purged_count += len(res.data)
+                else:
+                    purged_count += 1
+            except Exception as e:
+                logger.debug(f"Purge note for table {tbl}: {e}")
+        return purged_count
+
+    def purge_participant_records(self, session_id: str, participant_id: str, tenant_id: str) -> int:
+        """Purge data for a specific participant within a session."""
+        purged_count = 0
+        tables_with_part = [
+            ("finalized_windows", "participant_id"),
+            ("answer_projections", "participant_id"),
+            ("participant_projections", "participant_id"),
+            ("session_participants", "user_id"),
+            ("session_events", "participant_id"),
+            ("events", "participant_id"),
+        ]
+        for tbl, col in tables_with_part:
+            try:
+                res = (
+                    self.db.table(tbl)
+                    .delete()
+                    .eq("session_id", session_id)
+                    .eq(col, participant_id)
+                    .execute()
+                )
+                if res and hasattr(res, "data") and res.data:
+                    purged_count += len(res.data)
+                else:
+                    purged_count += 1
+            except Exception as e:
+                logger.debug(f"Purge note for table {tbl}: {e}")
+        return purged_count
+

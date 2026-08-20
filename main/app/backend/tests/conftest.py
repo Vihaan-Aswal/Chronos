@@ -120,7 +120,11 @@ class MockTableQueryBuilder:
         self.store = store
         self._filters: List[tuple[str, Any]] = []
         self._gte_filters: List[tuple[str, Any]] = []
+        self._gt_filters: List[tuple[str, Any]] = []
+        self._lte_filters: List[tuple[str, Any]] = []
+        self._lt_filters: List[tuple[str, Any]] = []
         self._in_filters: List[tuple[str, List[Any]]] = []
+        self._or_filters: List[str] = []
         self._pending_insert: Optional[List[Dict[str, Any]]] = None
         self._pending_upsert: Optional[List[Dict[str, Any]]] = None
         self._pending_update: Optional[Dict[str, Any]] = None
@@ -140,8 +144,24 @@ class MockTableQueryBuilder:
         self._gte_filters.append((column, value))
         return self
 
+    def gt(self, column: str, value: Any):
+        self._gt_filters.append((column, value))
+        return self
+
+    def lte(self, column: str, value: Any):
+        self._lte_filters.append((column, value))
+        return self
+
+    def lt(self, column: str, value: Any):
+        self._lt_filters.append((column, value))
+        return self
+
     def in_(self, column: str, values: List[Any]):
         self._in_filters.append((column, list(values)))
+        return self
+
+    def or_(self, filter_expr: str):
+        self._or_filters.append(filter_expr)
         return self
 
     def order(self, column: str, desc: bool = False):
@@ -178,7 +198,17 @@ class MockTableQueryBuilder:
             saved = []
             for r in self._pending_insert:
                 row = dict(r)
-                if "id" not in row and "session_id" not in row and "user_id" not in row and "event_id" not in row:
+                if (
+                    "id" not in row
+                    and "session_id" not in row
+                    and "user_id" not in row
+                    and "event_id" not in row
+                    and "consent_id" not in row
+                    and "hold_id" not in row
+                    and "request_id" not in row
+                    and "tombstone_id" not in row
+                    and "audit_id" not in row
+                ):
                     row["id"] = str(uuid.uuid4())
                 table_rows.append(row)
                 saved.append(row)
@@ -201,6 +231,19 @@ class MockTableQueryBuilder:
                 row = dict(r)
                 match_idx = None
                 for idx, existing in enumerate(table_rows):
+                    # Composite key for consent_records: (tenant_id, session_id, subject_id, scope) or consent_id
+                    if "consent_id" in row and existing.get("consent_id") == row["consent_id"]:
+                        match_idx = idx
+                        break
+                    if "tenant_id" in row and "subject_id" in row and "scope" in row and self.table_name == "consent_records":
+                        if (
+                            existing.get("tenant_id") == row["tenant_id"]
+                            and existing.get("subject_id") == row["subject_id"]
+                            and existing.get("scope") == row["scope"]
+                            and existing.get("session_id") == row.get("session_id")
+                        ):
+                            match_idx = idx
+                            break
                     # Composite key: (session_id, participant_id) for participant_projections
                     if "session_id" in row and "participant_id" in row:
                         if (
@@ -219,6 +262,18 @@ class MockTableQueryBuilder:
                         ):
                             match_idx = idx
                             break
+                    if "hold_id" in row and existing.get("hold_id") == row["hold_id"]:
+                        match_idx = idx
+                        break
+                    if "request_id" in row and existing.get("request_id") == row["request_id"]:
+                        match_idx = idx
+                        break
+                    if "tombstone_id" in row and existing.get("tombstone_id") == row["tombstone_id"]:
+                        match_idx = idx
+                        break
+                    if "audit_id" in row and existing.get("audit_id") == row["audit_id"]:
+                        match_idx = idx
+                        break
                     if "case_id" in row and existing.get("case_id") == row["case_id"]:
                         match_idx = idx
                         break
@@ -244,7 +299,20 @@ class MockTableQueryBuilder:
                     table_rows[match_idx].update(row)
                     saved.append(table_rows[match_idx])
                 else:
-                    if "id" not in row and "user_id" not in row and "session_id" not in row and "event_id" not in row and "case_id" not in row and "resource_id" not in row and "answer_id" not in row:
+                    if (
+                        "id" not in row
+                        and "user_id" not in row
+                        and "session_id" not in row
+                        and "event_id" not in row
+                        and "case_id" not in row
+                        and "resource_id" not in row
+                        and "answer_id" not in row
+                        and "consent_id" not in row
+                        and "hold_id" not in row
+                        and "request_id" not in row
+                        and "tombstone_id" not in row
+                        and "audit_id" not in row
+                    ):
                         row["id"] = str(uuid.uuid4())
                     table_rows.append(row)
                     saved.append(row)
@@ -270,8 +338,35 @@ class MockTableQueryBuilder:
             filtered = [r for r in filtered if r.get(col) == val]
         for col, val in self._gte_filters:
             filtered = [r for r in filtered if r.get(col) is not None and r.get(col) >= val]
+        for col, val in self._gt_filters:
+            filtered = [r for r in filtered if r.get(col) is not None and str(r.get(col)) > str(val)]
+        for col, val in self._lte_filters:
+            filtered = [r for r in filtered if r.get(col) is not None and r.get(col) <= val]
+        for col, val in self._lt_filters:
+            filtered = [r for r in filtered if r.get(col) is not None and str(r.get(col)) < str(val)]
         for col, vals in self._in_filters:
             filtered = [r for r in filtered if r.get(col) in vals]
+
+        # Process simple .or_("a.eq.1,b.is.null")
+        for or_clause in self._or_filters:
+            sub_clauses = [s.strip() for s in or_clause.split(",") if s.strip()]
+            new_filtered = []
+            for r in filtered:
+                matched_any = False
+                for sub in sub_clauses:
+                    if ".eq." in sub:
+                        field, val = sub.split(".eq.", 1)
+                        if str(r.get(field)) == str(val):
+                            matched_any = True
+                            break
+                    elif ".is.null" in sub:
+                        field = sub.replace(".is.null", "").strip()
+                        if r.get(field) is None:
+                            matched_any = True
+                            break
+                if matched_any:
+                    new_filtered.append(r)
+            filtered = new_filtered
 
         if self._order_col:
             filtered = sorted(
@@ -392,6 +487,11 @@ class MockSupabaseClient:
             "resources": [],
             "answers": [],
             "consents": [],
+            "consent_records": [],
+            "legal_holds": [],
+            "deletion_requests": [],
+            "deletion_audit_tombstones": [],
+            "audit_logs": [],
             "identity_embeddings": [],
             "session_analytics": [],
         }
@@ -404,6 +504,7 @@ class MockSupabaseClient:
         for k in self.store:
             self.store[k].clear()
         self.storage.reset()
+
 
 
 
@@ -487,12 +588,26 @@ def enforce_test_isolation(monkeypatch):
     from storage.storage_service import set_storage_service, LocalStorageService
     from assessment.resource_service import ResourceService
     from assessment.answer_service import AnswerService
+    from privacy.consent_service import ConsentService
+    from privacy.legal_hold_service import LegalHoldService
+    from privacy.retention_service import RetentionService
+    from privacy.dsr_service import DSRService
+    from auth.hms_verification import HMSComplianceVerifier
 
     mock_storage = LocalStorageService()
     set_storage_service(mock_storage)
     main.storage_service = mock_storage
     main.resource_service = ResourceService(repository=main.repository, storage_service=mock_storage)
     main.answer_service = AnswerService(repository=main.repository, storage_service=mock_storage)
+    main.consent_service = ConsentService(repository=main.repository)
+    main.legal_hold_service = LegalHoldService(repository=main.repository)
+    main.retention_service = RetentionService(
+        repository=main.repository,
+        storage_service=mock_storage,
+        legal_hold_service=main.legal_hold_service,
+    )
+    main.dsr_service = DSRService(repository=main.repository, retention_service=main.retention_service)
+    main.hms_verifier = HMSComplianceVerifier()
 
     set_jwt_validator(JWTValidator(jwt_secret=JWT_TEST_SECRET))
 
@@ -513,5 +628,18 @@ def mock_supabase() -> MockSupabaseClient:
 
 
 @pytest.fixture
+def mock_db_client() -> MockSupabaseClient:
+    return _GLOBAL_MOCK_SUPABASE
+
+
+@pytest.fixture
 def mock_hms() -> MockHMSClient:
     return MockHMSClient()
+
+
+@pytest.fixture
+def test_client():
+    from fastapi.testclient import TestClient
+    import main
+    return TestClient(main.app)
+

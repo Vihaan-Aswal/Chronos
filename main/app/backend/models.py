@@ -345,3 +345,92 @@ class SubmissionListResponse(BaseModel):
         elif not self.submissions and self.items:
             self.submissions = self.items
 
+
+# ---------------------------------------------------------------------------
+# Privacy, Consent, Retention & Legal Hold Models
+# ---------------------------------------------------------------------------
+
+class ConsentGrantRequest(BaseModel):
+    session_id: Optional[str] = None
+    scopes: Optional[Dict[str, bool]] = None
+    scope: Optional[str] = None
+    grant: bool = True
+    policy_version: str = "v1"
+    actor_type: str = "student"
+
+
+class ConsentWithdrawRequest(BaseModel):
+    session_id: Optional[str] = None
+    scope: str
+    policy_version: str = "v1"
+
+
+class ConsentRecordResponse(BaseModel):
+    consent_id: str
+    tenant_id: str
+    subject_id: str
+    session_id: Optional[str] = None
+    scope: str
+    policy_version: str = "v1"
+    grant_or_decline: str = "GRANT"
+    granted_at: str
+    withdrawn_at: Optional[str] = None
+    actor_type: str = "student"
+
+
+class StudentContextRequest(BaseModel):
+    appeal_category: str
+    explanation_text: Optional[str] = None
+    requested_help: bool = False
+    attached_to_event_ids: List[str] = Field(default_factory=list)
+
+
+class LegalHoldCreateRequest(BaseModel):
+    session_id: Optional[str] = None
+    subject_id: Optional[str] = None
+    data_classes: List[str] = Field(default_factory=lambda: ["ALL"])
+    reason: str
+    approver_email: str
+    expiry_or_review_date: str
+    notes: Optional[str] = None
+
+
+class LegalHoldReleaseRequest(BaseModel):
+    release_reason: str
+
+
+class LegalHoldResponse(BaseModel):
+    hold_id: str
+    tenant_id: str
+    session_id: Optional[str] = None
+    subject_id: Optional[str] = None
+    data_classes: List[str] = Field(default_factory=lambda: ["ALL"])
+    reason: str
+    approver_id: str
+    approver_email: str
+    notes: Optional[str] = None
+    status: str = "ACTIVE"
+    created_at: str
+    expiry_or_review_date: str
+    released_at: Optional[str] = None
+    released_by: Optional[str] = None
+
+
+class DeletionRequestCreate(BaseModel):
+    session_id: Optional[str] = None
+    data_classes: List[str] = Field(default_factory=lambda: ["ALL"])
+    reason: Optional[str] = None
+
+
+class RetentionDryRunRequest(BaseModel):
+    session_id: Optional[str] = None
+    tenant_id: Optional[str] = None
+    target: Optional[str] = "all"
+
+
+class RetentionExecutionRequest(BaseModel):
+    session_id: Optional[str] = None
+    tenant_id: Optional[str] = None
+    target: Optional[str] = "all"
+
+
