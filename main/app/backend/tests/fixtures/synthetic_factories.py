@@ -13,8 +13,23 @@ def make_synthetic_tenant(
     name: str = "Synthetic Test University",
 ) -> Dict[str, Any]:
     return {
+        "id": tenant_id,
         "tenant_id": tenant_id,
         "name": name,
+        "created_at": "2026-08-20T10:00:00Z",
+    }
+
+
+def make_synthetic_tenant_member(
+    user_id: str = "usr-00000001",
+    tenant_id: str = "ten-00000001",
+    role: str = "student",
+) -> Dict[str, Any]:
+    return {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "tenant_id": tenant_id,
+        "role": role,
         "created_at": "2026-08-20T10:00:00Z",
     }
 
@@ -26,6 +41,7 @@ def make_synthetic_user(
     name: str = "Synthetic Student",
 ) -> Dict[str, Any]:
     return {
+        "id": user_id,
         "user_id": user_id,
         "tenant_id": tenant_id,
         "role": role,
@@ -42,17 +58,25 @@ def make_synthetic_session(
     policy_version: str = "assessment-v1",
     is_demo: bool = False,
     status: str = "ACTIVE",
+    room_id: str = "mock_test_room_123",
+    expires_at: str = "2026-08-20T18:00:00Z",
 ) -> Dict[str, Any]:
     return {
+        "id": session_id,
         "session_id": session_id,
         "tenant_id": tenant_id,
         "teacher_id": teacher_id,
+        "title": f"Synthetic Session {session_id}",
         "policy_id": policy_id,
         "policy_version": policy_version,
         "is_demo": is_demo,
         "status": status,
+        "room_id": room_id,
+        "hms_room_id": room_id,
         "started_at": "2026-08-20T10:00:00Z",
         "ended_at": None,
+        "expires_at": expires_at,
+        "created_at": "2026-08-20T09:50:00Z",
     }
 
 
