@@ -139,10 +139,13 @@ class CaseManager:
         # Apply policy routing if requested
         result_cases: List[Dict[str, Any]] = []
         for c in cases.values():
-            if policy_id and c.get("category") == "ATTENTION_CONCERN":
+            cat = c.get("category")
+            if policy_id and cat in ("ATTENTION_CONCERN", "BROWSER_VISIBILITY"):
                 routed = PolicyRouter.route_attention_case(c, policy_id)
                 if routed:
                     result_cases.append(routed)
+            elif policy_id and PolicyRouter.normalize_policy_id(policy_id) == "NO_ANALYTICS" and cat in ("ATTENTION_CONCERN", "BROWSER_VISIBILITY"):
+                continue
             else:
                 result_cases.append(c)
 

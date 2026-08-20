@@ -74,7 +74,10 @@ class UsableSegmentClassifier:
         orientation_away = bool(data.get("orientation_away", False))
         cue_away_flag = data.get("cue_away")
         browser_context = str(data.get("browser_context", ""))
-        is_page_hidden = bool(data.get("is_page_hidden", False) or browser_context == "PAGE_HIDDEN")
+        is_page_hidden = bool(
+            data.get("is_page_hidden", False)
+            or browser_context in ("PAGE_HIDDEN", "WINDOW_BLURRED", "FULLSCREEN_EXITED", "DESTINATION_UNKNOWN")
+        )
         
         # Existing technical reasons passed in payload
         input_tech_reasons = list(data.get("technical_reasons") or [])
@@ -182,3 +185,6 @@ class UsableSegmentClassifier:
             pitch_deg=pitch_deg,
             roll_deg=roll_deg,
         )
+
+    # Class method alias for compatibility
+    classify_segment = classify

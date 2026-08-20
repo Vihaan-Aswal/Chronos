@@ -25,10 +25,14 @@ class PolicyRouter:
     """
 
     @staticmethod
-    def normalize_policy_id(policy_id: Union[PolicyId, str]) -> str:
-        if isinstance(policy_id, PolicyId):
-            return policy_id.value
-        return str(policy_id).upper()
+    def normalize_policy_id(policy_id: Union[PolicyId, str, Any]) -> str:
+        if hasattr(policy_id, "value"):
+            val = str(policy_id.value)
+        else:
+            val = str(policy_id)
+        if "." in val:
+            val = val.split(".")[-1]
+        return val.upper()
 
     @classmethod
     def is_attention_analytics_enabled(cls, policy_id: Union[PolicyId, str]) -> bool:

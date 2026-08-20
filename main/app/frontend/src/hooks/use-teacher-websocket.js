@@ -196,7 +196,7 @@ export default function useTeacherWebSocket(sessionId) {
                 };
               }
 
-              if (msg.type === "liveness_pass") {
+              if (msg.type === "liveness_pass" || msg.type === "active_presence_passed") {
                 return {
                   ...prev,
                   [uid]: {
@@ -204,21 +204,46 @@ export default function useTeacherWebSocket(sessionId) {
                     isSimulated,
                     livenessVerified: true,
                     livenessFailed: false,
+                    activePresenceState: "PASSED",
                     livenessLastCheck: msg.timestamp,
                   },
                 };
               }
 
-              if (msg.type === "liveness_fail") {
+              if (msg.type === "liveness_fail" || msg.type === "active_presence_quality_fail" || msg.type === "active_presence_timed_out") {
+                const presenceState = msg.type === "active_presence_timed_out" ? "TIMED_OUT" : "QUALITY_FAIL";
                 return {
                   ...prev,
                   [uid]: {
                     ...prevStudent,
                     isSimulated,
                     livenessFailed: true,
-                    livenessFailReason: msg.reason || "timeout",
-                    strikes: (prevStudent.strikes || 0) + 1,
-                    disengaged: true,
+                    activePresenceState: presenceState,
+                    livenessFailReason: msg.reason || msg.failure_reason || "timeout",
+                    timestamp: msg.timestamp || prevStudent.timestamp,
+                  },
+                };
+              }
+
+              if (msg.type === "active_presence_declined") {
+                return {
+                  ...prev,
+                  [uid]: {
+                    ...prevStudent,
+                    isSimulated,
+                    activePresenceState: "DECLINED",
+                    timestamp: msg.timestamp || prevStudent.timestamp,
+                  },
+                };
+              }
+
+              if (msg.type === "active_presence_manual_review") {
+                return {
+                  ...prev,
+                  [uid]: {
+                    ...prevStudent,
+                    isSimulated,
+                    activePresenceState: "MANUAL_REVIEW",
                     timestamp: msg.timestamp || prevStudent.timestamp,
                   },
                 };

@@ -53,6 +53,10 @@ from models import (
     ClassContextPayload,
     TeacherActionPayload,
     LivenessTriggerPayload,
+    ActivePresenceChallengeRequest,
+    ActivePresenceResponseRequest,
+    ActivePresenceDeclineRequest,
+    ActivePresenceManualReviewRequest,
     SessionAnalyticsPayload,
     PolicySnapshot,
     PolicyId,
@@ -60,6 +64,7 @@ from models import (
 )
 from contracts import EventEnvelope, EventType, ActorRole, EventSource
 from projections.engine import ProjectionEngine
+from presence import challenge_manager, ActivePresenceResultState
 
 load_dotenv()
 logger = get_logger("chronos.backend")
@@ -581,6 +586,9 @@ async def student_ws(
         while True:
             raw = await websocket.receive_text()
             msg = json.loads(raw)
+            msg_type = str(msg.get("type") or msg.get("event_type") or "").upper()
+            now_iso = datetime.now(timezone.utc).isoformat()
+
             # Strict server rewrite: overwrite any caller-supplied user_id with verified actor_id
             enriched = {
                 **msg,
@@ -588,8 +596,65 @@ async def student_ws(
                 "user_id": actor_id,
                 "participant_id": actor_id,
                 "tenant_id": tenant_id,
-                "timestamp": msg.get("timestamp") or datetime.now(timezone.utc).isoformat(),
+                "timestamp": msg.get("timestamp") or now_iso,
             }
+
+            # Ingest OBSERVATION_SAMPLE heartbeats into durable event store
+            if msg_type in ("OBSERVATION_SAMPLE", "METRICS"):
+                session = repository.get_session(session_id)
+                policy_id = session.get("policy_id", "CLASSROOM") if session else "CLASSROOM"
+                if policy_id != "NO_ANALYTICS":
+                    payload_data = msg.get("payload") or msg
+                    evt = {
+                        "event_id": str(msg.get("event_id") or uuid.uuid4()),
+                        "event_type": "OBSERVATION_SAMPLE",
+                        "schema_version": 1,
+                        "tenant_id": tenant_id,
+                        "session_id": session_id,
+                        "participant_id": actor_id,
+                        "actor_id": actor_id,
+                        "actor_role": "participant",
+                        "source": "camera",
+                        "occurred_at": msg.get("occurred_at") or enriched["timestamp"],
+                        "policy_id": policy_id,
+                        "payload": payload_data,
+                    }
+                    try:
+                        repository.append_event(evt)
+                    except Exception:
+                        pass
+
+            # Ingest browser visibility events with destination_known: False
+            elif msg_type in ("PAGE_HIDDEN", "PAGE_VISIBLE", "WINDOW_BLURRED", "WINDOW_FOCUSED", "FULLSCREEN_ENTERED", "FULLSCREEN_EXITED"):
+                session = repository.get_session(session_id)
+                policy_id = session.get("policy_id", "CLASSROOM") if session else "CLASSROOM"
+                if policy_id != "NO_ANALYTICS":
+                    payload_data = msg.get("payload") or {
+                        "visibility_state": "HIDDEN" if "HIDDEN" in msg_type or "BLUR" in msg_type or "EXITED" in msg_type else "VISIBLE",
+                        "started_at": msg.get("started_at"),
+                        "ended_at": msg.get("ended_at"),
+                        "duration_ms": msg.get("duration_ms"),
+                        "destination_known": False,
+                    }
+                    evt = {
+                        "event_id": str(msg.get("event_id") or uuid.uuid4()),
+                        "event_type": msg_type,
+                        "schema_version": 1,
+                        "tenant_id": tenant_id,
+                        "session_id": session_id,
+                        "participant_id": actor_id,
+                        "actor_id": actor_id,
+                        "actor_role": "participant",
+                        "source": "browser",
+                        "occurred_at": msg.get("occurred_at") or enriched["timestamp"],
+                        "policy_id": policy_id,
+                        "payload": payload_data,
+                    }
+                    try:
+                        repository.append_event(evt)
+                    except Exception:
+                        pass
+
             await manager.broadcast_to_teachers(session_id, enriched)
 
     except WebSocketDisconnect:
@@ -868,16 +933,301 @@ async def set_class_context(
     return {"status": "success", "context": payload.context}
 
 
-LIVENESS_ACTIONS = [
-    {"id": "turn_head_left", "label": "Turn your head left"},
-    {"id": "turn_head_right", "label": "Turn your head right"},
-    {"id": "turn_head_up", "label": "Look up"},
-    {"id": "turn_head_down", "label": "Look down"},
-    {"id": "smile", "label": "Smile"},
-    {"id": "look_right_smile", "label": "Look right and smile"},
-    {"id": "look_left_smile", "label": "Look left and smile"},
-]
+# ---------------------------------------------------------------------------
+# 7. Active Presence Protocol Endpoints (Workstream W4)
+# ---------------------------------------------------------------------------
 
+@app.post(
+    "/api/v1/sessions/{session_id}/presence/challenge/request",
+    dependencies=[Depends(get_auth_context)],
+)
+async def request_presence_challenge(
+    session_id: str,
+    req: ActivePresenceChallengeRequest,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Creates and issues an Active Presence challenge bound to session and participant.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    _verify_session_tenant(session, auth)
+
+    target_pid = req.participant_id or auth.user_id
+    is_teacher = auth.role in (UserRole.TEACHER, UserRole.ADMIN)
+
+    if not is_teacher and target_pid != auth.user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot request challenge for other participants")
+
+    policy_id = session.get("policy_id", "CLASSROOM")
+    if policy_id == "NO_ANALYTICS":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Active Presence checks are disabled under NO_ANALYTICS policy",
+        )
+
+    try:
+        challenge = challenge_manager.create_challenge(
+            tenant_id=auth.tenant_id,
+            session_id=session_id,
+            participant_id=target_pid,
+            trigger=req.trigger,
+            policy_id=policy_id,
+            is_teacher_initiated=is_teacher,
+            custom_actions=req.custom_actions,
+        )
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    challenge_data = challenge.to_dict()
+
+    # Append durable ACTIVE_PRESENCE_REQUESTED event
+    evt = {
+        "event_id": str(uuid.uuid4()),
+        "event_type": "ACTIVE_PRESENCE_REQUESTED",
+        "schema_version": 1,
+        "tenant_id": auth.tenant_id,
+        "session_id": session_id,
+        "participant_id": target_pid,
+        "actor_id": auth.user_id,
+        "actor_role": "teacher" if is_teacher else "participant",
+        "source": "server",
+        "occurred_at": datetime.now(timezone.utc).isoformat(),
+        "policy_id": policy_id,
+        "payload": challenge_data,
+    }
+    try:
+        repository.append_event(evt)
+    except Exception as err:
+        logger.warning(f"Failed to persist ACTIVE_PRESENCE_REQUESTED: {err}")
+
+    # Dispatch to participant over WebSocket
+    ws_msg = {
+        "type": "active_presence_challenge",
+        **challenge_data,
+    }
+    await manager.send_to_student(session_id, target_pid, ws_msg)
+
+    logger.info(
+        "Active presence challenge issued",
+        extra={
+            "event_type": "ACTIVE_PRESENCE_REQUESTED",
+            "session_id": session_id,
+            "participant_id": target_pid,
+            "challenge_id": challenge.challenge_id,
+        },
+    )
+    return {"status": "success", "challenge": challenge_data}
+
+
+@app.post(
+    "/api/v1/sessions/{session_id}/presence/challenge/respond",
+    dependencies=[Depends(require_student)],
+)
+async def respond_presence_challenge(
+    session_id: str,
+    req: ActivePresenceResponseRequest,
+    auth: AuthContext = Depends(require_student),
+):
+    """
+    Submits student challenge response proof with cryptographic binding verification.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    _verify_session_tenant(session, auth)
+
+    result_state, challenge_dict = challenge_manager.respond_to_challenge(
+        challenge_id=req.challenge_id,
+        participant_id=auth.user_id,
+        session_id=session_id,
+        nonce=req.nonce,
+        submitted_actions=req.submitted_actions,
+        quality_ok=req.quality_ok,
+        elapsed_ms=req.elapsed_ms,
+        is_neutral_baseline_held=req.is_neutral_baseline_held,
+        is_return_to_neutral_held=req.is_return_to_neutral_held,
+        alternative_verification=req.alternative_verification,
+    )
+
+    policy_id = session.get("policy_id", "CLASSROOM")
+
+    # Map state to canonical durable event
+    event_type_map = {
+        ActivePresenceResultState.PASSED: "ACTIVE_PRESENCE_PASSED",
+        ActivePresenceResultState.RETRY_REQUIRED: "ACTIVE_PRESENCE_RETRY_REQUIRED",
+        ActivePresenceResultState.QUALITY_FAIL: "ACTIVE_PRESENCE_QUALITY_FAIL",
+        ActivePresenceResultState.TIMED_OUT: "ACTIVE_PRESENCE_TIMED_OUT",
+    }
+    event_type = event_type_map.get(result_state, "ACTIVE_PRESENCE_STARTED")
+
+    evt = {
+        "event_id": str(uuid.uuid4()),
+        "event_type": event_type,
+        "schema_version": 1,
+        "tenant_id": auth.tenant_id,
+        "session_id": session_id,
+        "participant_id": auth.user_id,
+        "actor_id": auth.user_id,
+        "actor_role": "participant",
+        "source": "camera",
+        "occurred_at": datetime.now(timezone.utc).isoformat(),
+        "policy_id": policy_id,
+        "payload": {
+            **challenge_dict,
+            "result_state": result_state.value if isinstance(result_state, ActivePresenceResultState) else str(result_state),
+        },
+    }
+    try:
+        repository.append_event(evt)
+    except Exception as err:
+        logger.warning(f"Failed to persist {event_type}: {err}")
+
+    # Notify teacher dashboard
+    teacher_msg = {
+        "type": f"active_presence_{result_state.value.lower()}",
+        "session_id": session_id,
+        "user_id": auth.user_id,
+        "participant_id": auth.user_id,
+        "challenge_id": req.challenge_id,
+        "status": result_state.value if isinstance(result_state, ActivePresenceResultState) else str(result_state),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    await manager.broadcast_to_teachers(session_id, teacher_msg)
+
+    return {
+        "status": "success",
+        "result_state": result_state.value if isinstance(result_state, ActivePresenceResultState) else str(result_state),
+        "challenge": challenge_dict,
+    }
+
+
+@app.post(
+    "/api/v1/sessions/{session_id}/presence/challenge/decline",
+    dependencies=[Depends(require_student)],
+)
+async def decline_presence_challenge(
+    session_id: str,
+    req: ActivePresenceDeclineRequest,
+    auth: AuthContext = Depends(require_student),
+):
+    """
+    Allows a participant to decline an active challenge (non-punitive fallback path).
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    _verify_session_tenant(session, auth)
+
+    result_state, challenge_dict = challenge_manager.decline_challenge(
+        challenge_id=req.challenge_id,
+        participant_id=auth.user_id,
+        session_id=session_id,
+        reason=req.reason,
+    )
+
+    policy_id = session.get("policy_id", "CLASSROOM")
+    evt = {
+        "event_id": str(uuid.uuid4()),
+        "event_type": "ACTIVE_PRESENCE_DECLINED",
+        "schema_version": 1,
+        "tenant_id": auth.tenant_id,
+        "session_id": session_id,
+        "participant_id": auth.user_id,
+        "actor_id": auth.user_id,
+        "actor_role": "participant",
+        "source": "browser",
+        "occurred_at": datetime.now(timezone.utc).isoformat(),
+        "policy_id": policy_id,
+        "payload": challenge_dict,
+    }
+    try:
+        repository.append_event(evt)
+    except Exception as err:
+        logger.warning(f"Failed to persist ACTIVE_PRESENCE_DECLINED: {err}")
+
+    teacher_msg = {
+        "type": "active_presence_declined",
+        "session_id": session_id,
+        "user_id": auth.user_id,
+        "participant_id": auth.user_id,
+        "challenge_id": req.challenge_id,
+        "status": "DECLINED",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    await manager.broadcast_to_teachers(session_id, teacher_msg)
+
+    return {"status": "success", "result_state": "DECLINED", "challenge": challenge_dict}
+
+
+@app.post(
+    "/api/v1/sessions/{session_id}/presence/challenge/manual-request",
+    dependencies=[Depends(require_student)],
+)
+async def manual_request_presence_challenge(
+    session_id: str,
+    req: ActivePresenceManualReviewRequest,
+    auth: AuthContext = Depends(require_student),
+):
+    """
+    Allows a participant with hardware or mobility constraints to request teacher manual check.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    _verify_session_tenant(session, auth)
+
+    result_state, challenge_dict = challenge_manager.request_manual_review(
+        challenge_id=req.challenge_id,
+        participant_id=auth.user_id,
+        session_id=session_id,
+        reason=req.reason,
+    )
+
+    policy_id = session.get("policy_id", "CLASSROOM")
+    evt = {
+        "event_id": str(uuid.uuid4()),
+        "event_type": "ACTIVE_PRESENCE_REQUESTED",
+        "schema_version": 1,
+        "tenant_id": auth.tenant_id,
+        "session_id": session_id,
+        "participant_id": auth.user_id,
+        "actor_id": auth.user_id,
+        "actor_role": "participant",
+        "source": "browser",
+        "occurred_at": datetime.now(timezone.utc).isoformat(),
+        "policy_id": policy_id,
+        "payload": {
+            **challenge_dict,
+            "mode": "manual_review",
+            "alternative_verification_used": True,
+        },
+    }
+    try:
+        repository.append_event(evt)
+    except Exception as err:
+        logger.warning(f"Failed to persist ACTIVE_PRESENCE_REQUESTED (manual): {err}")
+
+    teacher_msg = {
+        "type": "active_presence_manual_review",
+        "session_id": session_id,
+        "user_id": auth.user_id,
+        "participant_id": auth.user_id,
+        "challenge_id": req.challenge_id,
+        "status": "MANUAL_REVIEW",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    await manager.broadcast_to_teachers(session_id, teacher_msg)
+
+    return {"status": "success", "result_state": "MANUAL_REVIEW", "challenge": challenge_dict}
+
+
+# ---------------------------------------------------------------------------
+# Legacy Endpoint Adapter: /liveness/trigger
+# ---------------------------------------------------------------------------
 
 @app.post(
     "/liveness/trigger",
@@ -899,35 +1249,43 @@ async def trigger_liveness(
         _verify_session_tenant(session, auth)
         _verify_session_teacher(session, auth)
 
-    action = random.choice(LIVENESS_ACTIONS)
-    expires_sec = random.randint(3, 5)
+    target_pid = payload.user_id or "all"
+    session_id = payload.session_id
+    tenant_id = auth.tenant_id
+
+    # Create challenge via challenge manager
+    actions = challenge_manager.select_compatible_actions()
     challenge_id = str(uuid.uuid4())
+    expires_sec = 15
+
     msg = {
         "type": "liveness_challenge",
         "challenge_id": challenge_id,
-        "action_id": action["id"],
-        "action_label": action["label"],
+        "actions": actions,
+        "action_id": actions[0].lower(),
+        "action_label": actions[0].replace("_", " ").title(),
+        "sequence": actions,
         "expires_at": (datetime.now(timezone.utc).timestamp() + expires_sec) * 1000,
         "expires_sec": expires_sec,
     }
     if payload.user_id:
-        await manager.send_to_student(payload.session_id, payload.user_id, msg)
+        await manager.send_to_student(session_id, payload.user_id, msg)
     else:
-        await manager.broadcast_to_students(payload.session_id, msg)
+        await manager.broadcast_to_students(session_id, msg)
 
     logger.info(
         "Liveness challenge triggered",
         extra={
             "event_type": "LIVENESS_TRIGGERED",
             "session_id": payload.session_id,
-            "participant_id": payload.user_id or "all",
+            "participant_id": target_pid,
             "outcome": "SUCCESS",
         },
     )
     return {
         "status": "success",
         "challenge_id": challenge_id,
-        "action": action,
+        "actions": actions,
         "expires_sec": expires_sec,
     }
 

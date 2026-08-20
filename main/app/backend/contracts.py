@@ -333,6 +333,7 @@ class ActivePresenceChallengePayload(BaseModel):
     result_state: Optional[str] = None
     elapsed_ms: Optional[int] = None
     failure_reason: Optional[str] = None
+    alternative_verification_used: bool = False
 
 
 class BrowserVisibilityPayload(BaseModel):
@@ -430,7 +431,8 @@ PROHIBITED_PAYLOAD_KEYS = {
     "raw_frame", "frame_base64", "image_bytes", "video_chunk",
     "landmarks", "face_mesh", "continuous_landmarks", "face_crop",
     "embedding", "embeddings",
-    "answer_text", "submission_body", "jwt", "jwt_token", "token", "secret", "password", "api_key"
+    "answer_text", "submission_body", "jwt", "jwt_token", "token", "secret", "password", "api_key",
+    "medical_info", "diagnosis", "disability", "health_data", "medical_history"
 }
 
 

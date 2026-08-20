@@ -427,7 +427,7 @@ function JoinScreen({ user, onJoin }) {
               </div>
             </div>
 
-            <div className="flex flex-col gap-6 items-center">
+            <div className="flex flex-col gap-4 items-center">
               <button
                 disabled={!ready || loading}
                 onClick={handleJoin}
@@ -462,6 +462,20 @@ function JoinScreen({ user, onJoin }) {
                     ? roleLabel
                     : "Adjust your position"}
               </button>
+
+              {/* Alternative Verification / Accessibility Fallback */}
+              {!ready && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    sessionStorage.setItem("chronos_alternative_verification", "true");
+                    onJoin?.();
+                  }}
+                  className="font-label text-[0.7rem] uppercase tracking-widest text-[#DCC492]/80 hover:text-[#DCC492] transition-colors underline underline-offset-4"
+                >
+                  Join with Alternative / Manual Verification
+                </button>
+              )}
 
               <button
                 type="button"

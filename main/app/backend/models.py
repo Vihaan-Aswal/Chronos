@@ -183,6 +183,33 @@ class LivenessTriggerPayload(BaseModel):
     user_id: Optional[str] = None
 
 
+class ActivePresenceChallengeRequest(BaseModel):
+    participant_id: Optional[str] = None
+    trigger: str = "teacher_request"
+    custom_actions: Optional[List[str]] = None
+
+
+class ActivePresenceResponseRequest(BaseModel):
+    challenge_id: str
+    nonce: str
+    submitted_actions: Optional[List[str]] = None
+    quality_ok: bool = True
+    elapsed_ms: Optional[int] = None
+    is_neutral_baseline_held: bool = True
+    is_return_to_neutral_held: bool = True
+    alternative_verification: bool = False
+
+
+class ActivePresenceDeclineRequest(BaseModel):
+    challenge_id: str
+    reason: Optional[str] = None
+
+
+class ActivePresenceManualReviewRequest(BaseModel):
+    challenge_id: str
+    reason: Optional[str] = None
+
+
 class SessionMetric(BaseModel):
     timestamp: str
     avg_score: float
