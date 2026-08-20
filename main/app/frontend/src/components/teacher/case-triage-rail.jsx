@@ -14,11 +14,11 @@ const VIEW_TABS = [
 
 export default function CaseTriageRail({
   cases = [],
-  sessionId,
   onExecuteBatchAction,
   onViewStudent,
   className = "",
 }) {
+
   const [activeView, setActiveView] = useState("active");
   const [selectedCaseIds, setSelectedCaseIds] = useState(new Set());
   const [actionLoading, setActionLoading] = useState(false);

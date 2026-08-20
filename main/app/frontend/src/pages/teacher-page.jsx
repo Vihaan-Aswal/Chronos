@@ -19,6 +19,8 @@ import AssessmentManagementModal from "../components/teacher/assessment-manageme
 import CaseTriageRail from "../components/teacher/case-triage-rail.jsx";
 import { sendTeacherAction, sendBatchTeacherAction, fetchSessionCases } from "../api/teacher-actions.js";
 import { triggerLiveness } from "../api/liveness.js";
+import { fetchSessionReport } from "../api/reports.js";
+
 import "../styles/dashboard-shared.css";
 import "../styles/teacher-dashboard.css";
 
@@ -45,8 +47,8 @@ export default function TeacherPage() {
   const [sessionEnded, setSessionEnded] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
-  const [sessionData, setSessionData] = useState(null);
   const [strictMode, setStrictMode] = useState(false);
+
   /** Lenient class vs strict exam engagement (student-side scoring). */
   const [classContextMode, setClassContextMode] = useState("class");
   const [simulateClassroom, setSimulateClassroom] = useState(false);
@@ -433,318 +435,17 @@ export default function TeacherPage() {
     }
   };
 
-  // CONFUSION DETECTION - treats disengagement/low engagement as confusion for demo
-  function detectConfusion(studentMetrics) {
-    if (!studentMetrics) return false;
-
-    const score = studentMetrics.score ?? 0;
-    const ear = studentMetrics.ear ?? 0.35;
-    const headPose = studentMetrics.headPose || { yaw: 0, pitch: 0 };
-    const strikes = studentMetrics.strikes ?? 0;
-
-    // Low/mid engagement range (anything below 70%) counts as some level of confusion
-    const lowEngagement = score < 0.7;
-
-    // Physical indicators of struggle
-    const squinting = ear < 0.28;
-    const headTilted = Math.abs(headPose.yaw || 0) > 0.1;
-
-    // Strikes indicate disengagement
-    const hasStrikes = strikes > 0;
-
-    // Count as confusion if: low engagement + any sign, or if they have strikes
-    return (lowEngagement && (squinting || headTilted)) || hasStrikes;
-  }
-
-  // CONFUSION HOTSPOTS - Fixed
-  function findConfusionHotspots(metricsHistory) {
-    const hotspots = [];
-
-    metricsHistory.forEach((snapshot) => {
-      const studentData = snapshot.students || {};
-      const studentIds = Object.keys(studentData);
-
-      if (studentIds.length === 0) return;
-
-      let confusedCount = 0;
-      studentIds.forEach((uid) => {
-        const metrics = studentData[uid];
-        if (detectConfusion(metrics)) {
-          confusedCount++;
-        }
-      });
-
-      const confusionPercentage = (confusedCount / studentIds.length) * 100;
-
-      // Lower threshold (20%) so chart always has data even with minimal confusion
-      if (confusionPercentage >= 20) {
-        hotspots.push({
-          // Use the snapshot timestamp for a readable label
-          time: new Date(snapshot.timestamp).toLocaleTimeString(),
-          percentage: Math.round(confusionPercentage),
-          studentCount: confusedCount,
-          timestamp: snapshot.timestamp,
-          totalStudents: studentIds.length,
-        });
-      }
-    });
-
-    return hotspots;
-  }
-
-  // AT-RISK STUDENTS - Fixed
-  function identifyAtRiskStudents(metricsHistory, currentStudents) {
-    const studentScores = {};
-    const studentIdentityIssues = {};
-    const studentStrikeCounts = {};
-
-    // Aggregate data
-    metricsHistory.forEach((snapshot) => {
-      const studentData = snapshot.students || {};
-      Object.entries(studentData).forEach(([uid, metrics]) => {
-        if (!studentScores[uid]) studentScores[uid] = [];
-        studentScores[uid].push(metrics.score ?? 0);
-
-        if (metrics.identityStatus === "mismatch") {
-          studentIdentityIssues[uid] = (studentIdentityIssues[uid] || 0) + 1;
-        }
-
-        if (metrics.strikes !== undefined) {
-          studentStrikeCounts[uid] = Math.max(
-            studentStrikeCounts[uid] || 0,
-            metrics.strikes,
-          );
-        }
-      });
-    });
-
-    const atRisk = [];
-    const SCORE_THRESHOLD = 0.4;
-    const STRIKE_THRESHOLD = 2;
-    const IDENTITY_THRESHOLD = 3;
-
-    Object.entries(studentScores).forEach(([uid, scores]) => {
-      if (scores.length === 0) return;
-
-      const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-      const studentInfo = currentStudents.find((s) => s.userId === uid);
-      const strikes = studentStrikeCounts[uid] || studentInfo?.strikes || 0;
-      const identityIssues = studentIdentityIssues[uid] || 0;
-
-      let reasons = [];
-      let isAtRisk = false;
-
-      if (avgScore < SCORE_THRESHOLD) {
-        reasons.push(`Low engagement (${(avgScore * 100).toFixed(0)}%)`);
-        isAtRisk = true;
-      }
-
-      if (strikes >= STRIKE_THRESHOLD) {
-        reasons.push(`${strikes} disengagement strikes`);
-        isAtRisk = true;
-      }
-
-      if (identityIssues >= IDENTITY_THRESHOLD) {
-        reasons.push(`${identityIssues} identity violations`);
-        isAtRisk = true;
-      }
-
-      if (isAtRisk) {
-        if (studentInfo?.isSimulated) {
-          reasons.push("Simulated learner (demo)");
-        }
-        atRisk.push({
-          userId: uid,
-          avgScore: avgScore,
-          strikes: strikes,
-          identityIssues: identityIssues,
-          reason: reasons.join(", "),
-          severity:
-            identityIssues >= IDENTITY_THRESHOLD
-              ? "critical"
-              : strikes >= 3
-                ? "high"
-                : avgScore < 0.3
-                  ? "high"
-                  : "medium",
-        });
-      }
-    });
-
-    atRisk.sort((a, b) => {
-      const severityOrder = { critical: 0, high: 1, medium: 2 };
-      if (severityOrder[a.severity] !== severityOrder[b.severity]) {
-        return severityOrder[a.severity] - severityOrder[b.severity];
-      }
-      return a.avgScore - b.avgScore;
-    });
-
-    return atRisk;
-  }
-
   const handleLeaveMeeting = () => {
     setSessionEnded(true);
     setInMeeting(false);
     setSimulateClassroom(false);
-
-    const endTime = new Date();
-    const startTime = sessionStartRef.current || endTime;
-    const durationMinutes = (endTime - startTime) / 1000 / 60;
-
-    const reportRoster = Object.entries(students)
-      .filter(([uid]) => !removedUserIds.has(uid))
-      .map(([uid, data]) => ({ userId: uid, ...data }));
-
-    const scores = reportRoster.map((s) => s.score || 0);
-    const avgScore =
-      scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-
-    const attentive = reportRoster.filter((s) => (s.score || 0) > 0.7).length;
-    const distracted = reportRoster.filter(
-      (s) => (s.score || 0) >= 0.4 && (s.score || 0) <= 0.7,
-    ).length;
-    const disengaged = reportRoster.filter((s) => (s.score || 0) < 0.4).length;
-
-    const totalStudentsSimulated = reportRoster.filter(
-      (s) => s.isSimulated,
-    ).length;
-    const totalStudentsReal = reportRoster.length - totalStudentsSimulated;
-
-    const studentMeta = {};
-    reportRoster.forEach((s) => {
-      studentMeta[s.userId] = {
-        isSimulated: Boolean(s.isSimulated),
-        displayName: s.isSimulated
-          ? `Simulated · ${s.userId}`
-          : (s.userId || "").slice(0, 12),
-      };
-    });
-
-    const metricsTimeline = metricsHistoryRef.current.map((m, idx) => {
-      const stud = m.students || {};
-      let rSum = 0,
-        rN = 0,
-        sSum = 0,
-        sN = 0;
-      Object.values(stud).forEach((met) => {
-        const sc = Number(met?.score || 0);
-        if (met?.isSimulated) {
-          sSum += sc;
-          sN += 1;
-        } else {
-          rSum += sc;
-          rN += 1;
-        }
-      });
-      return {
-        time: `${Math.floor(idx * 0.5)}m`,
-        avgScore: Number(m.avgScore) || 0,
-        students: m.studentCount || 0,
-        avgScoreReal: rN ? rSum / rN : null,
-        avgScoreSimulated: sN ? sSum / sN : null,
-      };
-    });
-
-    const perStudentTimelines = {};
-    metricsHistoryRef.current.forEach((snapshot, idx) => {
-      const t = `${Math.floor(idx * 0.5)}m`;
-      const studentData = snapshot.students || {};
-      Object.entries(studentData).forEach(([uid, metrics]) => {
-        if (!perStudentTimelines[uid]) perStudentTimelines[uid] = [];
-        perStudentTimelines[uid].push({
-          time: t,
-          score: Number(metrics.score || 0),
-        });
-      });
-    });
-
-    const confusionHotspots = findConfusionHotspots(metricsHistoryRef.current);
-    const atRiskStudents = identifyAtRiskStudents(
-      metricsHistoryRef.current,
-      reportRoster,
-    );
-
-    const tpi = (() => {
-      if (metricsTimeline.length === 0) return 0;
-      const scores = metricsTimeline.map((m) => m.avgScore);
-      const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-      const dropPoints = scores.filter(
-        (s, i) => i > 0 && s < scores[i - 1] - 0.1,
-      ).length;
-      const retention =
-        1 - Math.min(dropPoints / Math.max(scores.length, 1), 1);
-      return Math.round((avg * 0.6 + retention * 0.4) * 100);
-    })();
-
-    const data = {
-      sessionId,
-      teacherId,
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
-      duration: durationMinutes,
-      avgScore,
-      totalStudents: reportRoster.length,
-      totalStudentsReal,
-      totalStudentsSimulated,
-      studentMeta,
-      classContextMode,
-      strictModeAtEnd: strictMode,
-      tpi,
-      perStudentTimelines,
-      metricsTimeline,
-      distribution: {
-        attentive,
-        distracted,
-        disengaged,
-      },
-      confusionHotspots,
-      atRiskStudents,
-    };
-
-    setSessionData(data);
+    setSelectedPastSession(null);
     setShowReport(true);
-  };
-
-  const handleSaveReport = async () => {
-    if (!sessionData) return;
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/session/save-analytics`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            session_id: sessionData.sessionId,
-            teacher_id: sessionData.teacherId,
-            start_time: sessionData.startTime,
-            end_time: sessionData.endTime,
-            duration_minutes: sessionData.duration,
-            avg_engagement_score: sessionData.avgScore,
-            total_students: sessionData.totalStudents,
-            tpi: sessionData.tpi,
-            metrics_timeline: metricsHistoryRef.current,
-            confusion_hotspots: sessionData.confusionHotspots,
-            at_risk_students: sessionData.atRiskStudents,
-          }),
-        },
-      );
-
-      if (response.ok) {
-        alert("Session report saved successfully! ✅");
-        setShowReport(false);
-        window.location.href = "/";
-      } else {
-        alert("Failed to save report. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error saving report:", error);
-      alert("Error saving report. Check console.");
-    }
   };
 
   const handleCloseReport = () => {
     setShowReport(false);
+    setSelectedPastSession(null);
     window.location.href = "/";
   };
 
@@ -777,108 +478,23 @@ export default function TeacherPage() {
     pastReportRequestIdRef.current = requestId;
 
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL || "http://localhost:8000"}/session/${session.session_id}/analytics`,
-        { signal: abortController.signal },
-      );
-
+      setLoadingPast(true);
+      const rep = await fetchSessionReport(session.session_id);
       if (requestId !== pastReportRequestIdRef.current) return;
-
-      const { exists, analytics } = await res.json();
-      if (!exists || !analytics?.length) return;
-      const a = analytics[0];
-      const rawTimeline = a.metrics_timeline || [];
-      const metricsTimeline = rawTimeline.map((m, idx) => {
-        const stud = m.students || {};
-        let rSum = 0,
-          rN = 0,
-          sSum = 0,
-          sN = 0;
-        Object.values(stud).forEach((met) => {
-          const sc = Number(met?.score || 0);
-          if (met?.isSimulated) {
-            sSum += sc;
-            sN += 1;
-          } else {
-            rSum += sc;
-            rN += 1;
-          }
-        });
-        return {
-          time: `${Math.floor(idx * 0.5)}m`,
-          avgScore: Number(m.avgScore) || 0,
-          students: m.studentCount || 0,
-          avgScoreReal: rN ? rSum / rN : null,
-          avgScoreSimulated: sN ? sSum / sN : null,
-        };
-      });
-      const perStudentTimelines = {};
-      const studentMeta = {};
-      rawTimeline.forEach((snapshot, idx) => {
-        const t = `${Math.floor(idx * 0.5)}m`;
-        const studentData = snapshot.students || {};
-        Object.entries(studentData).forEach(([uid, metrics]) => {
-          if (!perStudentTimelines[uid]) perStudentTimelines[uid] = [];
-          perStudentTimelines[uid].push({
-            time: t,
-            score: Number(metrics?.score || 0),
-          });
-          if (metrics?.isSimulated != null) {
-            studentMeta[uid] = {
-              isSimulated: Boolean(metrics.isSimulated),
-              displayName: metrics.isSimulated
-                ? `Simulated · ${uid}`
-                : uid.slice(0, 12),
-            };
-          }
-        });
-      });
-      const lastSnap = rawTimeline[rawTimeline.length - 1];
-      const lastStudents = lastSnap?.students || {};
-      Object.keys(lastStudents).forEach((uid) => {
-        const met = lastStudents[uid];
-        if (!studentMeta[uid]) {
-          studentMeta[uid] = {
-            isSimulated: Boolean(met?.isSimulated),
-            displayName: met?.isSimulated
-              ? `Simulated · ${uid}`
-              : uid.slice(0, 12),
-          };
-        }
-      });
-      const simCount = Object.values(lastStudents).filter(
-        (m) => m?.isSimulated,
-      ).length;
-      setSelectedPastSession({
-        sessionId: a.session_id,
-        teacherId: a.teacher_id,
-        duration: a.duration_minutes || 0,
-        avgScore: a.avg_engagement_score || 0,
-        totalStudents: a.total_students || 0,
-        totalStudentsSimulated: simCount,
-        totalStudentsReal: Math.max(0, (a.total_students || 0) - simCount),
-        studentMeta,
-        tpi: a.tpi,
-        metricsTimeline,
-        perStudentTimelines,
-        distribution: { attentive: 0, distracted: 0, disengaged: 0 },
-        confusionHotspots: a.confusion_hotspots || [],
-        atRiskStudents: (a.at_risk_students || []).map((s) => ({
-          userId: s.userId || s.user_id,
-          avgScore: s.avgScore ?? s.avg_score ?? 0,
-          strikes: s.strikes || 0,
-          identityIssues: s.identityIssues ?? s.identity_issues ?? 0,
-          reason: s.reason || "",
-        })),
-      });
+      setSelectedPastSession(rep);
       setShowPastSessions(false);
+      setShowReport(true);
     } catch (err) {
       if (err?.name === "AbortError") return;
-      console.error(err);
+      console.error("Error loading session report:", err);
+      setSelectedPastSession({ session_id: session.session_id });
+      setShowPastSessions(false);
+      setShowReport(true);
     } finally {
       if (pastReportAbortRef.current === abortController) {
         pastReportAbortRef.current = null;
       }
+      setLoadingPast(false);
     }
   };
 
@@ -1215,7 +831,8 @@ export default function TeacherPage() {
                       cases={cases}
                       sessionId={sessionId}
                       onExecuteBatchAction={handleBatchAction}
-                      onViewStudent={(uid) => setSideRailTab("grid")}
+                      onViewStudent={() => setSideRailTab("grid")}
+
                       className="border-0 rounded-none h-full bg-transparent shadow-none"
                     />
                   ) : (
@@ -1306,13 +923,14 @@ export default function TeacherPage() {
         </div>
       )}
 
-      {showReport && sessionData && (
+      {showReport && (
         <SessionReport
-          sessionData={sessionData}
+          report={selectedPastSession || null}
+          sessionId={sessionId}
           onClose={handleCloseReport}
-          onSave={handleSaveReport}
         />
       )}
+
 
       <AssessmentManagementModal
         isOpen={showAssessmentModal}

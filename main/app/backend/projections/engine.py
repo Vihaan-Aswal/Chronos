@@ -271,3 +271,24 @@ class ProjectionEngine:
             "final_status": "ACTIVE",
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
+
+    @classmethod
+    def build_report_read_model(
+        cls,
+        session: Dict[str, Any],
+        events: List[Dict[str, Any]],
+        resources: Optional[List[Dict[str, Any]]] = None,
+        submissions: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Builds the authoritative post-session ReportReadModel from event stream replay.
+        """
+        from reports.engine import ReportEngine
+        report_obj = ReportEngine.build_report_read_model(
+            session=session,
+            events=events,
+            resources=resources,
+            submissions=submissions,
+        )
+        return report_obj.model_dump()
+

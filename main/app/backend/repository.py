@@ -669,13 +669,26 @@ class ChronosDomainRepository:
         summary = ProjectionEngine.build_session_summary(events, session_id, tenant_id)
         self.upsert_session_summary(summary)
 
+        # Rebuild comprehensive report read model
+        resources = self.get_session_resources(session_id)
+        submissions = self.get_session_submissions(session_id)
+        report_read_model = ProjectionEngine.build_report_read_model(
+            session=session_record or {"session_id": session_id, "tenant_id": tenant_id},
+            events=events,
+            resources=resources,
+            submissions=submissions,
+        )
+        self.upsert_report_read_model(report_read_model)
+
         return {
             "session_id": session_id,
             "replayed_events_count": len(events),
             "rebuilt_participants_count": len(participant_ids),
             "rebuilt_cases_count": len(rebuilt_cases),
             "summary": summary,
+            "report": report_read_model,
         }
+
 
     # -----------------------------------------------------------------------
     # W6 Privacy, Consent, Legal Holds, Audit & Retention

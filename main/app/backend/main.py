@@ -88,7 +88,10 @@ from models import (
 )
 from contracts import EventEnvelope, EventType, ActorRole, EventSource, ConsentCategory, AppealCategory
 from projections.engine import ProjectionEngine
+from reports.engine import ReportEngine
+from reports.schemas import ReportReadModel
 from observation.case_manager import CaseManager
+
 from observation.notification_manager import NotificationPolicyTracker
 from presence import challenge_manager, ActivePresenceResultState
 from storage.storage_service import (
@@ -2629,10 +2632,11 @@ async def add_student_context(
 @app.get("/api/v1/sessions/{session_id}/report", dependencies=[Depends(require_teacher)])
 async def get_session_report(
     session_id: str,
+    force_rebuild: bool = Query(False, description="Force recomputation of report from event stream"),
     auth: AuthContext = Depends(require_teacher),
 ):
     """
-    Fetch post-session report read model with access audit logging.
+    Fetch authoritative post-session report read model with access audit logging.
     """
     session = repository.get_session(session_id)
     if not session:
@@ -2650,12 +2654,61 @@ async def get_session_report(
     })
 
     # 2. Fetch or materialize report read model
-    report = repository.get_report_read_model(session_id)
-    if not report:
+    report = None if force_rebuild else repository.get_report_read_model(session_id)
+    # Check if report exists and has modern structure
+    if not report or "session_overview" not in report or "observation_coverage" not in report:
         events = repository.get_session_events(session_id)
-        report = ProjectionEngine.build_session_summary(events, session_id, auth.tenant_id)
+        resources = repository.get_session_resources(session_id)
+        submissions = repository.get_session_submissions(session_id)
+        report_model = ReportEngine.build_report_read_model(
+            session=session,
+            events=events,
+            resources=resources,
+            submissions=submissions,
+        )
+        report = report_model.model_dump()
+        repository.upsert_report_read_model(report)
 
     return {"status": "success", "report": report}
+
+
+@app.post("/api/v1/sessions/{session_id}/report/rebuild", dependencies=[Depends(require_teacher)])
+async def rebuild_session_report(
+    session_id: str,
+    auth: AuthContext = Depends(require_teacher),
+):
+    """
+    Force deterministic rebuild of the authoritative report read model from durable events.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    _verify_session_tenant(session, auth)
+    _verify_session_teacher(session, auth)
+
+    events = repository.get_session_events(session_id)
+    resources = repository.get_session_resources(session_id)
+    submissions = repository.get_session_submissions(session_id)
+
+    report_model = ReportEngine.build_report_read_model(
+        session=session,
+        events=events,
+        resources=resources,
+        submissions=submissions,
+    )
+    report_dict = report_model.model_dump()
+    repository.upsert_report_read_model(report_dict)
+
+    repository.record_audit_log({
+        "tenant_id": auth.tenant_id,
+        "session_id": session_id,
+        "actor_id": auth.user_id,
+        "actor_role": auth.role,
+        "action_type": "REPORT_REBUILT",
+        "details": {"events_count": len(events)},
+    })
+
+    return {"status": "success", "report": report_dict}
 
 
 @app.post("/api/v1/sessions/{session_id}/report/export-audit", dependencies=[Depends(require_teacher)])
@@ -2680,6 +2733,7 @@ async def record_export_audit(
         "details": {"format": export_format},
     })
     return {"status": "success"}
+
 
 
 @app.get("/admin/provider-compliance")
