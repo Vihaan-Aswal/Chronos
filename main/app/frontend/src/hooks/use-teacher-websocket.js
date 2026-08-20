@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 export default function useTeacherWebSocket(sessionId) {
   const [connected, setConnected] = useState(false);
   const [students, setStudents] = useState({});
+  const [cases, setCases] = useState([]);
   const wsRef = useRef(null);
   const reconnectRef = useRef(null);
 
@@ -36,6 +37,13 @@ export default function useTeacherWebSocket(sessionId) {
 
           try {
             const msg = JSON.parse(event.data);
+
+            // Real-time cases update from server projections
+            if (msg.type === "cases_update" && Array.isArray(msg.cases)) {
+              setCases(msg.cases);
+              return;
+            }
+
             const uid = msg.user_id;
             if (!uid) return;
 
@@ -292,5 +300,5 @@ export default function useTeacherWebSocket(sessionId) {
     };
   }, [sessionId]);
 
-  return { connected, students };
+  return { connected, students, cases, setCases };
 }

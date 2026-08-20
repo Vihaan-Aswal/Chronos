@@ -16,7 +16,8 @@ import StudentCard from "../components/teacher/student-card.jsx";
 
 import SessionReport from "../components/session-report.jsx";
 import AssessmentManagementModal from "../components/teacher/assessment-management-modal.jsx";
-import { sendTeacherAction } from "../api/teacher-actions.js";
+import CaseTriageRail from "../components/teacher/case-triage-rail.jsx";
+import { sendTeacherAction, sendBatchTeacherAction, fetchSessionCases } from "../api/teacher-actions.js";
 import { triggerLiveness } from "../api/liveness.js";
 import "../styles/dashboard-shared.css";
 import "../styles/teacher-dashboard.css";
@@ -53,6 +54,7 @@ export default function TeacherPage() {
   const [ignoredUserIds, setIgnoredUserIds] = useState(new Set());
   const [removedUserIds, setRemovedUserIds] = useState(new Set());
   const [railOpen, setRailOpen] = useState(false);
+  const [sideRailTab, setSideRailTab] = useState("cases"); // "cases" | "grid"
 
   const sessionStartRef = useRef(null);
   const metricsHistoryRef = useRef([]);
@@ -63,7 +65,7 @@ export default function TeacherPage() {
   const pastReportAbortRef = useRef(null);
   const pastReportRequestIdRef = useRef(0);
 
-  const { connected, students } = useTeacherWebSocket(sessionId);
+  const { connected, students, cases = [], setCases } = useTeacherWebSocket(sessionId);
 
   const [showDisconnect, setShowDisconnect] = useState(false);
   useEffect(() => {
@@ -73,6 +75,35 @@ export default function TeacherPage() {
     return () => clearTimeout(t);
   }, [inMeeting, connected]);
   useClassroomSimulator(sessionId, inMeeting && simulateClassroom);
+
+  // Fetch initial session cases from server
+  useEffect(() => {
+    if (!sessionId || !inMeeting) return;
+    fetchSessionCases(sessionId)
+      .then((res) => {
+        if (res && Array.isArray(res.cases) && typeof setCases === "function") {
+          setCases(res.cases);
+        }
+      })
+      .catch((err) => console.warn("Failed to fetch initial cases:", err));
+  }, [sessionId, inMeeting, setCases]);
+
+  const handleBatchAction = async ({ caseIds, actionType, note, snoozeDurationMinutes }) => {
+    try {
+      await sendBatchTeacherAction(sessionId, {
+        caseIds,
+        actionType,
+        note,
+        snoozeDurationMinutes,
+      });
+      const res = await fetchSessionCases(sessionId);
+      if (res && Array.isArray(res.cases) && typeof setCases === "function") {
+        setCases(res.cases);
+      }
+    } catch (err) {
+      console.error("Batch teacher action failed:", err);
+    }
+  };
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -1119,14 +1150,44 @@ export default function TeacherPage() {
                 <div className="td-rail-inner">
                   <div className="td-rail-head">
                     <div className="td-rail-title-row">
-                      <div className="td-rail-title">
-                        <span className="td-rail-title-dot" />
-                        Live Dashboard
+                      {/* Mode Switcher Tabs */}
+                      <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-xl border border-white/10 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => setSideRailTab("cases")}
+                          className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                            sideRailTab === "cases"
+                              ? "bg-[#dcc492] text-[#111315] shadow-sm"
+                              : "text-slate-300 hover:text-white"
+                          }`}
+                        >
+                          <span>Triage Queue</span>
+                          <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                            sideRailTab === "cases" ? "bg-[#111315]/20 text-[#111315]" : "bg-white/10 text-slate-300"
+                          }`}>
+                            {cases.filter((c) => c.status !== "RESOLVED" && c.status !== "DISMISSED").length}
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSideRailTab("grid")}
+                          className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                            sideRailTab === "grid"
+                              ? "bg-white/20 text-white shadow-sm"
+                              : "text-slate-300 hover:text-white"
+                          }`}
+                        >
+                          <span>All Participants</span>
+                          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/10 text-slate-300">
+                            {allStudents.length}
+                          </span>
+                        </button>
                       </div>
 
                       <button
                         type="button"
-                        className="td-rail-close"
+                        className="td-rail-close ml-2"
                         onClick={closeRail}
                         title="Close dashboard"
                       >
@@ -1146,83 +1207,98 @@ export default function TeacherPage() {
                         </svg>
                       </button>
                     </div>
+                  </div>
 
-                    <SummaryCards
-                      flaggedCount={flaggedCount}
-                      identityIssueCount={identityIssueCount}
-                      avgScore={avgScore}
+                  {/* Body Content */}
+                  {sideRailTab === "cases" ? (
+                    <CaseTriageRail
+                      cases={cases}
+                      sessionId={sessionId}
+                      onExecuteBatchAction={handleBatchAction}
+                      onViewStudent={(uid) => setSideRailTab("grid")}
+                      className="border-0 rounded-none h-full bg-transparent shadow-none"
                     />
+                  ) : (
+                    <>
+                      <div className="p-3 border-b border-white/10">
+                        <SummaryCards
+                          flaggedCount={flaggedCount}
+                          identityIssueCount={identityIssueCount}
+                          avgScore={avgScore}
+                        />
 
-                    <div className="td-filter-tabs">
-                      <button
-                        type="button"
-                        className={`td-filter-tab ${showFlaggedOnly ? "active" : ""}`}
-                        onClick={() => setShowFlaggedOnly(true)}
-                      >
-                        Priority only
-                      </button>
-                      <button
-                        type="button"
-                        className={`td-filter-tab ${showFlaggedOnly ? "" : "active"}`}
-                        onClick={() => setShowFlaggedOnly(false)}
-                      >
-                        All students
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="td-student-list">
-                    {sortedStudents.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center p-8 text-center opacity-60 mt-10">
-                        <span
-                          className="material-symbols-outlined text-4xl mb-3"
-                          style={{ color: "var(--color-on-surface-variant)" }}
-                        >
-                          {showFlaggedOnly ? "check_circle" : "group"}
-                        </span>
-                        <p
-                          className="text-sm italic"
-                          style={{ color: "var(--color-on-surface-variant)" }}
-                        >
-                          {showFlaggedOnly
-                            ? "All clear. No priority flags right now."
-                            : "Waiting for students to join..."}
-                        </p>
+                        <div className="td-filter-tabs mt-2">
+                          <button
+                            type="button"
+                            className={`td-filter-tab ${showFlaggedOnly ? "active" : ""}`}
+                            onClick={() => setShowFlaggedOnly(true)}
+                          >
+                            Priority only
+                          </button>
+                          <button
+                            type="button"
+                            className={`td-filter-tab ${showFlaggedOnly ? "" : "active"}`}
+                            onClick={() => setShowFlaggedOnly(false)}
+                          >
+                            All students
+                          </button>
+                        </div>
                       </div>
-                    ) : (
-                      sortedStudents.map((s) => {
-                        const isSim =
-                          s.isSimulated === true ||
-                          isSimulatedStudentId(s.userId);
-                        const label = statusLabel(
-                          s.score,
-                          s.strikes,
-                          s.identityStatus,
-                          s.identityMismatchCount,
-                        );
 
-                        return (
-                          <StudentCard
-                            key={s.userId}
-                            student={s}
-                            statusLabel={label}
-                            statusKey={getStatusKey(s)}
-                            priority={getPriority(s)}
-                            isFlagged={isFlagged(s)}
-                            isSimulated={isSim}
-                            livenessLoading={livenessLoading}
-                            signals={getSignals(s)}
-                            sessionId={sessionId}
-                            onMarkEngaged={handleMarkEngaged}
-                            onMessage={handleMessage}
-                            onIgnore={handleIgnore}
-                            onRemove={handleRemove}
-                            onVerify={handleCheckEngagement}
-                          />
-                        );
-                      })
-                    )}
-                  </div>
+                      <div className="td-student-list flex-1 overflow-y-auto">
+                        {sortedStudents.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center p-8 text-center opacity-60 mt-10">
+                            <span
+                              className="material-symbols-outlined text-4xl mb-3"
+                              style={{ color: "var(--color-on-surface-variant)" }}
+                            >
+                              {showFlaggedOnly ? "check_circle" : "group"}
+                            </span>
+                            <p
+                              className="text-sm italic"
+                              style={{ color: "var(--color-on-surface-variant)" }}
+                            >
+                              {showFlaggedOnly
+                                ? "All clear. No priority flags right now."
+                                : "Waiting for students to join..."}
+                            </p>
+                          </div>
+                        ) : (
+                          sortedStudents.map((s) => {
+                            const isSim =
+                              s.isSimulated === true ||
+                              isSimulatedStudentId(s.userId);
+                            const label = statusLabel(
+                              s.score,
+                              s.strikes,
+                              s.identityStatus,
+                              s.identityMismatchCount,
+                            );
+
+                            return (
+                              <StudentCard
+                                key={s.userId}
+                                student={s}
+                                statusLabel={label}
+                                statusKey={getStatusKey(s)}
+                                priority={getPriority(s)}
+                                isFlagged={isFlagged(s)}
+                                isSimulated={isSim}
+                                livenessLoading={livenessLoading}
+                                signals={getSignals(s)}
+                                sessionId={sessionId}
+                                onMarkEngaged={handleMarkEngaged}
+                                onMessage={handleMessage}
+                                onIgnore={handleIgnore}
+                                onRemove={handleRemove}
+                                onVerify={handleCheckEngagement}
+                              />
+                            );
+                          })
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </aside>
             </div>

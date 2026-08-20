@@ -134,7 +134,11 @@ class PolicyRouter:
         routed_case = dict(case_data)
         if policy_str == PolicyId.CLASSROOM.value:
             # Downgrade priority and status for classroom supportive mode
-            if routed_case.get("priority") == "ACTION_REQUIRED":
-                routed_case["priority"] = "STUDENT_ONLY"
+            was_action_req = (
+                routed_case.get("priority") in ("ACTION_REQUIRED", "URGENT")
+                or routed_case.get("status") == "ACTION_REQUIRED"
+            )
+            routed_case["priority"] = "STUDENT_ONLY"
+            if was_action_req:
                 routed_case["status"] = "MONITOR"
         return routed_case

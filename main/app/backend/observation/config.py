@@ -18,6 +18,8 @@ class ObservationClockConfig:
     warning_cue_exposure_sec: float = 20.0
     min_cue_interval_sec: float = 2.0
     stale_evidence_timeout_sec: float = 300.0
+    student_reminder_cooldown_sec: float = 300.0
+    teacher_notification_cooldown_sec: float = 600.0
     is_demo: bool = False
 
     @property
@@ -38,6 +40,8 @@ def get_config(is_demo: bool = False) -> ObservationClockConfig:
             warning_cue_exposure_sec=4.0,
             min_cue_interval_sec=1.0,
             stale_evidence_timeout_sec=60.0,
+            student_reminder_cooldown_sec=20.0,
+            teacher_notification_cooldown_sec=30.0,
             is_demo=True,
         )
     return ObservationClockConfig(
@@ -50,5 +54,7 @@ def get_config(is_demo: bool = False) -> ObservationClockConfig:
         warning_cue_exposure_sec=20.0,
         min_cue_interval_sec=2.0,
         stale_evidence_timeout_sec=300.0,
+        student_reminder_cooldown_sec=300.0,
+        teacher_notification_cooldown_sec=600.0,
         is_demo=False,
     )

@@ -173,9 +173,32 @@ class ClassContextPayload(BaseModel):
 
 class TeacherActionPayload(BaseModel):
     session_id: str
-    user_id: str
-    action: str  # "mark_engaged" | "ignore" | "remove" | "message"
+    user_id: Optional[str] = None
+    user_ids: Optional[List[str]] = None
+    case_ids: Optional[List[str]] = None
+    action: Optional[str] = None
+    action_type: Optional[str] = None
     message_text: Optional[str] = None
+    note: Optional[str] = None
+    snooze_duration_minutes: Optional[int] = None
+
+
+class BatchTeacherActionRequest(BaseModel):
+    session_id: str = Field(..., description="ID of the active session")
+    case_ids: List[str] = Field(
+        default_factory=list,
+        description="List of case IDs to act upon",
+    )
+    participant_ids: List[str] = Field(
+        default_factory=list,
+        description="Optional list of target participant IDs",
+    )
+    action_type: str = Field(
+        ...,
+        description="Teacher action: acknowledge_context | mark_technical | dismiss_recovered | snooze | request_follow_up | resolve_case | resolve_incident | batch_resolve",
+    )
+    note: Optional[str] = Field(None, max_length=1000)
+    snooze_duration_minutes: Optional[int] = Field(None, ge=1, le=120)
 
 
 class LivenessTriggerPayload(BaseModel):

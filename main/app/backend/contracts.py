@@ -398,9 +398,11 @@ class StudentContextAddedPayload(BaseModel):
 
 class CasePayload(BaseModel):
     case_id: str
+    session_id: Optional[str] = None
+    participant_id: Optional[str] = None
     category: str
     status: str = "OPEN"
-    priority: str = "LOW"
+    priority: str = "MONITOR"
     reason_summary: Optional[str] = None
     started_at: Optional[str] = None
     last_updated_at: Optional[str] = None
@@ -410,6 +412,7 @@ class CasePayload(BaseModel):
     self_recovery_attempted: bool = False
     student_context_count: int = 0
     teacher_action_count: int = 0
+    affected_participant_count: Optional[int] = None
     resolution_reason: Optional[str] = None
 
 

@@ -78,6 +78,7 @@ from models import (
     ConsentWithdrawRequest,
     ConsentRecordResponse,
     StudentContextRequest,
+    BatchTeacherActionRequest,
     LegalHoldCreateRequest,
     LegalHoldReleaseRequest,
     LegalHoldResponse,
@@ -87,6 +88,8 @@ from models import (
 )
 from contracts import EventEnvelope, EventType, ActorRole, EventSource, ConsentCategory, AppealCategory
 from projections.engine import ProjectionEngine
+from observation.case_manager import CaseManager
+from observation.notification_manager import NotificationPolicyTracker
 from presence import challenge_manager, ActivePresenceResultState
 from storage.storage_service import (
     get_storage_service,
@@ -1366,11 +1369,22 @@ async def teacher_action(
         _verify_session_tenant(session, auth)
         _verify_session_teacher(session, auth)
 
-    if payload.action not in ("mark_engaged", "ignore", "remove", "message"):
+    action = payload.action_type or payload.action or ""
+    valid_actions = (
+        "mark_engaged", "ignore", "remove", "message",
+        "acknowledge_context", "acknowledge", "mark_technical",
+        "dismiss_recovered", "dismiss", "snooze", "request_follow_up",
+        "resolve_case", "resolve_incident", "batch_resolve", "resolve"
+    )
+    if action not in valid_actions:
         raise HTTPException(
             status_code=400,
-            detail="action must be mark_engaged, ignore, remove, or message",
+            detail=f"action must be one of: {', '.join(valid_actions)}",
         )
+
+    target_case_ids = payload.case_ids or []
+    target_pids = payload.user_ids or ([payload.user_id] if payload.user_id else [])
+    is_batch = len(target_case_ids) > 1 or len(target_pids) > 1
 
     # 1. Emit durable TEACHER_ACTION_RECORDED event
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -1381,7 +1395,7 @@ async def teacher_action(
         "schema_version": 1,
         "tenant_id": auth.tenant_id,
         "session_id": payload.session_id,
-        "participant_id": payload.user_id,
+        "participant_id": target_pids[0] if len(target_pids) == 1 else None,
         "actor_id": auth.user_id,
         "actor_role": "teacher",
         "source": "teacher",
@@ -1389,9 +1403,12 @@ async def teacher_action(
         "policy_id": policy_id,
         "payload": {
             "action_id": str(uuid.uuid4()),
-            "action_type": payload.action,
-            "target_participant_ids": [payload.user_id],
-            "note": payload.message_text if payload.action == "message" else None,
+            "action_type": action,
+            "target_participant_ids": target_pids,
+            "target_case_ids": target_case_ids,
+            "is_batch": is_batch,
+            "note": payload.note or (payload.message_text if action == "message" else None),
+            "snooze_duration_minutes": payload.snooze_duration_minutes,
         },
     }
     repository.append_event(evt)
@@ -1403,22 +1420,164 @@ async def teacher_action(
         "actor_id": auth.user_id,
         "actor_role": "teacher",
         "action_type": "TEACHER_ACTION",
-        "target_user_id": payload.user_id,
-        "details": {"action": payload.action},
+        "target_user_id": target_pids[0] if len(target_pids) == 1 else None,
+        "target_resource": "session_cases" if target_case_ids else "participant",
+        "details": {
+            "action": action,
+            "case_ids": target_case_ids,
+            "participant_ids": target_pids,
+            "is_batch": is_batch,
+        },
     })
 
-    msg = {
-        "type": "teacher_action",
-        "action": payload.action,
-        "teacher_id": auth.user_id,
-    }
-    if payload.action == "message" and payload.message_text:
-        msg["message_text"] = payload.message_text
+    # 3. Notify student if single message/action
+    if payload.user_id and action in ("message", "mark_engaged", "remove", "ignore"):
+        msg = {
+            "type": "teacher_action",
+            "action": action,
+            "teacher_id": auth.user_id,
+        }
+        if action == "message" and payload.message_text:
+            msg["message_text"] = payload.message_text
+        await manager.send_to_student(payload.session_id, payload.user_id, msg)
 
-    ok = await manager.send_to_student(payload.session_id, payload.user_id, msg)
-    if not ok:
-        return {"status": "error", "message": "student not found"}
-    return {"status": "success"}
+    # 4. Broadcast updated cases to teacher WebSockets
+    if payload.session_id != "default-session":
+        events = repository.get_session_events(payload.session_id)
+        updated_cases = CaseManager.build_session_cases(events, payload.session_id, policy_id=policy_id)
+        await manager.broadcast_to_teachers(payload.session_id, {
+            "type": "cases_update",
+            "session_id": payload.session_id,
+            "cases": updated_cases,
+            "action_executed": action,
+            "timestamp": now_iso,
+        })
+
+    return {
+        "status": "success",
+        "action": action,
+        "cases_affected": len(target_case_ids),
+        "participants_affected": len(target_pids),
+    }
+
+
+@app.get("/api/v1/sessions/{session_id}/cases", dependencies=[Depends(require_teacher)])
+async def get_session_cases(
+    session_id: str,
+    view: Optional[str] = Query(None, description="active | monitor | technical | context_added | recovered | resolved"),
+    auth: AuthContext = Depends(require_teacher),
+):
+    """
+    Returns server-authoritative grouped triage cases for the session.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    _verify_session_tenant(session, auth)
+    _verify_session_teacher(session, auth)
+
+    events = repository.get_session_events(session_id)
+    policy_id = session.get("policy_id", "CLASSROOM")
+    cases = CaseManager.build_session_cases(events, session_id, policy_id=policy_id)
+
+    if view:
+        view_lower = view.lower()
+        if view_lower == "active":
+            cases = [c for c in cases if c.get("status") in ("OPEN", "ACTION_REQUIRED") and c.get("priority") in ("ACTION_REQUIRED", "URGENT")]
+        elif view_lower == "monitor":
+            cases = [c for c in cases if c.get("status") == "OPEN" and c.get("priority") == "MONITOR" and c.get("category") not in ("TECHNICAL_CAMERA", "TECHNICAL_NETWORK", "SESSION_INCIDENT")]
+        elif view_lower == "technical":
+            cases = [c for c in cases if c.get("status") in ("OPEN", "ACTION_REQUIRED") and c.get("category") in ("TECHNICAL_CAMERA", "TECHNICAL_NETWORK", "SESSION_INCIDENT")]
+        elif view_lower in ("context_added", "context"):
+            cases = [c for c in cases if c.get("status") in ("OPEN", "ACTION_REQUIRED") and c.get("student_context_count", 0) > 0]
+        elif view_lower == "recovered":
+            cases = [c for c in cases if c.get("self_recovery_attempted") is True or c.get("status") == "SELF_RECOVERED"]
+        elif view_lower == "resolved":
+            cases = [c for c in cases if c.get("status") in ("RESOLVED", "DISMISSED")]
+
+    return {"status": "success", "session_id": session_id, "count": len(cases), "cases": cases}
+
+
+@app.post("/api/v1/sessions/{session_id}/cases/actions", dependencies=[Depends(require_teacher)])
+async def execute_batch_teacher_actions(
+    session_id: str,
+    payload: BatchTeacherActionRequest,
+    auth: AuthContext = Depends(require_teacher),
+):
+    """
+    Executes an atomic batch action on 1 to 100 triage cases or participants.
+    Records TEACHER_ACTION_RECORDED event, writes audit_logs entries, and broadcasts case updates.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    _verify_session_tenant(session, auth)
+    _verify_session_teacher(session, auth)
+
+    is_batch = len(payload.case_ids) > 1 or len(payload.participant_ids) > 1
+    now_iso = datetime.now(timezone.utc).isoformat()
+    action_id = str(uuid.uuid4())
+    action_type = payload.action_type
+
+    # 1. Emit durable TEACHER_ACTION_RECORDED event
+    evt = {
+        "event_id": str(uuid.uuid4()),
+        "event_type": "TEACHER_ACTION_RECORDED",
+        "schema_version": 1,
+        "tenant_id": auth.tenant_id,
+        "session_id": session_id,
+        "participant_id": payload.participant_ids[0] if len(payload.participant_ids) == 1 else None,
+        "actor_id": auth.user_id,
+        "actor_role": "teacher",
+        "source": "teacher",
+        "occurred_at": now_iso,
+        "policy_id": session.get("policy_id", "CLASSROOM"),
+        "payload": {
+            "action_id": action_id,
+            "action_type": action_type,
+            "target_case_ids": payload.case_ids,
+            "target_participant_ids": payload.participant_ids,
+            "is_batch": is_batch,
+            "note": payload.note,
+            "snooze_duration_minutes": payload.snooze_duration_minutes,
+        },
+    }
+    repository.append_event(evt)
+
+    # 2. Record Audit Log
+    repository.record_audit_log({
+        "tenant_id": auth.tenant_id,
+        "session_id": session_id,
+        "actor_id": auth.user_id,
+        "actor_role": "teacher",
+        "action_type": "TEACHER_ACTION",
+        "target_resource": "session_cases",
+        "details": {
+            "action_type": action_type,
+            "case_ids": payload.case_ids,
+            "participant_ids": payload.participant_ids,
+            "is_batch": is_batch,
+        },
+    })
+
+    # 3. Broadcast updated cases to teacher WebSockets
+    events = repository.get_session_events(session_id)
+    updated_cases = CaseManager.build_session_cases(events, session_id, policy_id=session.get("policy_id", "CLASSROOM"))
+    await manager.broadcast_to_teachers(session_id, {
+        "type": "cases_update",
+        "session_id": session_id,
+        "cases": updated_cases,
+        "action_executed": action_type,
+        "timestamp": now_iso,
+    })
+
+    return {
+        "status": "success",
+        "action_id": action_id,
+        "action_type": action_type,
+        "cases_affected": len(payload.case_ids),
+        "participants_affected": len(payload.participant_ids),
+    }
 
 
 @app.post("/nudge/send", dependencies=[Depends(require_teacher)])

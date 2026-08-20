@@ -1,4 +1,5 @@
 // src/pages/StudentPage.jsx
+// Workstream W7: Student Health Projection, Self-Recovery, and Return-to-Session Flows
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
@@ -11,6 +12,8 @@ import useWebSocket from "../hooks/use-websocket.js";
 import StudentTopbar from "../components/student/student-topbar.jsx";
 import ResourcePanel from "../components/assessment/resource-panel.jsx";
 import AnswerSubmissionPanel from "../components/assessment/answer-submission-panel.jsx";
+import StudentHealthPanel from "../components/student/student-health-panel.jsx";
+import StudentContextModal from "../components/student/student-context-modal.jsx";
 import { BrowserVisibilityTracker } from "../observation/browser-visibility-tracker.js";
 import "../styles/dashboard-shared.css";
 import "../styles/student-meeting.css";
@@ -34,7 +37,10 @@ export default function StudentPage() {
 
   const [inMeeting, setInMeeting] = useState(false);
   const [nudgeState, setNudgeState] = useState(null);
+  const [isContextModalOpen, setIsContextModalOpen] = useState(false);
+  const [returnToSessionPrompt, setReturnToSessionPrompt] = useState(null);
   const nudgeTimeoutRef = useRef(null);
+  const returnPromptTimeoutRef = useRef(null);
   const readinessAutoJoinRef = useRef(false);
 
   // Side Rail Active Mode: "tracker" | "resources" | "submission" | null
@@ -57,15 +63,53 @@ export default function StudentPage() {
     return () => clearTimeout(t);
   }, [inMeeting, wsConnected]);
 
-  // Setup BrowserVisibilityTracker for external resource clicks & focus
+  // Setup BrowserVisibilityTracker for external resource clicks, focus & return-to-session prompt
   useEffect(() => {
     if (!sessionId || !userId || !inMeeting) return;
     const tenantId = sessionStorage.getItem("chronos_tenant_id") || "ten-default";
+    const BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+
+    const handleEventProduced = (envelope) => {
+      // 1. Ingest event to server asynchronously
+      let token = "";
+      try {
+        const raw = sessionStorage.getItem("chronos_user");
+        if (raw) token = JSON.parse(raw)?.token || "";
+      } catch {
+        token = "";
+      }
+
+      fetch(`${BASE}/api/v1/events/ingest`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ events: [envelope] }),
+      }).catch(() => {});
+
+      // 2. Return-to-session calm prompt trigger (15s to 60s away)
+      const durationMs = envelope?.payload?.duration_ms || 0;
+      if (
+        (envelope.event_type === "PAGE_VISIBLE" || envelope.event_type === "WINDOW_FOCUSED") &&
+        durationMs >= 15000
+      ) {
+        const awaySec = Math.round(durationMs / 1000);
+        setReturnToSessionPrompt({ awaySeconds: awaySec });
+
+        if (returnPromptTimeoutRef.current) clearTimeout(returnPromptTimeoutRef.current);
+        returnPromptTimeoutRef.current = setTimeout(() => {
+          setReturnToSessionPrompt(null);
+        }, 10000);
+      }
+    };
+
     const tracker = new BrowserVisibilityTracker({
       sessionId,
       participantId: userId,
       tenantId,
       policyId: "RESOURCE_SUPPORTED_ASSESSMENT",
+      onEventProduced: handleEventProduced,
     });
     tracker.start();
     visibilityTrackerRef.current = tracker;
@@ -73,6 +117,7 @@ export default function StudentPage() {
     return () => {
       tracker.stop();
       visibilityTrackerRef.current = null;
+      if (returnPromptTimeoutRef.current) clearTimeout(returnPromptTimeoutRef.current);
     };
   }, [sessionId, userId, inMeeting]);
 
@@ -138,6 +183,48 @@ export default function StudentPage() {
     <>
       <NudgeNotification message={nudgeState?.text} key={nudgeState?.id} />
 
+      {/* Return to Session Calm Prompt Banner */}
+      {returnToSessionPrompt && (
+        <div
+          className="fixed top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[#1a1c1e]/95 border border-[#dcc492]/40 shadow-2xl backdrop-blur-md text-xs text-slate-200 animate-in fade-in slide-in-from-top-3"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="w-2 h-2 rounded-full bg-[#dcc492] animate-ping" />
+          <span>
+            Welcome back! You were away for <strong>{returnToSessionPrompt.awaySeconds}s</strong>.
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setReturnToSessionPrompt(null);
+              setIsContextModalOpen(true);
+            }}
+            className="px-2.5 py-1 rounded-lg bg-[#dcc492] text-[#1a1c1e] font-semibold hover:bg-[#ebd7ad] transition"
+          >
+            Add Context
+          </button>
+          <button
+            type="button"
+            onClick={() => setReturnToSessionPrompt(null)}
+            className="p-1 rounded-lg text-slate-400 hover:text-white"
+            aria-label="Dismiss prompt"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Student Structured Context / Appeals Modal */}
+      <StudentContextModal
+        isOpen={isContextModalOpen}
+        onClose={() => setIsContextModalOpen(false)}
+        sessionId={sessionId}
+      />
+
       {showDisconnect && (
         <div
           style={{
@@ -185,6 +272,7 @@ export default function StudentPage() {
             wsConnected={wsConnected}
             sessionId={sessionId}
             userName={userName}
+            onOpenPrivacy={() => setIsContextModalOpen(true)}
           />
 
           <div className="sd-status-bar" aria-label="Student session strip">
@@ -195,6 +283,19 @@ export default function StudentPage() {
             </div>
 
             <div className="sd-status-right">
+              {/* Need Help / Add Context Modal Button */}
+              <button
+                type="button"
+                onClick={() => setIsContextModalOpen(true)}
+                className="sd-tracker-toggle bg-[#dcc492]/10 hover:bg-[#dcc492]/20 border-[#dcc492]/30 text-[#dcc492]"
+                title="Add context or request teacher assistance"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                Add Context / Help
+              </button>
+
               {/* Assessment Panel Toggle Button */}
               <button
                 type="button"
@@ -222,7 +323,7 @@ export default function StudentPage() {
                 Assessment Panel
               </button>
 
-              {/* Focus Tracker Toggle Button */}
+              {/* Focus & Health Monitor Toggle Button */}
               <button
                 type="button"
                 onClick={() => {
@@ -231,10 +332,10 @@ export default function StudentPage() {
                 className={`sd-tracker-toggle ${activeSideTab === "tracker" ? "is-active" : ""}`}
                 aria-expanded={activeSideTab === "tracker"}
                 aria-controls="student-tracker-rail"
-                title="View focus and engagement signals"
+                title="View focus, health and engagement signals"
               >
                 <span className="sd-toggle-dot" aria-hidden="true" />
-                {activeSideTab === "tracker" ? "Hide Monitor" : "Focus Monitor"}
+                {activeSideTab === "tracker" ? "Hide Monitor" : "Health & Monitor"}
               </button>
             </div>
           </div>
@@ -297,7 +398,7 @@ export default function StudentPage() {
                             : "text-[#d3e4f8]/70 hover:text-white"
                         }`}
                       >
-                        Focus
+                        Health &amp; Focus
                       </button>
                     </div>
 
@@ -336,7 +437,7 @@ export default function StudentPage() {
                 </div>
 
                 {/* Content Panel Area */}
-                <div className="sd-tracker-content p-3 overflow-y-auto flex-1 flex flex-col min-h-0">
+                <div className="sd-tracker-content p-3 overflow-y-auto flex-1 flex flex-col min-h-0 space-y-3">
                   {activeSideTab === "resources" && (
                     <ResourcePanel
                       sessionId={sessionId}
@@ -356,11 +457,20 @@ export default function StudentPage() {
                   )}
 
                   {activeSideTab === "tracker" && (
-                    <EngagementTracker
-                      sessionId={sessionId}
-                      userId={userId}
-                      onNudge={handleNudge}
-                    />
+                    <>
+                      <StudentHealthPanel
+                        cameraActive={true}
+                        faceDetected={true}
+                        lightingQuality="optimal"
+                        networkStatus={wsConnected ? "connected" : "reconnecting"}
+                        onOpenContextModal={() => setIsContextModalOpen(true)}
+                      />
+                      <EngagementTracker
+                        sessionId={sessionId}
+                        userId={userId}
+                        onNudge={handleNudge}
+                      />
+                    </>
                   )}
                 </div>
               </div>

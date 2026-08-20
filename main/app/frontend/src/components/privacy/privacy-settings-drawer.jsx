@@ -229,12 +229,13 @@ export default function PrivacySettingsDrawer({ isOpen, onClose, token, sessionI
                 onChange={(e) => setAppealCategory(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
               >
-                <option value="technical_glitch">Technical Glitch / Camera Freeze</option>
-                <option value="connectivity_issue">WiFi / Network Disconnection</option>
-                <option value="environmental_disturbance">Environmental Disturbance / Noise</option>
-                <option value="medical_personal">Personal / Bio Break</option>
-                <option value="misunderstanding">Instructions Clarification</option>
-                <option value="other">Other</option>
+                <option value="CAMERA_LIGHTING_DEVICE">Camera, lighting, or device problem</option>
+                <option value="NETWORK_CONNECTIVITY">Network or connectivity problem</option>
+                <option value="SIGNAL_MISMATCH">Signal did not reflect my participation</option>
+                <option value="DECLARED_RESOURCE_USE">Expected activity or declared-resource use</option>
+                <option value="ACCESSIBILITY_ACCOMMODATION">Accessibility or accommodation path</option>
+                <option value="IDENTITY_VERIFICATION_ISSUE">Identity verification problem</option>
+                <option value="OTHER">Other</option>
               </select>
             </div>
 

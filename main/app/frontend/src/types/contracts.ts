@@ -343,6 +343,8 @@ export interface StudentContextAddedPayload {
 
 export interface CasePayload {
   case_id: string;
+  session_id?: string;
+  participant_id?: string | null;
   category: string;
   status: string;
   priority: string;
@@ -355,6 +357,7 @@ export interface CasePayload {
   self_recovery_attempted: boolean;
   student_context_count: number;
   teacher_action_count: number;
+  affected_participant_count?: number;
   resolution_reason?: string;
 }
 
