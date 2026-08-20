@@ -248,3 +248,100 @@ class SafeErrorDetail(BaseModel):
     message: str
     request_id: Optional[str] = None
     retry_after_seconds: Optional[int] = None
+
+
+# ---------------------------------------------------------------------------
+# Resource-Supported Assessment Models & Enums
+# ---------------------------------------------------------------------------
+
+class ResourceType(str, Enum):
+    UPLOADED_PDF = "uploaded_pdf"
+    UPLOADED_IMAGE = "uploaded_image"
+    EXTERNAL_LINK = "external_link"
+
+
+class ResourceCreateRequest(BaseModel):
+    title: str
+    description: Optional[str] = None
+    resource_type: ResourceType = ResourceType.UPLOADED_PDF
+    required: bool = False
+    allowed_from: Optional[str] = None
+    allowed_until: Optional[str] = None
+
+
+class ExternalLinkCreateRequest(BaseModel):
+    title: str
+    description: Optional[str] = None
+    declared_url: str
+    allowed_domain: Optional[str] = None
+    required: bool = False
+    allowed_from: Optional[str] = None
+    allowed_until: Optional[str] = None
+
+
+class ResourceEventRequest(BaseModel):
+    event_type: str
+    duration_ms: Optional[int] = None
+
+
+class ResourceResponse(BaseModel):
+    resource_id: str
+    session_id: str
+    type: str
+    title: str
+    description: Optional[str] = None
+    storage_path: Optional[str] = None
+    declared_url: Optional[str] = None
+    allowed_domain: Optional[str] = None
+    allowed_from: Optional[str] = None
+    allowed_until: Optional[str] = None
+    required: bool = False
+    is_primary: bool = False
+    immutable_after_start: bool = True
+    content_hash: Optional[str] = None
+    size_bytes: Optional[int] = None
+    created_by: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class ResourceAccessResponse(BaseModel):
+    resource_id: str
+    access_url: str
+    expires_in_seconds: int = 900
+
+
+class AnswerDraftRequest(BaseModel):
+    typed_content: Optional[str] = None
+
+
+class AnswerSubmitRequest(BaseModel):
+    typed_content: Optional[str] = None
+    is_final: bool = True
+    client_submission_id: Optional[str] = None
+
+
+class AnswerResponse(BaseModel):
+    answer_id: str
+    session_id: str
+    participant_id: str
+    version: int = 1
+    status: str = "SUBMITTED"
+    artifact_type: Optional[str] = "pdf_upload"
+    content_hash: Optional[str] = None
+    byte_size: Optional[int] = None
+    storage_path: Optional[str] = None
+    typed_content: Optional[str] = None
+    submitted_at: Optional[str] = None
+    is_late: bool = False
+
+
+class SubmissionListResponse(BaseModel):
+    submissions: List[AnswerResponse] = Field(default_factory=list)
+    items: Optional[List[AnswerResponse]] = None
+
+    def model_post_init(self, __context: Any) -> None:
+        if self.items is None and self.submissions:
+            self.items = self.submissions
+        elif not self.submissions and self.items:
+            self.submissions = self.items
+

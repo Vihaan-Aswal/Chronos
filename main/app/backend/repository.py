@@ -435,6 +435,33 @@ class ChronosDomainRepository:
         except Exception:
             return []
 
+    def get_resource_by_id(self, resource_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch a specific resource by ID."""
+        try:
+            res = (
+                self.db.table("resource_projections")
+                .select("*")
+                .eq("resource_id", resource_id)
+                .execute()
+            )
+            return res.data[0] if res.data else None
+        except Exception:
+            return None
+
+    def delete_resource(self, session_id: str, resource_id: str) -> bool:
+        """Delete a resource projection record."""
+        try:
+            res = (
+                self.db.table("resource_projections")
+                .delete()
+                .eq("session_id", session_id)
+                .eq("resource_id", resource_id)
+                .execute()
+            )
+            return bool(res.data) if res and res.data else True
+        except Exception:
+            return False
+
     def record_answer_projection(self, answer_data: Dict[str, Any]) -> Dict[str, Any]:
         """Persist versioned answer draft or final submission."""
         if "answer_id" not in answer_data:
@@ -443,6 +470,19 @@ class ChronosDomainRepository:
             answer_data["submitted_at"] = datetime.now(timezone.utc).isoformat()
         res = self.db.table("answer_projections").upsert(answer_data).execute()
         return res.data[0] if res.data else answer_data
+
+    def get_answer_by_id(self, answer_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch a specific answer submission by ID."""
+        try:
+            res = (
+                self.db.table("answer_projections")
+                .select("*")
+                .eq("answer_id", answer_id)
+                .execute()
+            )
+            return res.data[0] if res.data else None
+        except Exception:
+            return None
 
     def get_participant_answers(
         self, session_id: str, participant_id: str
@@ -455,6 +495,20 @@ class ChronosDomainRepository:
                 .eq("session_id", session_id)
                 .eq("participant_id", participant_id)
                 .order("version", desc=False)
+                .execute()
+            )
+            return res.data or []
+        except Exception:
+            return []
+
+    def get_session_submissions(self, session_id: str) -> List[Dict[str, Any]]:
+        """Fetch all answer submissions for a session across all participants."""
+        try:
+            res = (
+                self.db.table("answer_projections")
+                .select("*")
+                .eq("session_id", session_id)
+                .order("submitted_at", desc=False)
                 .execute()
             )
             return res.data or []
@@ -492,55 +546,9 @@ class ChronosDomainRepository:
         event_type = event.get("event_type")
         payload = event.get("payload") or {}
 
-        if participant_id and session_id:
-            # 1. Update participant projection
-            current_proj = self.get_participant_projection(session_id, participant_id)
-            if not current_proj:
-                current_proj = {
-                    "session_id": session_id,
-                    "participant_id": participant_id,
-                    "observation_state": "OBSERVABLE",
-                    "coverage_ratio": 1.0,
-                    "attention_pattern": "UNKNOWN",
-                    "identity_state": "NOT_REQUESTED",
-                    "active_presence_state": "NOT_REQUESTED",
-                    "browser_context": "NO_ACTIVE_EVENT",
-                    "case_state": "NONE",
-                    "warning_streak": 0,
-                    "clean_streak": 0,
-                    "active_reason_codes": [],
-                    "technical_reasons": [],
-                    "student_context_count": 0,
-                    "teacher_action_count": 0,
-                    "last_event_sequence": 0,
-                }
-            updated = ProjectionEngine.reduce_participant_event(current_proj, event)
-            self.upsert_participant_projection(updated)
-
-            # 2. Window Finalization table
-            if event_type == "WINDOW_FINALIZED":
-                window_data = {
-                    "window_id": payload.get("window_id") or str(uuid.uuid4()),
-                    "session_id": session_id,
-                    "participant_id": participant_id,
-                    "window_start": payload.get("window_start") or event.get("occurred_at"),
-                    "window_end": payload.get("window_end") or event.get("occurred_at"),
-                    "expected_segments": payload.get("expected_segments", 12),
-                    "usable_segments": payload.get("usable_segments", 12),
-                    "coverage_ratio": payload.get("coverage_ratio", 1.0),
-                    "observation_state": payload.get("observation_state", "VALID"),
-                    "classification": payload.get("classification", "VALID_CLEAN"),
-                    "cue_exposure_seconds": payload.get("cue_exposure_seconds", 0.0),
-                    "warning_streak": payload.get("warning_streak", 0),
-                    "clean_streak": payload.get("clean_streak", 0),
-                    "reason_codes": payload.get("reason_codes", []),
-                    "technical_reasons": payload.get("technical_reasons", []),
-                    "is_demo": event.get("is_demo", False),
-                }
-                self.record_finalized_window(window_data)
-
-            # 3. Resource Published
-            elif event_type == "RESOURCE_PUBLISHED":
+        if session_id:
+            # 1. Resource Published (session-level event)
+            if event_type == "RESOURCE_PUBLISHED":
                 res_data = {
                     "resource_id": payload.get("resource_id") or str(uuid.uuid4()),
                     "session_id": session_id,
@@ -549,28 +557,84 @@ class ChronosDomainRepository:
                     "description": payload.get("description"),
                     "storage_path": payload.get("storage_path"),
                     "declared_url": payload.get("declared_url"),
-                    "required": payload.get("required") or payload.get("is_required", False),
+                    "allowed_domain": payload.get("allowed_domain"),
+                    "allowed_from": payload.get("allowed_from"),
+                    "allowed_until": payload.get("allowed_until"),
+                    "required": payload.get("required") if payload.get("required") is not None else payload.get("is_required", False),
+                    "is_primary": payload.get("is_primary", False),
                     "immutable_after_start": payload.get("immutable_after_start", True),
                     "content_hash": payload.get("content_hash"),
+                    "size_bytes": payload.get("size_bytes") or payload.get("byte_size", 0),
                     "created_by": event.get("actor_id", "teacher"),
+                    "created_at": event.get("occurred_at"),
                 }
                 self.upsert_resource_projection(res_data)
 
-            # 4. Answer Submission
-            elif event_type in ("ANSWER_SUBMITTED", "ANSWER_DRAFT_SAVED", "ANSWER_REPLACED", "ANSWER_MARKED_LATE"):
-                ans_data = {
-                    "answer_id": payload.get("submission_id") or payload.get("answer_id") or str(uuid.uuid4()),
-                    "session_id": session_id,
-                    "participant_id": participant_id,
-                    "version": payload.get("version", 1),
-                    "status": payload.get("status", "SUBMITTED"),
-                    "content_hash": payload.get("content_hash"),
-                    "byte_size": payload.get("byte_size") or payload.get("size_bytes", 0),
-                    "storage_path": payload.get("storage_path"),
-                    "submitted_at": payload.get("submitted_at") or event.get("occurred_at"),
-                    "is_late": payload.get("is_late", False),
-                }
-                self.record_answer_projection(ans_data)
+            # 2. Participant specific events
+            if participant_id:
+                # Update participant projection
+                current_proj = self.get_participant_projection(session_id, participant_id)
+                if not current_proj:
+                    current_proj = {
+                        "session_id": session_id,
+                        "participant_id": participant_id,
+                        "observation_state": "OBSERVABLE",
+                        "coverage_ratio": 1.0,
+                        "attention_pattern": "UNKNOWN",
+                        "identity_state": "NOT_REQUESTED",
+                        "active_presence_state": "NOT_REQUESTED",
+                        "browser_context": "NO_ACTIVE_EVENT",
+                        "case_state": "NONE",
+                        "warning_streak": 0,
+                        "clean_streak": 0,
+                        "active_reason_codes": [],
+                        "technical_reasons": [],
+                        "student_context_count": 0,
+                        "teacher_action_count": 0,
+                        "last_event_sequence": 0,
+                    }
+                updated = ProjectionEngine.reduce_participant_event(current_proj, event)
+                self.upsert_participant_projection(updated)
+
+                # Window Finalization table
+                if event_type == "WINDOW_FINALIZED":
+                    window_data = {
+                        "window_id": payload.get("window_id") or str(uuid.uuid4()),
+                        "session_id": session_id,
+                        "participant_id": participant_id,
+                        "window_start": payload.get("window_start") or event.get("occurred_at"),
+                        "window_end": payload.get("window_end") or event.get("occurred_at"),
+                        "expected_segments": payload.get("expected_segments", 12),
+                        "usable_segments": payload.get("usable_segments", 12),
+                        "coverage_ratio": payload.get("coverage_ratio", 1.0),
+                        "observation_state": payload.get("observation_state", "VALID"),
+                        "classification": payload.get("classification", "VALID_CLEAN"),
+                        "cue_exposure_seconds": payload.get("cue_exposure_seconds", 0.0),
+                        "warning_streak": payload.get("warning_streak", 0),
+                        "clean_streak": payload.get("clean_streak", 0),
+                        "reason_codes": payload.get("reason_codes", []),
+                        "technical_reasons": payload.get("technical_reasons", []),
+                        "is_demo": event.get("is_demo", False),
+                    }
+                    self.record_finalized_window(window_data)
+
+                # Answer Submission
+                elif event_type in ("ANSWER_SUBMITTED", "ANSWER_DRAFT_SAVED", "ANSWER_REPLACED", "ANSWER_MARKED_LATE"):
+                    ans_data = {
+                        "answer_id": payload.get("submission_id") or payload.get("answer_id") or str(uuid.uuid4()),
+                        "session_id": session_id,
+                        "participant_id": participant_id,
+                        "version": payload.get("version", 1),
+                        "status": payload.get("status", "SUBMITTED"),
+                        "artifact_type": payload.get("artifact_type", "pdf_upload"),
+                        "content_hash": payload.get("content_hash"),
+                        "byte_size": payload.get("byte_size") or payload.get("size_bytes", 0),
+                        "storage_path": payload.get("storage_path"),
+                        "client_submission_id": payload.get("client_submission_id"),
+                        "submitted_at": payload.get("submitted_at") or event.get("occurred_at"),
+                        "is_late": payload.get("is_late", False),
+                    }
+                    self.record_answer_projection(ans_data)
 
     def rebuild_projections_for_session(self, session_id: str) -> Dict[str, Any]:
         """

@@ -105,6 +105,51 @@ function SimIcon() {
   );
 }
 
+function AssessmentIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <polyline
+        points="14 2 14 8 20 8"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <line
+        x1="16"
+        y1="13"
+        x2="8"
+        y2="13"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <line
+        x1="16"
+        y1="17"
+        x2="8"
+        y2="17"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function StarIcon() {
   return (
     <svg
@@ -136,6 +181,7 @@ export default function DashboardTopbar({
   onToggleSimulate,
   livenessLoading,
   onCheckEngagement,
+  onOpenAssessmentModal,
 }) {
   const userLabel = user?.email || "Teacher";
 
@@ -199,6 +245,18 @@ export default function DashboardTopbar({
             <SimIcon />
             {simulateClassroom ? "Simulate on" : "Simulate"}
           </button>
+
+          {onOpenAssessmentModal && (
+            <button
+              type="button"
+              className="td-seg-btn active-gold"
+              onClick={onOpenAssessmentModal}
+              title="Assessment & Submissions Management"
+            >
+              <AssessmentIcon />
+              Assessment
+            </button>
+          )}
         </div>
 
         <button

@@ -20,6 +20,9 @@ from fastapi import (
     Query,
     Request,
     Response,
+    Form,
+    File,
+    UploadFile,
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
@@ -61,10 +64,31 @@ from models import (
     PolicySnapshot,
     PolicyId,
     SessionStatus,
+    ResourceType,
+    ResourceCreateRequest,
+    ExternalLinkCreateRequest,
+    ResourceEventRequest,
+    ResourceResponse,
+    ResourceAccessResponse,
+    AnswerDraftRequest,
+    AnswerSubmitRequest,
+    AnswerResponse,
+    SubmissionListResponse,
 )
 from contracts import EventEnvelope, EventType, ActorRole, EventSource
 from projections.engine import ProjectionEngine
 from presence import challenge_manager, ActivePresenceResultState
+from storage.storage_service import (
+    get_storage_service,
+    LocalStorageService,
+    StorageValidationError,
+    StorageNotFoundError,
+    StorageIntegrityError,
+    StorageError,
+    EXTENSION_TO_MIME,
+)
+from assessment.resource_service import ResourceService
+from assessment.answer_service import AnswerService
 
 load_dotenv()
 logger = get_logger("chronos.backend")
@@ -90,6 +114,9 @@ _is_test_env = os.getenv("ENV") == "test" or os.getenv("MOCK_AUTH", "0") == "1"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 repository = ChronosDomainRepository(supabase)
 meeting_service = MeetingTokenService(db_client=supabase)
+storage_service = get_storage_service(supabase_client=supabase)
+resource_service = ResourceService(repository=repository, storage_service=storage_service)
+answer_service = AnswerService(repository=repository, storage_service=storage_service)
 
 app = FastAPI(
     title="Chronos Secure Platform API",
@@ -1517,5 +1544,574 @@ async def rebuild_session_projections(
 
     result = repository.rebuild_projections_for_session(session_id)
     return {"status": "success", "result": result}
+
+
+# ---------------------------------------------------------------------------
+# Assessment & Storage Endpoints (Resource-Supported Assessment)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/v1/storage/download")
+async def storage_download(
+    path: str = Query(..., description="Storage path of the artifact"),
+    expires_at: int = Query(..., description="Expiration timestamp in epoch seconds"),
+    signature: str = Query(..., description="HMAC SHA-256 signature"),
+):
+    """
+    Secure file download endpoint for local storage double.
+    Validates HMAC signature and expiration timestamp.
+    """
+    if isinstance(storage_service, LocalStorageService):
+        if not storage_service.verify_signed_url(
+            path=path, expires_at=expires_at, signature=signature
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Invalid or expired download signature",
+            )
+
+    try:
+        content = storage_service.download_file(path)
+    except StorageNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Artifact not found at path '{path}'",
+        )
+    except StorageIntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve artifact: {e}",
+        )
+
+    ext = os.path.splitext(path)[1].lower()
+    media_type = EXTENSION_TO_MIME.get(ext, "application/octet-stream")
+
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'inline; filename="{os.path.basename(path)}"',
+        },
+    )
+
+
+# --- Teacher Resource Endpoints ---
+
+@app.post(
+    "/api/v1/sessions/{session_id}/resources/upload",
+    response_model=ResourceResponse,
+    dependencies=[Depends(require_teacher)],
+)
+async def upload_session_resource(
+    session_id: str,
+    file: UploadFile = File(...),
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    is_primary: bool = Form(False),
+    required: bool = Form(False),
+    allowed_from: Optional[str] = Form(None),
+    allowed_until: Optional[str] = Form(None),
+    auth: AuthContext = Depends(require_teacher),
+):
+    """
+    Teacher endpoint to upload an assessment artifact (PDF, PNG, JPG).
+    Enforces tenancy, immutability prior to session start, size <=20MB, and capacity limits.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+    _verify_session_teacher(session, auth)
+
+    try:
+        file_bytes = await file.read()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to read uploaded file: {e}",
+        )
+
+    try:
+        resource = resource_service.publish_uploaded_resource(
+            session_id=session_id,
+            tenant_id=auth.tenant_id,
+            actor_id=auth.user_id,
+            title=title,
+            description=description,
+            file_bytes=file_bytes,
+            filename=file.filename or "artifact",
+            content_type=file.content_type,
+            is_primary=is_primary,
+            required=required,
+            allowed_from=allowed_from,
+            allowed_until=allowed_until,
+        )
+        return ResourceResponse(**resource)
+    except StorageValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except ValueError as e:
+        err_msg = str(e)
+        if "not found" in err_msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=err_msg)
+        elif "after session has started" in err_msg or "Cannot add" in err_msg:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=err_msg)
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
+
+
+@app.post(
+    "/api/v1/sessions/{session_id}/resources/external-link",
+    response_model=ResourceResponse,
+    dependencies=[Depends(require_teacher)],
+)
+async def create_external_link_resource(
+    session_id: str,
+    payload: ExternalLinkCreateRequest,
+    auth: AuthContext = Depends(require_teacher),
+):
+    """
+    Teacher endpoint to publish an external link resource (HTTPS only).
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+    _verify_session_teacher(session, auth)
+
+    try:
+        resource = resource_service.publish_external_link(
+            session_id=session_id,
+            tenant_id=auth.tenant_id,
+            actor_id=auth.user_id,
+            title=payload.title,
+            description=payload.description,
+            declared_url=payload.declared_url,
+            allowed_domain=payload.allowed_domain,
+            required=payload.required,
+            allowed_from=payload.allowed_from,
+            allowed_until=payload.allowed_until,
+        )
+        return ResourceResponse(**resource)
+    except ValueError as e:
+        err_msg = str(e)
+        if "not found" in err_msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=err_msg)
+        elif "after session has started" in err_msg or "Cannot add" in err_msg:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=err_msg)
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
+
+
+@app.delete(
+    "/api/v1/sessions/{session_id}/resources/{resource_id}",
+    dependencies=[Depends(require_teacher)],
+)
+async def delete_session_resource(
+    session_id: str,
+    resource_id: str,
+    auth: AuthContext = Depends(require_teacher),
+):
+    """
+    Teacher endpoint to delete a resource before session start.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+    _verify_session_teacher(session, auth)
+
+    try:
+        resource_service.delete_resource(
+            session_id=session_id,
+            tenant_id=auth.tenant_id,
+            actor_id=auth.user_id,
+            resource_id=resource_id,
+        )
+        return {"status": "success", "deleted_resource_id": resource_id}
+    except ValueError as e:
+        err_msg = str(e)
+        if "not found" in err_msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=err_msg)
+        elif "after session has started" in err_msg or "Cannot delete" in err_msg:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=err_msg)
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
+
+
+@app.get(
+    "/api/v1/sessions/{session_id}/submissions",
+    response_model=SubmissionListResponse,
+    dependencies=[Depends(require_teacher)],
+)
+async def list_session_submissions(
+    session_id: str,
+    auth: AuthContext = Depends(require_teacher),
+):
+    """
+    Teacher endpoint to list all student submissions for a session.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+    _verify_session_teacher(session, auth)
+
+    try:
+        submissions = answer_service.list_session_submissions_for_teacher(
+            session_id=session_id,
+            tenant_id=auth.tenant_id,
+            teacher_id=auth.user_id,
+        )
+        items = [AnswerResponse(**s) for s in submissions]
+        return SubmissionListResponse(submissions=items, items=items)
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except ValueError as e:
+        err_msg = str(e)
+        if "not found" in err_msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=err_msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
+
+
+@app.get(
+    "/api/v1/sessions/{session_id}/submissions/{submission_id}/download",
+    dependencies=[Depends(require_teacher)],
+)
+async def get_submission_download(
+    session_id: str,
+    submission_id: str,
+    auth: AuthContext = Depends(require_teacher),
+):
+    """
+    Teacher endpoint to retrieve signed download URL for a student submission.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+    _verify_session_teacher(session, auth)
+
+    try:
+        result = answer_service.get_submission_download_url(
+            session_id=session_id,
+            tenant_id=auth.tenant_id,
+            requester_id=auth.user_id,
+            requester_role=auth.role.value if hasattr(auth.role, "value") else str(auth.role),
+            answer_id=submission_id,
+        )
+        url = result.get("download_url") or ""
+        expires_in = result.get("expires_in_seconds", 900)
+        return {
+            "status": "success",
+            "download_url": url,
+            "expires_in_seconds": expires_in,
+        }
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except ValueError as e:
+        err_msg = str(e)
+        if "not found" in err_msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=err_msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
+
+
+# --- Student & Shared Resource/Answer Endpoints ---
+
+@app.get(
+    "/api/v1/sessions/{session_id}/resources",
+    response_model=List[ResourceResponse],
+)
+async def list_session_resources(
+    session_id: str,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Student & teacher endpoint to list resources published for a session.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+
+    try:
+        resources = resource_service.list_session_resources(
+            session_id=session_id,
+            tenant_id=auth.tenant_id,
+            actor_id=auth.user_id,
+            actor_role=auth.role.value if hasattr(auth.role, "value") else str(auth.role),
+        )
+        return [ResourceResponse(**r) for r in resources]
+    except ValueError as e:
+        err_msg = str(e)
+        if "not found" in err_msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=err_msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
+
+
+@app.get(
+    "/api/v1/sessions/{session_id}/resources/{resource_id}/access",
+    response_model=ResourceAccessResponse,
+)
+async def get_session_resource_access(
+    session_id: str,
+    resource_id: str,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Student & teacher endpoint to request expiring download or declared URL for a resource.
+    Checks availability window (allowed_from / allowed_until).
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+
+    try:
+        access_info = resource_service.get_resource_access(
+            session_id=session_id,
+            tenant_id=auth.tenant_id,
+            participant_id=auth.user_id,
+            resource_id=resource_id,
+        )
+        return ResourceAccessResponse(**access_info)
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except ValueError as e:
+        err_msg = str(e)
+        if "not found" in err_msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=err_msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
+
+
+@app.post(
+    "/api/v1/sessions/{session_id}/resources/{resource_id}/events",
+)
+async def record_resource_event(
+    session_id: str,
+    resource_id: str,
+    payload: ResourceEventRequest,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Records participant interaction with a resource (RESOURCE_OPENED, RESOURCE_CLOSED, EXTERNAL_RESOURCE_CLICKED).
+    Guarantees destination_known: false privacy invariant on external link clicks.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+
+    try:
+        persisted = resource_service.record_resource_interaction(
+            session_id=session_id,
+            tenant_id=auth.tenant_id,
+            participant_id=auth.user_id,
+            resource_id=resource_id,
+            event_type=payload.event_type,
+            duration_ms=payload.duration_ms,
+        )
+        event_id = (
+            persisted.get("event_id")
+            if isinstance(persisted, dict)
+            else getattr(persisted, "event_id", str(uuid.uuid4()))
+        )
+        return {"status": "success", "event_id": event_id}
+    except ValueError as e:
+        err_msg = str(e)
+        if "not found" in err_msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=err_msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
+
+
+@app.post(
+    "/api/v1/sessions/{session_id}/answers/draft",
+    response_model=AnswerResponse,
+    dependencies=[Depends(require_student)],
+)
+async def save_answer_draft(
+    session_id: str,
+    payload: AnswerDraftRequest,
+    auth: AuthContext = Depends(require_student),
+):
+    """
+    Student auto-save draft endpoint for typed answer text.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+
+    try:
+        draft = answer_service.save_draft(
+            session_id=session_id,
+            tenant_id=auth.tenant_id,
+            participant_id=auth.user_id,
+            typed_content=payload.typed_content,
+        )
+        return AnswerResponse(**draft)
+    except ValueError as e:
+        err_msg = str(e)
+        if "not found" in err_msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=err_msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
+
+
+@app.post(
+    "/api/v1/sessions/{session_id}/answers/submit",
+    response_model=AnswerResponse,
+    dependencies=[Depends(require_student)],
+)
+async def submit_answer(
+    session_id: str,
+    request: Request,
+    auth: AuthContext = Depends(require_student),
+):
+    """
+    Student final submission endpoint.
+    Supports both JSON (typed_content) and multipart/form-data (file upload).
+    Validates max 3 versions per participant.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+
+    content_type_header = request.headers.get("content-type", "")
+
+    typed_content: Optional[str] = None
+    file_bytes: Optional[bytes] = None
+    filename: Optional[str] = None
+    file_content_type: Optional[str] = None
+    client_submission_id: Optional[str] = None
+
+    if "application/json" in content_type_header:
+        try:
+            body = await request.json()
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON body"
+            )
+        typed_content = body.get("typed_content")
+        client_submission_id = body.get("client_submission_id")
+    elif (
+        "multipart/form-data" in content_type_header
+        or "application/x-www-form-urlencoded" in content_type_header
+    ):
+        try:
+            form = await request.form()
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid form data: {e}"
+            )
+        uploaded = form.get("file")
+        typed_content = form.get("typed_content")
+        if isinstance(typed_content, str) and not typed_content:
+            typed_content = None
+        client_submission_id = form.get("client_submission_id")
+        if isinstance(client_submission_id, str) and not client_submission_id:
+            client_submission_id = None
+
+        if uploaded is not None and hasattr(uploaded, "read"):
+            file_bytes = await uploaded.read()
+            filename = getattr(uploaded, "filename", "artifact")
+            file_content_type = getattr(uploaded, "content_type", None)
+    else:
+        try:
+            body = await request.json()
+            typed_content = body.get("typed_content")
+            client_submission_id = body.get("client_submission_id")
+        except Exception:
+            try:
+                form = await request.form()
+                uploaded = form.get("file")
+                typed_content = form.get("typed_content")
+                client_submission_id = form.get("client_submission_id")
+                if uploaded is not None and hasattr(uploaded, "read"):
+                    file_bytes = await uploaded.read()
+                    filename = getattr(uploaded, "filename", "artifact")
+                    file_content_type = getattr(uploaded, "content_type", None)
+            except Exception:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Unsupported Content-Type. Expected application/json or multipart/form-data",
+                )
+
+    try:
+        submission = answer_service.submit_answer(
+            session_id=session_id,
+            tenant_id=auth.tenant_id,
+            participant_id=auth.user_id,
+            typed_content=typed_content,
+            file_bytes=file_bytes,
+            filename=filename,
+            content_type=file_content_type,
+            client_submission_id=client_submission_id,
+        )
+        return AnswerResponse(**submission)
+    except StorageValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except ValueError as e:
+        err_msg = str(e)
+        if "not found" in err_msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=err_msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
+
+
+@app.get(
+    "/api/v1/sessions/{session_id}/answers/mine",
+    response_model=List[AnswerResponse],
+    dependencies=[Depends(require_student)],
+)
+async def get_my_answers(
+    session_id: str,
+    auth: AuthContext = Depends(require_student),
+):
+    """
+    Student endpoint to list their own submissions and drafts for a session.
+    """
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
+
+    try:
+        answers = answer_service.list_student_submissions(
+            session_id=session_id,
+            tenant_id=auth.tenant_id,
+            participant_id=auth.user_id,
+        )
+        return [AnswerResponse(**a) for a in answers]
+    except ValueError as e:
+        err_msg = str(e)
+        if "not found" in err_msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=err_msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
+
 
 

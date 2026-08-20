@@ -15,6 +15,7 @@ import SummaryCards from "../components/teacher/summary-cards.jsx";
 import StudentCard from "../components/teacher/student-card.jsx";
 
 import SessionReport from "../components/session-report.jsx";
+import AssessmentManagementModal from "../components/teacher/assessment-management-modal.jsx";
 import { sendTeacherAction } from "../api/teacher-actions.js";
 import { triggerLiveness } from "../api/liveness.js";
 import "../styles/dashboard-shared.css";
@@ -42,6 +43,7 @@ export default function TeacherPage() {
   const [inMeeting, setInMeeting] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const [sessionData, setSessionData] = useState(null);
   const [strictMode, setStrictMode] = useState(false);
   /** Lenient class vs strict exam engagement (student-side scoring). */
@@ -926,7 +928,17 @@ export default function TeacherPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-slate-100 p-6">
         <div className="max-w-md mx-auto">
-          <div className="mb-4 flex justify-end">
+          <div className="mb-4 flex justify-between items-center">
+            <button
+              onClick={() => setShowAssessmentModal(true)}
+              className="px-4 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-900 text-sm font-semibold shadow-sm transition flex items-center gap-1.5"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              Assessment & Resources
+            </button>
             <button
               onClick={loadPastSessions}
               disabled={loadingPast}
@@ -937,6 +949,14 @@ export default function TeacherPage() {
           </div>
           <JoinScreen user={user} onJoin={handleJoinMeeting} />
         </div>
+
+        <AssessmentManagementModal
+          isOpen={showAssessmentModal}
+          onClose={() => setShowAssessmentModal(false)}
+          sessionId={sessionId}
+          sessionStatus="DRAFT"
+          studentsList={allStudents}
+        />
 
         {showPastSessions && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1059,6 +1079,7 @@ export default function TeacherPage() {
               onToggleSimulate={() => setSimulateClassroom((v) => !v)}
               livenessLoading={livenessLoading}
               onCheckEngagement={handleCheckEngagement}
+              onOpenAssessmentModal={() => setShowAssessmentModal(true)}
             />
 
             {/* The previous td-disconnect-banner has been replaced by the global overlay via showDisconnect */}
@@ -1216,6 +1237,14 @@ export default function TeacherPage() {
           onSave={handleSaveReport}
         />
       )}
+
+      <AssessmentManagementModal
+        isOpen={showAssessmentModal}
+        onClose={() => setShowAssessmentModal(false)}
+        sessionId={sessionId}
+        sessionStatus={inMeeting ? "ACTIVE" : sessionEnded ? "ENDED" : "DRAFT"}
+        studentsList={allStudents}
+      />
     </>
   );
 }

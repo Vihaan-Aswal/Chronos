@@ -321,6 +321,54 @@ class MockEventStore:
         return sorted(res, key=lambda x: x["server_sequence"])
 
 
+class MockStorageBucket:
+    def __init__(self, bucket_name: str):
+        self.bucket_name = bucket_name
+        self.files: Dict[str, bytes] = {}
+
+    def upload(self, path: str, file: bytes, file_options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        self.files[path] = file
+        return {"Key": f"{self.bucket_name}/{path}"}
+
+    def download(self, path: str) -> bytes:
+        if path not in self.files:
+            raise Exception(f"The resource was not found: {path}")
+        return self.files[path]
+
+    def remove(self, paths: List[str]) -> List[Dict[str, Any]]:
+        removed = []
+        for p in paths:
+            if p in self.files:
+                del self.files[p]
+                removed.append({"name": p})
+        return removed
+
+    def list(self, path: str = "") -> List[Dict[str, Any]]:
+        prefix = path.strip("/")
+        results = []
+        for file_path in self.files:
+            if not prefix or file_path.startswith(prefix):
+                name = os.path.basename(file_path)
+                results.append({"name": name, "id": file_path})
+        return results
+
+    def create_signed_url(self, path: str, expires_in: int = 900) -> Dict[str, str]:
+        return {"signedURL": f"https://mock-supabase.storage/{self.bucket_name}/{path}?token=mock_token_{expires_in}"}
+
+
+class MockStorageClient:
+    def __init__(self):
+        self._buckets: Dict[str, MockStorageBucket] = {}
+
+    def from_(self, bucket_name: str) -> MockStorageBucket:
+        if bucket_name not in self._buckets:
+            self._buckets[bucket_name] = MockStorageBucket(bucket_name)
+        return self._buckets[bucket_name]
+
+    def reset(self):
+        self._buckets.clear()
+
+
 class MockSupabaseClient:
     """Thread-safe in-memory database simulation for Supabase queries."""
 
@@ -347,6 +395,7 @@ class MockSupabaseClient:
             "identity_embeddings": [],
             "session_analytics": [],
         }
+        self.storage = MockStorageClient()
 
     def table(self, name: str) -> MockTableQueryBuilder:
         return MockTableQueryBuilder(name, self.store)
@@ -354,6 +403,8 @@ class MockSupabaseClient:
     def reset(self):
         for k in self.store:
             self.store[k].clear()
+        self.storage.reset()
+
 
 
 # ---------------------------------------------------------------------------
@@ -432,6 +483,17 @@ def enforce_test_isolation(monkeypatch):
     main.supabase = _GLOBAL_MOCK_SUPABASE
     main.repository = ChronosDomainRepository(_GLOBAL_MOCK_SUPABASE)
     main.meeting_service = MeetingTokenService(_GLOBAL_MOCK_SUPABASE)
+
+    from storage.storage_service import set_storage_service, LocalStorageService
+    from assessment.resource_service import ResourceService
+    from assessment.answer_service import AnswerService
+
+    mock_storage = LocalStorageService()
+    set_storage_service(mock_storage)
+    main.storage_service = mock_storage
+    main.resource_service = ResourceService(repository=main.repository, storage_service=mock_storage)
+    main.answer_service = AnswerService(repository=main.repository, storage_service=mock_storage)
+
     set_jwt_validator(JWTValidator(jwt_secret=JWT_TEST_SECRET))
 
 

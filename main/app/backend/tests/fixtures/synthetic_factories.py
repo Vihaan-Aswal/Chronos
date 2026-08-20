@@ -59,7 +59,7 @@ def make_synthetic_session(
     is_demo: bool = False,
     status: str = "ACTIVE",
     room_id: str = "mock_test_room_123",
-    expires_at: str = "2026-08-20T18:00:00Z",
+    expires_at: str = "2026-12-31T23:59:59Z",
 ) -> Dict[str, Any]:
     return {
         "id": session_id,
