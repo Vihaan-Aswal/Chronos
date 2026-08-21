@@ -126,17 +126,18 @@ class TestWindowEvaluator:
         assert "CAMERA_UNAVAILABLE" in res["technical_reasons"]
 
     def test_qualified_cue_exposure_generates_valid_warning(self):
-        # Demo mode: 10 segments of 1.0s, warning requires >= 4.0s cue exposure
+        # Demo mode: 10 segments of 1.0s, warning requires >= 4.0s cue exposure across >= 2 intervals
         cfg = get_config(is_demo=True)
-        # 5 consecutive cue_away segments (5s >= 4s)
-        segments = [{"yaw_deg": 30.0, "quality_score": 0.95} for _ in range(5)]
-        # 5 forward-facing segments
-        segments += [{"yaw_deg": 0.0, "quality_score": 0.95} for _ in range(5)]
+        # 2 cue_away segments (2s) + 2 clean + 2 cue_away (2s) + 4 clean
+        segments = [{"yaw_deg": 30.0, "quality_score": 0.95} for _ in range(2)]
+        segments += [{"yaw_deg": 0.0, "quality_score": 0.95} for _ in range(2)]
+        segments += [{"yaw_deg": 30.0, "quality_score": 0.95} for _ in range(2)]
+        segments += [{"yaw_deg": 0.0, "quality_score": 0.95} for _ in range(4)]
 
-        res = WindowEvaluator.evaluate_segments(segments, config=cfg)
+        res = WindowEvaluator.evaluate_segments(segments, config=cfg, is_demo=True)
         assert res["observation_state"] == "VALID"
         assert res["classification"] == "VALID_WARNING"
-        assert res["cue_exposure_seconds"] == 5.0
+        assert res["cue_exposure_seconds"] == 4.0
         assert "ORIENTATION_AWAY" in res["reason_codes"]
 
     def test_cue_exposure_below_threshold_generates_valid_clean(self):

@@ -99,6 +99,8 @@ class HMSComplianceVerifier:
 
         # Mock / offline verification for test environment
         if os.getenv("ENV") == "test" or self.access_key.startswith("mock_") or os.getenv("RUN_LIVE_HMS_TESTS") != "1":
+            audit_meta["provider_mode"] = "MOCK"
+            audit_meta["live_verified"] = False
             audit_meta["checks"] = {
                 "mock_environment": True,
                 "browser_recording": "DISABLED",
@@ -114,6 +116,8 @@ class HMSComplianceVerifier:
             return True, [], audit_meta
 
         # Live external API query if credentials provided
+        audit_meta["provider_mode"] = "LIVE"
+        audit_meta["live_verified"] = True
         try:
             import requests
             headers = {
@@ -130,8 +134,14 @@ class HMSComplianceVerifier:
                     if t_res.status_code == 200:
                         t_data = t_res.json()
                         return self.verify_room_and_template_compliance(room_id=target_room, custom_config=t_data)
+                    else:
+                        violations.append(f"Live provider error: template fetch returned HTTP {t_res.status_code}")
+                else:
+                    violations.append("Live provider error: room has no template_id attached")
+            else:
+                violations.append(f"Live provider error: room fetch returned HTTP {res.status_code}")
         except Exception as e:
-            violations.append(f"Live provider verification note: {e}")
+            violations.append(f"Live provider verification failed: {e}")
 
         is_compliant = len(violations) == 0
         audit_meta["compliant"] = is_compliant

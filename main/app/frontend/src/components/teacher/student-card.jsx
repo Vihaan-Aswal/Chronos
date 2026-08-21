@@ -116,7 +116,7 @@ export default function StudentCard({
   const lastSeen = student?.timestamp
     ? new Date(student.timestamp).toLocaleTimeString()
     : "--";
-  const scorePercent = ((student?.score || 0) * 100).toFixed(0);
+  const attentionPattern = student?.attentionPattern || (student?.caseState === "ACTION_REQUIRED" ? "SUSTAINED_CONCERN" : student?.caseState === "MONITOR" ? "VARIABLE" : "STABLE");
 
   return (
     <article className="td-student-card" data-priority={priority}>
@@ -130,13 +130,13 @@ export default function StudentCard({
           </span>
         </div>
 
-        <span className="td-sc-score">{scorePercent}%</span>
+        <span className="td-sc-score text-xs font-semibold uppercase tracking-wider">{attentionPattern}</span>
         <span className={`td-sc-badge ${mappedStatus}`}>{statusLabel}</span>
       </div>
 
       <div className="td-card-foot">
-        <span className={`td-score-large ${mappedStatus}`}>
-          {scorePercent}%
+        <span className={`td-score-large ${mappedStatus} text-sm font-semibold tracking-wide uppercase`}>
+          {attentionPattern}
         </span>
         <span className="td-last-seen">Last: {lastSeen}</span>
       </div>

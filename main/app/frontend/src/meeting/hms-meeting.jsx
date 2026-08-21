@@ -625,12 +625,13 @@ function PeerTile({
   const hmsActions = useHMSActions();
 
   useEffect(() => {
-    if (peer.videoTrack && videoRef.current) {
-      hmsActions.attachVideo(peer.videoTrack, videoRef.current);
+    const currentVideo = videoRef.current;
+    if (peer.videoTrack && currentVideo) {
+      hmsActions.attachVideo(peer.videoTrack, currentVideo);
     }
     return () => {
-      if (peer.videoTrack && videoRef.current) {
-        hmsActions.detachVideo(peer.videoTrack, videoRef.current);
+      if (peer.videoTrack && currentVideo) {
+        hmsActions.detachVideo(peer.videoTrack, currentVideo);
       }
     };
   }, [peer.videoTrack, hmsActions]);

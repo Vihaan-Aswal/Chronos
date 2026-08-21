@@ -326,3 +326,14 @@ class TestIntegrationHardening:
             assert res.status_code == 200
             data = res.json()
             assert data["status"] == "success"
+
+        # Verify 50 participant drilldowns exist in report
+        rep_res = test_client.get(
+            "/api/v1/sessions/ses-hard-demo/report",
+            headers={"Authorization": f"Bearer {admin_jwt}"},
+        )
+        assert rep_res.status_code == 200
+        report_data = rep_res.json()
+        report = report_data.get("report", report_data)
+        assert report["session_id"] == "ses-hard-demo"
+        assert len(report["participant_drilldowns"]) == 50

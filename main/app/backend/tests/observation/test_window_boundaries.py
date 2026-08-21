@@ -83,12 +83,12 @@ class TestRealClockBoundaryThresholds:
         assert res["cue_exposure_seconds"] == 0.0
 
     def test_real_clock_9_usable_with_sufficient_cue_exposure_is_valid_warning(self):
-        """Boundary: 9 usable segments with 4 cue segments (4 * 5s = 20s) -> VALID_WARNING."""
+        """Boundary: 9 usable segments with 4 cue segments across 2 intervals (2*5s + clean + 2*5s = 20s) -> VALID_WARNING."""
         cfg = get_config(is_demo=False)
         segments: List[Dict[str, Any]] = []
 
-        # 4 consecutive cue-away segments (4 * 5s = 20s cue exposure)
-        for _ in range(4):
+        # Interval 1: 2 cue segments (10s)
+        for _ in range(2):
             segments.append({
                 "camera_active": True,
                 "face_count": 1,
@@ -97,8 +97,28 @@ class TestRealClockBoundaryThresholds:
                 "orientation_away": True,
             })
 
-        # 5 clean segments
-        for _ in range(5):
+        # Clean gap: 2 clean segments
+        for _ in range(2):
+            segments.append({
+                "camera_active": True,
+                "face_count": 1,
+                "quality_score": 0.95,
+                "pose_confidence": 0.90,
+                "orientation_away": False,
+            })
+
+        # Interval 2: 2 cue segments (10s)
+        for _ in range(2):
+            segments.append({
+                "camera_active": True,
+                "face_count": 1,
+                "quality_score": 0.95,
+                "pose_confidence": 0.90,
+                "orientation_away": True,
+            })
+
+        # 3 remaining clean segments (total 9 usable)
+        for _ in range(3):
             segments.append({
                 "camera_active": True,
                 "face_count": 1,
@@ -186,12 +206,12 @@ class TestDemoClockBoundaryThresholds:
         assert res["cue_exposure_seconds"] == 0.0
 
     def test_demo_clock_8_usable_with_4s_cue_exposure_is_valid_warning(self):
-        """Boundary: Demo mode with exactly 4s cue exposure (4 samples * 1s) -> VALID_WARNING."""
+        """Boundary: Demo mode with exactly 4s cue exposure across 2 intervals (2s + clean + 2s = 4s) -> VALID_WARNING."""
         cfg = get_config(is_demo=True)
         segments: List[Dict[str, Any]] = []
 
-        # 4 consecutive cue segments (4 * 1s = 4.0s)
-        for _ in range(4):
+        # Interval 1: 2 cue segments (2s)
+        for _ in range(2):
             segments.append({
                 "camera_active": True,
                 "face_count": 1,
@@ -200,8 +220,28 @@ class TestDemoClockBoundaryThresholds:
                 "orientation_away": True,
             })
 
-        # 4 clean segments
-        for _ in range(4):
+        # Clean gap: 2 clean segments
+        for _ in range(2):
+            segments.append({
+                "camera_active": True,
+                "face_count": 1,
+                "quality_score": 0.95,
+                "pose_confidence": 0.90,
+                "orientation_away": False,
+            })
+
+        # Interval 2: 2 cue segments (2s)
+        for _ in range(2):
+            segments.append({
+                "camera_active": True,
+                "face_count": 1,
+                "quality_score": 0.95,
+                "pose_confidence": 0.90,
+                "orientation_away": True,
+            })
+
+        # 2 remaining clean segments (total 8 usable)
+        for _ in range(2):
             segments.append({
                 "camera_active": True,
                 "face_count": 1,

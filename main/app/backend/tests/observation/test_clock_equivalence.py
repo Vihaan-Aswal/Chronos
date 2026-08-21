@@ -32,10 +32,15 @@ def make_normalized_scenario_segments(
                 "orientation_away": False,
             })
     elif scenario_type == "WARNING":
-        # Exactly enough cue exposure for warning
+        # At least 2 qualifying intervals totaling warning_cue_exposure_sec
         cue_samples = int(cfg.warning_cue_exposure_sec / cfg.sample_interval_sec)
-        clean_samples = cfg.expected_segments - cue_samples
-        for _ in range(cue_samples):
+        half_cue = max(1, cue_samples // 2)
+        other_half = cue_samples - half_cue
+        clean_gap = 1
+        rem_clean = cfg.expected_segments - (cue_samples + clean_gap)
+
+        # Interval 1
+        for _ in range(half_cue):
             segments.append({
                 "camera_active": True,
                 "face_count": 1,
@@ -43,7 +48,26 @@ def make_normalized_scenario_segments(
                 "pose_confidence": 0.90,
                 "orientation_away": True,
             })
-        for _ in range(clean_samples):
+        # Clean gap between intervals
+        for _ in range(clean_gap):
+            segments.append({
+                "camera_active": True,
+                "face_count": 1,
+                "quality_score": 0.95,
+                "pose_confidence": 0.90,
+                "orientation_away": False,
+            })
+        # Interval 2
+        for _ in range(other_half):
+            segments.append({
+                "camera_active": True,
+                "face_count": 1,
+                "quality_score": 0.95,
+                "pose_confidence": 0.90,
+                "orientation_away": True,
+            })
+        # Remaining clean samples
+        for _ in range(max(0, rem_clean)):
             segments.append({
                 "camera_active": True,
                 "face_count": 1,

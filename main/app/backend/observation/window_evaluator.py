@@ -175,13 +175,12 @@ class WindowEvaluator:
         qualified_interval_count = len(qualified_intervals)
 
         # Classification rule:
-        # VALID_WARNING if cue_exposure_seconds >= warning_cue_exposure_sec and qualified_interval_count >= 1
+        # Canonical rule (LOGIC_AND_EVENT_SPEC §3):
+        # VALID_WARNING requires at least 20 seconds of cue exposure (or 4s in demo)
+        # across AT LEAST TWO qualifying intervals of at least min_cue_interval_sec (2 seconds).
         is_warning = (
             cue_exposure_seconds >= clock_cfg.warning_cue_exposure_sec
-            and (
-                qualified_interval_count >= 2
-                or (qualified_interval_count == 1 and cue_exposure_seconds >= clock_cfg.warning_cue_exposure_sec)
-            )
+            and qualified_interval_count >= 2
         )
 
         if is_warning:

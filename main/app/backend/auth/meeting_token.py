@@ -36,11 +36,6 @@ class MeetingTokenService:
             session_res = self.db.table("sessions").select("*").eq("id", session_id).execute()
 
         if not session_res.data:
-            # If session is the legacy "default-session" in dev/mock, allow if single-tenant
-            if session_id == "default-session" and (os.getenv("ENV") == "test" or os.getenv("ALLOW_DEFAULT_SESSION") == "1"):
-                resolved_role = SessionParticipantRole.TEACHER.value if auth.is_teacher else SessionParticipantRole.STUDENT.value
-                room_id = self.default_room_id
-                return self._mint_jwt(auth.user_id, resolved_role, room_id, session_id, auth.tenant_id)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Session '{session_id}' not found",
@@ -89,7 +84,14 @@ class MeetingTokenService:
 
         # 4. Server-Side Role & Membership Resolution
         teacher_id = session.get("teacher_id")
-        if teacher_id == auth.user_id or auth.is_admin:
+        if auth.is_teacher:
+            if teacher_id != auth.user_id and not auth.is_admin:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Forbidden: You are not the assigned teacher for this session",
+                )
+            resolved_role = SessionParticipantRole.TEACHER.value
+        elif teacher_id == auth.user_id or auth.is_admin:
             resolved_role = SessionParticipantRole.TEACHER.value
         else:
             # Check participant membership

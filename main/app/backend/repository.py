@@ -3,6 +3,7 @@ Chronos Domain Repository Layer
 Encapsulates Supabase data operations with multi-tenant isolation, atomic updates,
 session lifecycle invariants, append-only event store, and deterministic projections.
 """
+import threading
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
@@ -18,6 +19,7 @@ class ChronosDomainRepository:
     def __init__(self, supabase_client: Any):
         self.db = supabase_client
         self._session_sequences: Dict[str, int] = {}
+        self._lock = threading.Lock()
 
     # -----------------------------------------------------------------------
     # W1 Tenancy, Sessions & Membership
@@ -214,8 +216,8 @@ class ChronosDomainRepository:
             logger.info(f"Duplicate event {event_id} returned idempotently.")
             return existing
 
-        # 2. Server sequence allocation (monotonically increasing per session)
-        if "server_sequence" not in event_envelope or event_envelope["server_sequence"] is None:
+        # 2. Server sequence allocation (strictly authoritative, monotonically increasing per session)
+        with self._lock:
             if session_id not in self._session_sequences:
                 max_seq = 0
                 try:
@@ -228,12 +230,6 @@ class ChronosDomainRepository:
             curr_seq = self._session_sequences[session_id] + 1
             self._session_sequences[session_id] = curr_seq
             event_envelope["server_sequence"] = curr_seq
-        else:
-            # Track max sequence
-            curr_seq = event_envelope["server_sequence"]
-            self._session_sequences[session_id] = max(
-                self._session_sequences.get(session_id, 0), curr_seq
-            )
 
         if "received_at" not in event_envelope or not event_envelope["received_at"]:
             event_envelope["received_at"] = datetime.now(timezone.utc).isoformat()
@@ -242,17 +238,24 @@ class ChronosDomainRepository:
         sanitized_payload = redact_payload(event_envelope.get("payload", {}))
         event_envelope["payload"] = sanitized_payload
 
-        # 4. Insert into session_events / events table
+        # 4. Insert into session_events / events table (Fail-Closed)
         res = None
+        db_err = None
         try:
             res = self.db.table("session_events").insert(event_envelope).execute()
-        except Exception:
+        except Exception as e1:
             try:
                 res = self.db.table("events").insert(event_envelope).execute()
-            except Exception as e:
-                logger.warning(f"Failed to persist event {event_id} to DB: {e}")
+            except Exception as e2:
+                db_err = e2
+                logger.error(f"Failed to persist event {event_id} to DB: {e2}")
 
-        persisted = res.data[0] if (res and hasattr(res, "data") and res.data) else event_envelope
+        if db_err is not None or not res or not hasattr(res, "data") or not res.data:
+            if db_err is not None:
+                raise RuntimeError(f"Durable event persistence failed for event '{event_id}': {db_err}")
+            persisted = event_envelope
+        else:
+            persisted = res.data[0]
 
         # 5. Apply event to incremental projections
         try:

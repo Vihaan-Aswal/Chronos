@@ -123,7 +123,7 @@ export default function TeacherPage() {
     if (ignoredUserIds.has(s.userId)) return false;
     const hasIdentityIssue =
       s.identityStatus === "mismatch" && (s.identityMismatchCount || 0) >= 2;
-    const isActionRequired = s.caseState === "ACTION_REQUIRED" || (s.warningStreak || s.strikes || 0) >= 3;
+    const isActionRequired = s.caseState === "ACTION_REQUIRED" || (s.warningStreak || 0) >= 3;
     const isMonitor = s.caseState === "MONITOR" || (s.warningStreak || 0) >= 2;
     const hasMultiFace = s.multiFaceDetected === true;
     const hasPresenceFail = s.livenessFailed === true || s.activePresenceState === "QUALITY_FAIL" || s.activePresenceState === "TIMED_OUT";
@@ -143,11 +143,11 @@ export default function TeacherPage() {
   const severityScore = (s) => {
     const hasIdentity =
       s.identityStatus === "mismatch" && (s.identityMismatchCount || 0) >= 2;
-    const isActionRequired = s.caseState === "ACTION_REQUIRED" || (s.warningStreak || s.strikes || 0) >= 3;
+    const isActionRequired = s.caseState === "ACTION_REQUIRED" || (s.warningStreak || 0) >= 3;
     const hasMultiFace = s.multiFaceDetected === true;
     if (isActionRequired || hasIdentity) return 3;
     if (s.caseState === "MONITOR" || hasMultiFace) return 2;
-    if ((s.warningStreak || 0) >= 1 || (s.score || 0) < 0.4) return 1;
+    if (s.caseState === "SELF_RECOVERY" || (s.warningStreak || 0) >= 1) return 1;
     return 0;
   };
 
@@ -247,34 +247,32 @@ export default function TeacherPage() {
     return () => clearInterval(interval);
   }, [inMeeting, students]);
 
-  const statusLabel = (
-    score,
-    strikes,
-    identityStatus,
-    identityMismatchCount,
-    warningStreak,
-  ) => {
-    if (identityStatus === "mismatch" && identityMismatchCount >= 2)
+  const statusLabel = (student) => {
+    if (
+      student?.identityStatus === "mismatch" &&
+      (student?.identityMismatchCount || 0) >= 2
+    )
       return "Identity Review Required";
-    if ((warningStreak || strikes) >= 3) return "Action Required";
-    if ((warningStreak || 0) >= 1) return "Monitor";
-    if (score > 0.7) return "Attentive";
-    if (score >= 0.4) return "Variable";
-    return "Observation Gap";
+    if (student?.caseState === "ACTION_REQUIRED" || (student?.warningStreak || 0) >= 3)
+      return "Action Required";
+    if (student?.caseState === "MONITOR" || (student?.warningStreak || 0) >= 2)
+      return "Monitor";
+    if (student?.caseState === "SELF_RECOVERY" || (student?.warningStreak || 0) >= 1)
+      return "Self-Recovery";
+    return "Stable";
   };
 
   const getStatusKey = (student) => {
     const hasIdentityIssue =
       student.identityStatus === "mismatch" &&
       (student.identityMismatchCount || 0) >= 2;
-    const isActionReq = student.caseState === "ACTION_REQUIRED" || (student.warningStreak || student.strikes || 0) >= 3;
+    const isActionReq = student.caseState === "ACTION_REQUIRED" || (student.warningStreak || 0) >= 3;
 
     if (hasIdentityIssue) return "identity";
     if (isActionReq || student.multiFaceDetected) return "risk";
-    if (student.livenessFailed || student.caseState === "MONITOR")
+    if (student.livenessFailed || student.caseState === "MONITOR" || student.caseState === "SELF_RECOVERY")
       return "distracted";
-    if ((student.score || 0) >= 0.7) return "attentive";
-    return "distracted";
+    return "attentive";
   };
 
   const getPriority = (student) => {
@@ -286,17 +284,9 @@ export default function TeacherPage() {
 
   const getStageStatus = (student) => {
     if (isFlagged(student)) return "flagged";
-
-    const label = statusLabel(
-      student.score,
-      student.strikes,
-      student.identityStatus,
-      student.identityMismatchCount,
-      student.warningStreak,
-    );
-
-    if (label === "Attentive") return "attentive";
-    if (label === "Variable") return "distracted";
+    const label = statusLabel(student);
+    if (label === "Stable") return "attentive";
+    if (label === "Self-Recovery" || label === "Monitor") return "distracted";
     return "away";
   };
 
@@ -322,7 +312,7 @@ export default function TeacherPage() {
       signalPills.push({ label: "Presence unconfirmed", tone: "violet" });
     }
 
-    const streak = student.warningStreak || student.strikes || 0;
+    const streak = student.warningStreak || 0;
     if (streak > 0) {
       signalPills.push({
         label: `${streak} warning window${streak > 1 ? "s" : ""}`,
@@ -332,8 +322,8 @@ export default function TeacherPage() {
 
     if (signalPills.length === 0) {
       signalPills.push({
-        label: (student.score || 0) >= 0.7 ? "Stable" : "Variable focus",
-        tone: (student.score || 0) >= 0.7 ? "ok" : "warn",
+        label: student.attentionPattern || "Stable",
+        tone: "ok",
       });
     }
 
@@ -498,53 +488,33 @@ export default function TeacherPage() {
   };
 
   const presentCount = allStudents.length;
-  const attentiveCount = allStudents.filter(
-    (s) =>
-      statusLabel(
-        s.score,
-        s.strikes,
-        s.identityStatus,
-        s.identityMismatchCount,
-      ) === "Attentive",
+  const actionRequiredCount = allStudents.filter(
+    (s) => s.caseState === "ACTION_REQUIRED" || (s.warningStreak || 0) >= 3,
   ).length;
-  const distractedCount = allStudents.filter((s) => {
-    const label = statusLabel(
-      s.score,
-      s.strikes,
-      s.identityStatus,
-      s.identityMismatchCount,
-    );
-    return label === "Distracted";
-  }).length;
+  const monitorCount = allStudents.filter(
+    (s) => s.caseState === "MONITOR" || (s.warningStreak || 0) === 2,
+  ).length;
+  const attentiveCount = allStudents.filter(
+    (s) => statusLabel(s) === "Stable",
+  ).length;
+  const distractedCount = allStudents.filter(
+    (s) => statusLabel(s) === "Self-Recovery" || statusLabel(s) === "Monitor",
+  ).length;
   const criticalCount = allStudents.filter((s) => severityScore(s) >= 2).length;
-  const flaggedCount = allStudents.filter((s) => isFlagged(s)).length;
   const identityIssueCount = allStudents.filter(
     (s) =>
       s.identityStatus === "mismatch" && (s.identityMismatchCount || 0) >= 2,
   ).length;
-  const avgScore =
-    allStudents.length > 0
-      ? Math.round(
-          (allStudents.reduce((sum, s) => sum + (s.score || 0), 0) /
-            allStudents.length) *
-            100,
-        )
-      : 0;
 
   const cameraStudents = allStudents.map((s) => {
     const isSim = s.isSimulated === true || isSimulatedStudentId(s.userId);
     return {
       userId: s.userId,
-      score: s.score || 0,
+      attentionPattern: s.attentionPattern || "STABLE",
       timestamp: s.timestamp,
       isSimulated: isSim,
       stageStatus: getStageStatus(s),
-      statusLabel: statusLabel(
-        s.score,
-        s.strikes,
-        s.identityStatus,
-        s.identityMismatchCount,
-      ),
+      statusLabel: statusLabel(s),
     };
   });
 
@@ -838,9 +808,10 @@ export default function TeacherPage() {
                     <>
                       <div className="p-3 border-b border-white/10">
                         <SummaryCards
-                          flaggedCount={flaggedCount}
+                          actionRequiredCount={actionRequiredCount}
+                          monitorCount={monitorCount}
                           identityIssueCount={identityIssueCount}
-                          avgScore={avgScore}
+                          totalStudents={allStudents.length}
                         />
 
                         <div className="td-filter-tabs mt-2">
@@ -884,12 +855,7 @@ export default function TeacherPage() {
                             const isSim =
                               s.isSimulated === true ||
                               isSimulatedStudentId(s.userId);
-                            const label = statusLabel(
-                              s.score,
-                              s.strikes,
-                              s.identityStatus,
-                              s.identityMismatchCount,
-                            );
+                            const label = statusLabel(s);
 
                             return (
                               <StudentCard

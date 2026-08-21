@@ -20,12 +20,12 @@ from observation.window_evaluator import WindowEvaluator
 class TestCueExposureIntervalCalculations:
     """Tests for qualified cue exposure interval rules."""
 
-    def test_single_sustained_interval_exactly_20s_produces_warning(self):
-        """Single sustained 20-second interval (4 consecutive 5s segments) -> VALID_WARNING."""
+    def test_single_sustained_interval_exactly_20s_remains_clean_due_to_single_interval(self):
+        """Single sustained 20-second interval (1 interval < 2 required) -> VALID_CLEAN."""
         cfg = get_config(is_demo=False)
         segments: List[Dict[str, Any]] = []
 
-        # 4 consecutive cue-away segments (4 * 5s = 20s)
+        # 4 consecutive cue-away segments (4 * 5s = 20s, but 1 interval)
         for _ in range(4):
             segments.append({
                 "camera_active": True,
@@ -48,8 +48,9 @@ class TestCueExposureIntervalCalculations:
         res = WindowEvaluator.evaluate_segments(segments, config=cfg)
         assert res["usable_segments"] == 12
         assert res["cue_exposure_seconds"] == 20.0
-        assert res["classification"] == "VALID_WARNING"
-        assert res["reason_codes"] == ["ORIENTATION_AWAY"]
+        # Invariant: canonical spec requires at least 2 qualifying intervals
+        assert res["classification"] == "VALID_CLEAN"
+        assert res["reason_codes"] == []
 
     def test_two_distinct_intervals_totaling_20s_produces_warning(self):
         """Two distinct 10s intervals (2 segs + clean + 2 segs) totaling 20s -> VALID_WARNING."""

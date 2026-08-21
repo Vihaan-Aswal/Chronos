@@ -197,6 +197,7 @@ def is_finite_array(v: list) -> bool:
 
 def _verify_session_teacher(session: Dict[str, Any], auth: AuthContext):
     """Enforces that the authenticated actor is the assigned teacher or tenant admin."""
+    _verify_session_tenant(session, auth)
     if auth.is_admin or auth.is_service_role:
         return
     teacher_id = session.get("teacher_id")
@@ -237,6 +238,45 @@ def _verify_session_tenant(session: Dict[str, Any], auth: AuthContext):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Resource not found",
         )
+
+
+def _verify_session_participant(session: Dict[str, Any], auth: AuthContext):
+    """
+    Enforces that the authenticated user is admitted to the session (or is assigned teacher/admin).
+    """
+    _verify_session_tenant(session, auth)
+    if auth.is_admin or auth.is_service_role:
+        return
+    if session.get("teacher_id") == auth.user_id:
+        return
+
+    current_status = session.get("status", "ACTIVE")
+    if current_status in (SessionStatus.ENDED.value, SessionStatus.EXPIRED.value):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot access session in '{current_status}' state",
+        )
+
+    session_id = session.get("session_id") or session.get("id")
+    participant = repository.get_session_participant(session_id, auth.user_id)
+    if not participant:
+        # Check tenant membership as fallback
+        membership = repository.verify_tenant_membership(auth.tenant_id, auth.user_id)
+        if not membership:
+            logger.warning(
+                "Unadmitted participant access denied",
+                extra={
+                    "event_type": "UNADMITTED_PARTICIPANT_ACCESS_DENIED",
+                    "session_id": session_id,
+                    "participant_id": auth.user_id,
+                    "tenant_id": auth.tenant_id,
+                    "outcome": "DENIED",
+                },
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden: User has not been admitted to this session",
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -292,6 +332,31 @@ def create_session(
     }
 
     created = repository.create_session(session_data)
+    
+    # Append durable SESSION_CREATED event
+    evt = {
+        "event_id": str(uuid.uuid4()),
+        "event_type": "SESSION_CREATED",
+        "schema_version": 1,
+        "tenant_id": tenant_id,
+        "session_id": session_id,
+        "actor_id": auth.user_id,
+        "actor_role": "teacher",
+        "source": "server",
+        "occurred_at": now.isoformat(),
+        "policy_id": payload.policy_id.value,
+        "is_demo": payload.is_demo,
+        "payload": {
+            "title": payload.title,
+            "policy_snapshot": policy_snapshot,
+            "expires_at": expires_at.isoformat(),
+        },
+    }
+    try:
+        repository.append_event(evt)
+    except Exception as e:
+        logger.warning(f"Failed to persist SESSION_CREATED event: {e}")
+
     logger.info(
         "Session created",
         extra={
@@ -329,13 +394,28 @@ def start_session(
             detail=f"Cannot start session in '{current_status}' state",
         )
 
-    now_iso = datetime.now(timezone.utc).isoformat()
     policy_id_val = session.get("policy_id", PolicyId.CLASSROOM.value)
     try:
         policy_id = PolicyId(policy_id_val)
     except ValueError:
         policy_id = PolicyId.CLASSROOM
 
+    # Invariant: Resource-supported and Supervised assessments require at least 1 primary paper
+    if policy_id in (PolicyId.RESOURCE_SUPPORTED_ASSESSMENT, PolicyId.SUPERVISED_ASSESSMENT):
+        res_list = repository.get_session_resources(session_id)
+        has_primary = any(
+            r.get("is_primary") or r.get("type") in ("uploaded_pdf", "primary_question_paper")
+            for r in res_list
+        )
+        if not has_primary:
+            # Check if there are any resources at all published
+            if not res_list:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A primary question paper must be published before starting an assessment session",
+                )
+
+    now_iso = datetime.now(timezone.utc).isoformat()
     policy_snapshot = PolicySnapshot.create_snapshot_for_policy(
         policy_id, is_demo=session.get("is_demo", False)
     ).dict()
@@ -346,6 +426,29 @@ def start_session(
         policy_snapshot=policy_snapshot,
         started_at=now_iso,
     )
+
+    # Append durable SESSION_STARTED event
+    evt = {
+        "event_id": str(uuid.uuid4()),
+        "event_type": "SESSION_STARTED",
+        "schema_version": 1,
+        "tenant_id": session["tenant_id"],
+        "session_id": session_id,
+        "actor_id": auth.user_id,
+        "actor_role": "teacher",
+        "source": "server",
+        "occurred_at": now_iso,
+        "policy_id": policy_id.value,
+        "is_demo": session.get("is_demo", False),
+        "payload": {
+            "policy_snapshot": policy_snapshot,
+            "started_at": now_iso,
+        },
+    }
+    try:
+        repository.append_event(evt)
+    except Exception as e:
+        logger.warning(f"Failed to persist SESSION_STARTED event: {e}")
 
     logger.info(
         "Session started",
@@ -386,6 +489,28 @@ def end_session(
         ended_at=now_iso,
     )
 
+    # Append durable SESSION_ENDED event
+    evt = {
+        "event_id": str(uuid.uuid4()),
+        "event_type": "SESSION_ENDED",
+        "schema_version": 1,
+        "tenant_id": session["tenant_id"],
+        "session_id": session_id,
+        "actor_id": auth.user_id,
+        "actor_role": "teacher",
+        "source": "server",
+        "occurred_at": now_iso,
+        "policy_id": session.get("policy_id", "CLASSROOM"),
+        "is_demo": session.get("is_demo", False),
+        "payload": {
+            "ended_at": now_iso,
+        },
+    }
+    try:
+        repository.append_event(evt)
+    except Exception as e:
+        logger.warning(f"Failed to persist SESSION_ENDED event: {e}")
+
     logger.info(
         "Session ended",
         extra={
@@ -405,18 +530,6 @@ def get_session_details(
     auth: AuthContext = Depends(get_auth_context),
 ):
     """Retrieve session details with tenant and role verification."""
-    # Special backward-compatibility handling for default-session in local test/dev
-    if session_id == "default-session":
-        return {
-            "session_id": "default-session",
-            "title": "Default Classroom Session",
-            "status": "ACTIVE",
-            "policy_id": "CLASSROOM",
-            "is_demo": False,
-            "room_id": HMS_ROOM_ID,
-            "tenant_id": auth.tenant_id,
-        }
-
     session = repository.get_session(session_id)
     if not session:
         raise HTTPException(
@@ -424,6 +537,8 @@ def get_session_details(
         )
 
     _verify_session_tenant(session, auth)
+    if not auth.is_teacher and not auth.is_admin:
+        _verify_session_participant(session, auth)
     return {"status": "success", "session": session}
 
 
@@ -466,7 +581,6 @@ def admit_participant(
     # Verify student is member of tenant
     membership = repository.verify_tenant_membership(auth.tenant_id, auth.user_id)
     if not membership and not auth.is_service_role:
-        # Fallback check
         if auth.role != "student" and auth.role != "teacher":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -507,17 +621,17 @@ def create_ws_ticket(
     auth: AuthContext = Depends(get_auth_context),
 ):
     """Mints a short-lived (30s) single-use ticket for secure WebSocket connection."""
-    # Special allow for default-session in test/dev
-    if payload.session_id != "default-session":
-        session = repository.get_session(payload.session_id)
-        if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
-            )
-        _verify_session_tenant(session, auth)
+    session = repository.get_session(payload.session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    _verify_session_tenant(session, auth)
 
-        if payload.channel == "teacher":
-            _verify_session_teacher(session, auth)
+    if payload.channel == "teacher":
+        _verify_session_teacher(session, auth)
+    else:
+        _verify_session_participant(session, auth)
 
     ticket_id = ws_ticket_manager.create_ticket(
         auth=auth,
@@ -546,6 +660,14 @@ def get_session_meeting_token(
     auth: AuthContext = Depends(get_auth_context),
 ):
     """Generate HMS auth token bound strictly to verified session membership and server-derived role."""
+    session = repository.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    _verify_session_tenant(session, auth)
+    if auth.is_teacher:
+        _verify_session_teacher(session, auth)
+    else:
+        _verify_session_participant(session, auth)
     return meeting_service.generate_session_meeting_token(session_id, auth)
 
 
@@ -555,39 +677,32 @@ def get_session_meeting_token(
 )
 def hms_token_legacy_adapter(
     req: TokenRequest,
-    auth: Optional[AuthContext] = Depends(get_optional_auth_context),
+    auth: AuthContext = Depends(get_auth_context),
 ):
     """
     Legacy HMS token adapter endpoint.
-    If authenticated, derives identity and role strictly from server AuthContext.
-    If unauthenticated in test environment, assigns safe student role.
+    Strictly derives identity and role from server AuthContext.
     """
-    if auth:
-        user_name = auth.user_id
-        # Server derives role: cannot request teacher if caller is student
+    session_id = req.session_id
+    if session_id and session_id != "default-session":
+        session = repository.get_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        _verify_session_tenant(session, auth)
         if auth.is_teacher:
-            role = "teacher"
+            _verify_session_teacher(session, auth)
         else:
-            role = "student"
-        tenant_id = auth.tenant_id
-    else:
-        # Require authentication unless explicitly allowed in test
-        if not _is_test_env and os.getenv("ALLOW_ANON_HMS_TOKEN") != "1":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required to generate meeting token",
-            )
-        user_name = (req.user_name or "anon_student").strip()
-        role = "student"  # Insecure requests always downgraded to student
-        tenant_id = "ten-default"
+            _verify_session_participant(session, auth)
+        return meeting_service.generate_session_meeting_token(session_id, auth)
 
-    session_id = req.session_id or "default-session"
+    # If no session_id or default-session in legacy call, mint token with server-derived role
+    derived_role = "teacher" if auth.is_teacher else "student"
     return meeting_service._mint_jwt(
-        user_id=user_name,
-        role=role,
+        user_id=auth.user_id,
+        role=derived_role,
         room_id=HMS_ROOM_ID,
-        session_id=session_id,
-        tenant_id=tenant_id,
+        session_id="default-session",
+        tenant_id=auth.tenant_id,
     )
 
 
@@ -1123,13 +1238,16 @@ async def respond_presence_challenge(
     policy_id = session.get("policy_id", "CLASSROOM")
 
     # Map state to canonical durable event
-    event_type_map = {
-        ActivePresenceResultState.PASSED: "ACTIVE_PRESENCE_PASSED",
-        ActivePresenceResultState.RETRY_REQUIRED: "ACTIVE_PRESENCE_RETRY_REQUIRED",
-        ActivePresenceResultState.QUALITY_FAIL: "ACTIVE_PRESENCE_QUALITY_FAIL",
-        ActivePresenceResultState.TIMED_OUT: "ACTIVE_PRESENCE_TIMED_OUT",
-    }
-    event_type = event_type_map.get(result_state, "ACTIVE_PRESENCE_STARTED")
+    if result_state == ActivePresenceResultState.PASSED:
+        event_type = EventType.ACTIVE_PRESENCE_PASSED.value
+    elif result_state == ActivePresenceResultState.TIMED_OUT:
+        event_type = EventType.ACTIVE_PRESENCE_TIMED_OUT.value
+    elif result_state == ActivePresenceResultState.QUALITY_FAIL:
+        attempt = challenge_dict.get("attempt_number", 1)
+        max_retries = challenge_dict.get("max_retries", 2)
+        event_type = EventType.ACTIVE_PRESENCE_RETRY_REQUIRED.value if attempt < max_retries else EventType.ACTIVE_PRESENCE_UNAVAILABLE.value
+    else:
+        event_type = EventType.ACTIVE_PRESENCE_RETRY_REQUIRED.value
 
     evt = {
         "event_id": str(uuid.uuid4()),
@@ -2551,8 +2669,17 @@ async def retention_dry_run_endpoint(
     auth: AuthContext = Depends(require_admin),
 ):
     """Estimate retention cleanup candidates, bytes freed, and held exceptions."""
-    t_id = payload.tenant_id or auth.tenant_id
+    if payload.tenant_id and payload.tenant_id != auth.tenant_id and not auth.is_service_role:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Cannot execute retention dry-run for a different tenant",
+        )
+    t_id = auth.tenant_id
     if payload.session_id:
+        target_session = repository.get_session(payload.session_id)
+        if not target_session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        _verify_session_tenant(target_session, auth)
         res = retention_service.execute_session_deletion(
             tenant_id=t_id,
             session_id=payload.session_id,
@@ -2571,8 +2698,17 @@ async def retention_execute_endpoint(
     auth: AuthContext = Depends(require_admin),
 ):
     """Execute scheduled or targeted retention cleanup pipeline."""
-    t_id = payload.tenant_id or auth.tenant_id
+    if payload.tenant_id and payload.tenant_id != auth.tenant_id and not auth.is_service_role:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Cannot execute retention cleanup for a different tenant",
+        )
+    t_id = auth.tenant_id
     if payload.session_id:
+        target_session = repository.get_session(payload.session_id)
+        if not target_session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        _verify_session_tenant(target_session, auth)
         res = retention_service.execute_session_deletion(
             tenant_id=t_id,
             session_id=payload.session_id,
