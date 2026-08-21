@@ -3,5 +3,4 @@ uvicorn[standard]
 python-dotenv
 supabase
 pydantic
-python-jose
 PyJWT

@@ -4,14 +4,7 @@ Domain Subsystem: Observation & State Machine
 """
 from __future__ import annotations
 from typing import Any, Dict, Optional, Union
-from enum import Enum
-
-
-class PolicyId(str, Enum):
-    CLASSROOM = "CLASSROOM"
-    RESOURCE_SUPPORTED_ASSESSMENT = "RESOURCE_SUPPORTED_ASSESSMENT"
-    SUPERVISED_ASSESSMENT = "SUPERVISED_ASSESSMENT"
-    NO_ANALYTICS = "NO_ANALYTICS"
+from contracts import PolicyId
 
 
 class PolicyRouter:
