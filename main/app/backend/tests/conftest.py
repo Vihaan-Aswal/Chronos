@@ -608,6 +608,7 @@ def enforce_test_isolation(monkeypatch):
     )
     main.dsr_service = DSRService(repository=main.repository, retention_service=main.retention_service)
     main.hms_verifier = HMSComplianceVerifier()
+    main.live_window_manager.set_repository(main.repository)
 
     set_jwt_validator(JWTValidator(jwt_secret=JWT_TEST_SECRET))
 

@@ -114,3 +114,14 @@ def test_seven_step_session_deletion_pipeline_and_idempotency(test_client, mock_
     assert exec_data_2["status"] == "COMPLETED"
     assert exec_data_2["files_deleted"] == 0
 
+
+def test_tombstone_hmac_peppering_tenant_isolation():
+    """Verify compute_tombstone_hash produces tenant-scoped HMAC digests."""
+    from privacy.retention_service import compute_tombstone_hash
+    hash_ten1 = compute_tombstone_hash("ten-001", "subject", "usr-student-01")
+    hash_ten2 = compute_tombstone_hash("ten-002", "subject", "usr-student-01")
+    assert hash_ten1 != hash_ten2
+    assert len(hash_ten1) == 64
+    assert len(hash_ten2) == 64
+
+

@@ -1172,3 +1172,45 @@ class ChronosDomainRepository:
                 logger.debug(f"Purge note for table {tbl}: {e}")
         return purged_count
 
+    def purge_telemetry_older_than(self, max_age_days: int = 30) -> int:
+        """Purge raw observation sample events older than max_age_days."""
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=max_age_days)).isoformat()
+        purged = 0
+        try:
+            res = self.db.table("session_events").delete().eq("event_type", "OBSERVATION_SAMPLE").lt("occurred_at", cutoff).execute()
+            if res and hasattr(res, "data") and res.data:
+                purged += len(res.data)
+        except Exception as e:
+            logger.debug(f"Telemetry purge note for session_events: {e}")
+        try:
+            res2 = self.db.table("events").delete().eq("event_type", "OBSERVATION_SAMPLE").lt("occurred_at", cutoff).execute()
+            if res2 and hasattr(res2, "data") and res2.data:
+                purged += len(res2.data)
+        except Exception as e:
+            logger.debug(f"Telemetry purge note for events: {e}")
+        return purged
+
+    def purge_audit_logs_older_than(self, max_age_days: int = 180) -> int:
+        """Purge security and audit logs older than max_age_days."""
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=max_age_days)).isoformat()
+        purged = 0
+        try:
+            res = self.db.table("audit_logs").delete().lt("created_at", cutoff).execute()
+            if res and hasattr(res, "data") and res.data:
+                purged += len(res.data)
+        except Exception as e:
+            logger.debug(f"Audit log purge note: {e}")
+        return purged
+
+    def purge_consents_older_than(self, max_age_days: int = 365) -> int:
+        """Purge withdrawn consents older than max_age_days."""
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=max_age_days)).isoformat()
+        purged = 0
+        try:
+            res = self.db.table("consent_records").delete().eq("grant_or_decline", "DECLINE").lt("withdrawn_at", cutoff).execute()
+            if res and hasattr(res, "data") and res.data:
+                purged += len(res.data)
+        except Exception as e:
+            logger.debug(f"Consent purge note: {e}")
+        return purged
+

@@ -473,13 +473,19 @@ class EventEnvelope(BaseModel):
 
     @field_validator("payload")
     @classmethod
-    def validate_prohibited_fields(cls, v: Dict[str, Any]) -> Dict[str, Any]:
-        """Enforce strict privacy boundaries against surveillance and credential data."""
-        if not isinstance(v, dict):
-            return v
-        for key in v.keys():
-            if str(key).lower() in PROHIBITED_PAYLOAD_KEYS:
-                raise ValueError(f"Prohibited sensitive field '{key}' detected in event payload.")
+    def validate_prohibited_fields(cls, v: Any) -> Any:
+        """Enforce strict privacy boundaries against surveillance and credential data across nested structures."""
+        def _check_nested(item: Any):
+            if isinstance(item, dict):
+                for key, val in item.items():
+                    if str(key).lower() in PROHIBITED_PAYLOAD_KEYS:
+                        raise ValueError(f"Prohibited sensitive field '{key}' detected in event payload.")
+                    _check_nested(val)
+            elif isinstance(item, (list, tuple, set)):
+                for elem in item:
+                    _check_nested(elem)
+
+        _check_nested(v)
         return v
 
     @classmethod

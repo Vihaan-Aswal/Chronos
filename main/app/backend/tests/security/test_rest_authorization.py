@@ -74,6 +74,20 @@ def populated_db(mock_supabase: MockSupabaseClient):
         {"session_id": "ses-beta-active", "user_id": "usr-stud-beta", "tenant_id": "ten-002", "status": "ADMITTED", "role": "student"},
     ]).execute()
 
+    # Consent records
+    mock_supabase.table("consent_records").insert([
+        {
+            "consent_id": "c-stud-1",
+            "tenant_id": "ten-001",
+            "subject_id": "usr-stud-1",
+            "scope": "IDENTITY_ENROLLMENT",
+            "grant_or_decline": "GRANT",
+            "policy_version": "v1",
+            "granted_at": "2026-08-20T10:00:00Z",
+            "actor_type": "student",
+        }
+    ]).execute()
+
     return mock_supabase
 
 
@@ -407,3 +421,20 @@ class TestRESTAuthorization:
         res = populated_db.table("session_analytics").select("*").eq("session_id", "ses-alpha-active").execute()
         assert len(res.data) >= 1
         assert res.data[0]["teacher_id"] == "usr-teach-1"
+
+    def test_identity_registration_without_consent_rejected(self, client, populated_db):
+        """Registering biometric embedding without IDENTITY_ENROLLMENT consent raises 403."""
+        # usr-stud-2 has no consent recorded
+        student2_token = generate_test_jwt(
+            user_id="usr-stud-2", tenant_id="ten-001", role="student"
+        )
+        response = client.post(
+            "/identity/register",
+            headers={"Authorization": f"Bearer {student2_token}"},
+            json={
+                "embedding": [0.05] * 128,
+            },
+        )
+        assert response.status_code == 403
+        assert "Consent for 'IDENTITY_ENROLLMENT' is required" in response.json()["detail"]
+

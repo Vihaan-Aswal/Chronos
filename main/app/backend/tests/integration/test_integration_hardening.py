@@ -81,6 +81,19 @@ def hardening_db(mock_supabase: MockSupabaseClient):
         ),
     ]).execute()
 
+    # Session Participants for Demo Session
+    demo_participants = [
+        {
+            "session_id": "ses-hard-demo",
+            "user_id": f"usr-sim-{i:02d}",
+            "tenant_id": "ten-hard-1",
+            "status": "ADMITTED",
+            "role": "student",
+        }
+        for i in range(1, 51)
+    ]
+    mock_supabase.table("session_participants").insert(demo_participants).execute()
+
     return mock_supabase
 
 
@@ -287,13 +300,28 @@ class TestIntegrationHardening:
         assert upload_res.status_code == 409
 
     def test_50_participant_simulation_ingest(self, test_client: TestClient, hardening_db):
-        """Ingesting 50 simulated participants processes cleanly without dropped events."""
+        """Ingesting 50 simulated participants with distinct cryptographic identities processes cleanly."""
         admin_jwt = generate_test_jwt("usr-admin-1", "ten-hard-1", "admin")
         now_iso = datetime.now(timezone.utc).isoformat()
 
-        # Ingest 50 samples into demo session
+        # Enroll 50 distinct participants in session roster
+        participants_to_insert = [
+            {
+                "session_id": "ses-hard-demo",
+                "user_id": f"usr-sim-{i:02d}",
+                "tenant_id": "ten-hard-1",
+                "status": "ADMITTED",
+                "role": "student",
+            }
+            for i in range(1, 51)
+        ]
+        hardening_db.table("session_participants").insert(participants_to_insert).execute()
+
+        # Ingest 50 samples using distinct authorized participant JWTs
         for i in range(1, 51):
-            pid = f"sim_{i:02d}"
+            pid = f"usr-sim-{i:02d}"
+            part_jwt = generate_test_jwt(pid, "ten-hard-1", "student")
+
             envelope = EventEnvelope(
                 event_id=f"sim-evt-{pid}",
                 event_type="OBSERVATION_SAMPLE",
@@ -320,7 +348,7 @@ class TestIntegrationHardening:
             )
             res = test_client.post(
                 "/api/v1/events/ingest",
-                headers={"Authorization": f"Bearer {admin_jwt}"},
+                headers={"Authorization": f"Bearer {part_jwt}"},
                 json=envelope.model_dump(mode="json"),
             )
             assert res.status_code == 200
@@ -337,3 +365,34 @@ class TestIntegrationHardening:
         report = report_data.get("report", report_data)
         assert report["session_id"] == "ses-hard-demo"
         assert len(report["participant_drilldowns"]) == 50
+
+    def test_50_participant_websocket_multi_socket_concurrency(self, test_client: TestClient, hardening_db):
+        """Verify concurrent multi-socket WebSocket telemetry ingestion with distinct cryptographic tokens."""
+        teacher_jwt = generate_test_jwt("usr-teach-1", "ten-hard-1", "teacher")
+        session_id = "ses-hard-demo"
+
+        # Connect teacher WebSocket listener
+        with test_client.websocket_connect(f"/ws/teacher/{session_id}?token={teacher_jwt}") as teacher_ws:
+            # Simulate 10 concurrent student sockets connecting with individual distinct JWTs
+            for i in range(1, 11):
+                pid = f"usr-sim-{i:02d}"
+                part_jwt = generate_test_jwt(pid, "ten-hard-1", "student")
+                with test_client.websocket_connect(f"/ws/engagement/{session_id}?token={part_jwt}") as student_ws:
+                    sample = {
+                        "type": "OBSERVATION_SAMPLE",
+                        "occurred_at": datetime.now(timezone.utc).isoformat(),
+                        "payload": {
+                            "sample_id": f"samp-ws-hard-{pid}",
+                            "usable": True,
+                            "face_count": 1,
+                            "quality_score": 0.94,
+                            "head_pose": {"yaw_deg": 0.0, "pitch_deg": 0.0, "roll_deg": 0.0},
+                            "technical_reasons": [],
+                        },
+                    }
+                    student_ws.send_json(sample)
+                    broadcast = teacher_ws.receive_json()
+                    assert broadcast["session_id"] == session_id
+                    assert broadcast["participant_id"] == pid
+
+

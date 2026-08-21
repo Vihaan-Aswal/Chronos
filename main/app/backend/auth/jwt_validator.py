@@ -37,6 +37,10 @@ class JWTValidator:
             or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
             or "mock-chronos-super-secret-signing-key-32-chars-min"
         )
+        if os.getenv("ENV") == "production":
+            secret_env = os.getenv("SUPABASE_JWT_SECRET") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+            if not secret_env or secret_env == "mock-chronos-super-secret-signing-key-32-chars-min":
+                raise ValueError("SUPABASE_JWT_SECRET or SUPABASE_SERVICE_ROLE_KEY must be configured with a secure non-default secret in production")
         self.expected_issuer = expected_issuer
         self.expected_audience = expected_audience
         self.leeway_seconds = leeway_seconds

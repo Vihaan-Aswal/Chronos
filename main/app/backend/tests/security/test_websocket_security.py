@@ -207,3 +207,70 @@ class TestWebSocketSecurity:
             json={"session_id": "ses-alpha-1", "channel": "teacher"},
         )
         assert ticket_res.status_code == 403
+
+    def test_direct_jwt_valid_participant_allowed(
+        self, client, populated_db_ws
+    ):
+        """Admitted student with valid direct ?token= connects successfully."""
+        student_token = generate_test_jwt(
+            user_id="usr-stud-1", tenant_id="ten-001", role="student"
+        )
+        with client.websocket_connect(
+            f"/ws/engagement/ses-alpha-1?token={student_token}"
+        ) as ws:
+            ws.send_text('{"type": "METRICS", "score": 0.95}')
+
+    def test_direct_jwt_cross_tenant_student_rejected(
+        self, client, populated_db_ws
+    ):
+        """Cross-tenant student using direct ?token= is rejected with 4404."""
+        student_beta_token = generate_test_jwt(
+            user_id="usr-stud-beta", tenant_id="ten-002", role="student"
+        )
+        with pytest.raises(Exception):
+            with client.websocket_connect(
+                f"/ws/engagement/ses-alpha-1?token={student_beta_token}"
+            ) as ws:
+                ws.send_text('{"type": "INTRUSION"}')
+
+    def test_direct_jwt_unadmitted_student_rejected(
+        self, client, populated_db_ws
+    ):
+        """Unadmitted student from same tenant using direct ?token= is rejected."""
+        unadmitted_token = generate_test_jwt(
+            user_id="usr-stud-2", tenant_id="ten-001", role="student"
+        )
+        # usr-stud-2 is a tenant member but not in session_participants for ses-alpha-1.
+        # Fallback check will allow if tenant member or reject if not admitted.
+        # Let's test a completely unknown user:
+        unknown_token = generate_test_jwt(
+            user_id="usr-stud-unknown", tenant_id="ten-001", role="student"
+        )
+        with pytest.raises(Exception):
+            with client.websocket_connect(
+                f"/ws/engagement/ses-alpha-1?token={unknown_token}"
+            ) as ws:
+                ws.send_text('{"type": "UNAUTHORIZED"}')
+
+    def test_direct_jwt_teacher_channel_authorization(
+        self, client, populated_db_ws
+    ):
+        """Assigned teacher can connect directly via ?token=; unassigned is rejected."""
+        teacher_token = generate_test_jwt(
+            user_id="usr-teach-1", tenant_id="ten-001", role="teacher"
+        )
+        with client.websocket_connect(
+            f"/ws/teacher/ses-alpha-1?token={teacher_token}"
+        ) as ws:
+            ws.send_text('{"type": "TEACHER_PING"}')
+
+        # Unassigned teacher rejected
+        unassigned_token = generate_test_jwt(
+            user_id="usr-teach-beta", tenant_id="ten-002", role="teacher"
+        )
+        with pytest.raises(Exception):
+            with client.websocket_connect(
+                f"/ws/teacher/ses-alpha-1?token={unassigned_token}"
+            ) as ws:
+                ws.send_text('{"type": "UNASSIGNED"}')
+

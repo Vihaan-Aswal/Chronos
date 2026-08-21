@@ -18,6 +18,11 @@ class MeetingTokenService:
         self.db = db_client
         self.access_key = os.getenv("HMS_ACCESS_KEY", "mock_hms_access")
         self.secret = os.getenv("HMS_SECRET", "mock_test_hms_secret_32_characters_long")
+        if os.getenv("ENV") == "production":
+            if not os.getenv("HMS_SECRET") or os.getenv("HMS_SECRET") == "mock_test_hms_secret_32_characters_long":
+                raise ValueError("HMS_SECRET must be configured with a secure non-default secret in production")
+            if not os.getenv("HMS_ACCESS_KEY") or os.getenv("HMS_ACCESS_KEY") == "mock_hms_access":
+                raise ValueError("HMS_ACCESS_KEY must be configured with a secure non-default key in production")
         self.default_room_id = os.getenv("HMS_ROOM_ID", "mock_room_default")
         _ttl_raw = os.getenv("HMS_TOKEN_TTL_MINUTES", "120")
         try:

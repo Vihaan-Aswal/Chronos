@@ -6,12 +6,22 @@ from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 import uuid
 import hashlib
+import hmac
+import os
 from repository import ChronosDomainRepository
 from storage.storage_service import StorageService
 from privacy.legal_hold_service import LegalHoldService
 from chronos_logging import get_logger
 
 logger = get_logger("chronos.privacy.retention")
+
+
+def compute_tombstone_hash(tenant_id: str, subject_type: str, identifier: str, pepper: Optional[str] = None) -> str:
+    """Computes a tenant-scoped HMAC-SHA256 hash for privacy-safe deletion audit tombstones."""
+    secret = pepper or os.getenv("TOMBSTONE_PEPPER_SECRET") or os.getenv("SUPABASE_JWT_SECRET", "chronos-tenant-tombstone-pepper-secret")
+    key = f"{tenant_id}:{secret}".encode()
+    msg = f"{tenant_id}:{subject_type}:{identifier}".encode()
+    return hmac.new(key, msg, hashlib.sha256).hexdigest()
 
 # Retention periods in days per PRIVACY_DATA_MODEL.md §2
 RETENTION_SCHEDULE_DAYS = {
@@ -129,7 +139,7 @@ class RetentionService:
         tombstone_data = {
             "tombstone_id": str(uuid.uuid4()),
             "tenant_id": tenant_id,
-            "subject_id_hash": hashlib.sha256(f"session:{session_id}".encode()).hexdigest(),
+            "subject_id_hash": compute_tombstone_hash(tenant_id, "session", session_id),
             "session_id": session_id,
             "request_id": str(uuid.uuid4()),
             "data_classes_deleted": [
@@ -167,6 +177,7 @@ class RetentionService:
     ) -> Dict[str, Any]:
         """
         Executes Subject Access/Erasure deletion for a single participant.
+        When session_id is None, finds all sessions where subject participated and purges across all.
         Idempotent and respects legal holds.
         """
         now = datetime.now(timezone.utc)
@@ -192,56 +203,74 @@ class RetentionService:
             })
             return result
 
-        # Identify participant answer files
-        answers = []
+        # Identify all sessions for this subject
+        sessions_to_purge = []
         if session_id:
-            answers = self.repo.get_participant_answers(session_id, subject_id)
-
-        answer_files = [a for a in answers if a.get("storage_path")]
-        total_files = len(answer_files)
-        total_bytes = sum(a.get("byte_size", 0) or 0 for a in answer_files)
-
-        if dry_run:
-            result["records_deleted"] = len(answers) + 1
-            result["files_deleted"] = total_files
-            result["bytes_deleted"] = total_bytes
-            return result
-
-        # Delete participant answer files in storage
-        for a in answer_files:
+            sessions_to_purge = [session_id]
+        else:
             try:
-                self.storage.delete_file(a["storage_path"])
-                result["files_deleted"] += 1
-                result["bytes_deleted"] += a.get("byte_size", 0) or 0
+                part_query = self.repo.db.table("session_participants").select("session_id").eq("user_id", subject_id).execute()
+                if part_query.data:
+                    sessions_to_purge = list({p["session_id"] for p in part_query.data if p.get("session_id")})
             except Exception as e:
-                logger.debug(f"Participant storage delete note: {e}")
+                logger.debug(f"Error querying participant sessions for DSR: {e}")
 
-        # Delete database records
-        if session_id:
-            purged = self.repo.purge_participant_records(session_id, subject_id, tenant_id)
-            result["records_deleted"] += purged
+        # Purge answers and projection records across identified sessions
+        for s_id in sessions_to_purge:
+            if self.legal_holds.is_record_held(tenant_id, session_id=s_id, subject_id=subject_id, data_class="ALL"):
+                result["held_items"].append({
+                    "session_id": s_id,
+                    "subject_id": subject_id,
+                    "reason": "Active legal hold protects records in this session.",
+                })
+                continue
+
+            answers = self.repo.get_participant_answers(s_id, subject_id)
+            answer_files = [a for a in answers if a.get("storage_path")]
+            total_files = len(answer_files)
+            total_bytes = sum(a.get("byte_size", 0) or 0 for a in answer_files)
+
+            if dry_run:
+                result["records_deleted"] += len(answers) + 1
+                result["files_deleted"] += total_files
+                result["bytes_deleted"] += total_bytes
+            else:
+                for a in answer_files:
+                    try:
+                        self.storage.delete_file(a["storage_path"])
+                        result["files_deleted"] += 1
+                        result["bytes_deleted"] += a.get("byte_size", 0) or 0
+                    except Exception as e:
+                        logger.debug(f"Participant storage delete note: {e}")
+
+                purged = self.repo.purge_participant_records(s_id, subject_id, tenant_id)
+                result["records_deleted"] += purged
 
         # Purge temporary identity embedding for user
-        try:
-            self.repo.db.table("identity_embeddings").delete().eq("user_id", subject_id).execute()
+        if not dry_run:
+            try:
+                self.repo.db.table("identity_embeddings").delete().eq("user_id", subject_id).execute()
+                result["records_deleted"] += 1
+            except Exception:
+                pass
+        else:
             result["records_deleted"] += 1
-        except Exception:
-            pass
 
         # Step 7: Tombstone
-        tombstone_data = {
-            "tombstone_id": str(uuid.uuid4()),
-            "tenant_id": tenant_id,
-            "subject_id_hash": hashlib.sha256(f"subject:{subject_id}".encode()).hexdigest(),
-            "session_id": session_id,
-            "request_id": str(uuid.uuid4()),
-            "data_classes_deleted": ["PARTICIPANT_TELEMETRY", "STUDENT_ANSWERS", "IDENTITY_EMBEDDING"],
-            "records_deleted_count": result["records_deleted"],
-            "bytes_deleted_count": result["bytes_deleted"],
-            "initiated_by": actor_id,
-            "deleted_at": now.isoformat(),
-        }
-        self.repo.record_deletion_tombstone(tombstone_data)
+        if not dry_run:
+            tombstone_data = {
+                "tombstone_id": str(uuid.uuid4()),
+                "tenant_id": tenant_id,
+                "subject_id_hash": compute_tombstone_hash(tenant_id, "subject", subject_id),
+                "session_id": session_id,
+                "request_id": str(uuid.uuid4()),
+                "data_classes_deleted": ["PARTICIPANT_TELEMETRY", "STUDENT_ANSWERS", "IDENTITY_EMBEDDING"],
+                "records_deleted_count": result["records_deleted"],
+                "bytes_deleted_count": result["bytes_deleted"],
+                "initiated_by": actor_id,
+                "deleted_at": now.isoformat(),
+            }
+            self.repo.record_deletion_tombstone(tombstone_data)
 
         return result
 
@@ -261,6 +290,9 @@ class RetentionService:
             "tenant_id": tenant_id or "all",
             "identity_artifacts_purged": 0,
             "expired_sessions_processed": 0,
+            "telemetry_records_purged": 0,
+            "audit_logs_purged": 0,
+            "consents_purged": 0,
             "total_records_deleted": 0,
             "total_files_deleted": 0,
             "total_bytes_deleted": 0,
@@ -272,6 +304,7 @@ class RetentionService:
         if not dry_run:
             purged_identities = self.repo.purge_temporary_identity_artifacts(max_age_hours=24)
             summary["identity_artifacts_purged"] = purged_identities
+            summary["total_records_deleted"] += purged_identities
         else:
             # Dry run count
             threshold = now - timedelta(hours=24)
@@ -312,5 +345,21 @@ class RetentionService:
                     summary["total_bytes_deleted"] += del_res.get("bytes_deleted", 0)
         except Exception as e:
             logger.warning(f"Error in scheduled retention scan: {e}")
+
+        # 3. Purge 30-day raw observation telemetry
+        if not dry_run:
+            purged_telemetry = self.repo.purge_telemetry_older_than(max_age_days=30)
+            summary["telemetry_records_purged"] = purged_telemetry
+            summary["total_records_deleted"] += purged_telemetry
+
+            # 4. Purge 180-day audit logs
+            purged_audit = self.repo.purge_audit_logs_older_than(max_age_days=180)
+            summary["audit_logs_purged"] = purged_audit
+            summary["total_records_deleted"] += purged_audit
+
+            # 5. Purge 365-day withdrawn consent records
+            purged_consents = self.repo.purge_consents_older_than(max_age_days=365)
+            summary["consents_purged"] = purged_consents
+            summary["total_records_deleted"] += purged_consents
 
         return summary

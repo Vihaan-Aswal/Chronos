@@ -103,6 +103,7 @@ from storage.storage_service import (
     StorageError,
     EXTENSION_TO_MIME,
 )
+from contextlib import asynccontextmanager
 from assessment.resource_service import ResourceService
 from assessment.answer_service import AnswerService
 from privacy.consent_service import ConsentService
@@ -110,6 +111,7 @@ from privacy.legal_hold_service import LegalHoldService
 from privacy.retention_service import RetentionService
 from privacy.dsr_service import DSRService
 from auth.hms_verification import HMSComplianceVerifier
+from observation.live_window_manager import live_window_manager
 
 load_dotenv()
 logger = get_logger("chronos.backend")
@@ -147,11 +149,20 @@ retention_service = RetentionService(
 )
 dsr_service = DSRService(repository=repository, retention_service=retention_service)
 hms_verifier = HMSComplianceVerifier()
+live_window_manager.set_repository(repository)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await live_window_manager.start_background_loop()
+    yield
+    await live_window_manager.stop_background_loop()
+
 
 app = FastAPI(
     title="Chronos Secure Platform API",
     description="Multi-tenant, zero-trust backend for Chronos Active Presence and Classroom Monitoring.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS configuration
@@ -169,6 +180,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: blob:; "
+        "connect-src 'self' ws: wss: https:; "
+        "frame-ancestors 'none';"
+    )
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +361,20 @@ def create_session(
 
     created = repository.create_session(session_data)
     
+    # Auto-admit 50 distinct simulated participants for demo sessions
+    if payload.is_demo:
+        try:
+            for i in range(1, 51):
+                pid = f"usr-sim-{i:02d}"
+                repository.admit_participant(
+                    session_id=session_id,
+                    user_id=pid,
+                    tenant_id=tenant_id,
+                    role="student",
+                )
+        except Exception as e:
+            logger.warning(f"Failed to auto-admit demo participants on create: {e}")
+
     # Append durable SESSION_CREATED event
     evt = {
         "event_id": str(uuid.uuid4()),
@@ -415,6 +457,22 @@ def start_session(
                     detail="A primary question paper must be published before starting an assessment session",
                 )
 
+    # Enforce meeting provider privacy compliance (W6.8, P1-02)
+    room_id = session.get("room_id") or session.get("hms_room_id")
+    template_id = session.get("template_id") or session.get("hms_template_id")
+    is_compliant, violations, _ = hms_verifier.verify_room_and_template_compliance(
+        room_id=room_id, template_id=template_id
+    )
+    if not is_compliant:
+        logger.error(
+            f"Cannot start session: meeting provider privacy compliance check failed: {violations}",
+            extra={"session_id": session_id, "violations": violations},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED,
+            detail=f"Meeting provider privacy check failed: {', '.join(violations)}",
+        )
+
     now_iso = datetime.now(timezone.utc).isoformat()
     policy_snapshot = PolicySnapshot.create_snapshot_for_policy(
         policy_id, is_demo=session.get("is_demo", False)
@@ -426,6 +484,20 @@ def start_session(
         policy_snapshot=policy_snapshot,
         started_at=now_iso,
     )
+
+    # Auto-admit 50 distinct simulated participants for demo sessions
+    if session.get("is_demo", False):
+        try:
+            for i in range(1, 51):
+                pid = f"usr-sim-{i:02d}"
+                repository.admit_participant(
+                    session_id=session_id,
+                    user_id=pid,
+                    tenant_id=session["tenant_id"],
+                    role="student",
+                )
+        except Exception as e:
+            logger.warning(f"Failed to auto-admit demo participants on start: {e}")
 
     # Append durable SESSION_STARTED event
     evt = {
@@ -464,7 +536,7 @@ def start_session(
 
 
 @app.post("/session/{session_id}/end", dependencies=[Depends(require_teacher)])
-def end_session(
+async def end_session(
     session_id: str,
     auth: AuthContext = Depends(require_teacher),
 ):
@@ -481,6 +553,12 @@ def end_session(
     current_status = session.get("status")
     if current_status == SessionStatus.ENDED.value:
         return {"status": "success", "message": "Session already ended"}
+
+    # Flush in-flight live windows for the session
+    try:
+        await live_window_manager.flush_session(session_id)
+    except Exception as e:
+        logger.warning(f"Error flushing live windows on session end: {e}")
 
     now_iso = datetime.now(timezone.utc).isoformat()
     ended = repository.end_session(
@@ -720,12 +798,12 @@ async def student_ws(
     """
     Secure student telemetry WebSocket.
     Requires validated ticket or Bearer token query parameter.
-    Binds connection strictly to verified actor identity.
+    Binds connection strictly to verified actor identity and session authorization.
     """
     actor_id: str = "unknown_student"
     tenant_id: str = "ten-default"
 
-    # Authenticate via ticket (preferred) or JWT query param (legacy test fallback)
+    # Authenticate via ticket (preferred) or JWT query param (direct JWT connection)
     if ticket:
         try:
             val_ticket = ws_ticket_manager.consume_ticket(
@@ -736,7 +814,8 @@ async def student_ws(
             actor_id = val_ticket.user_id
             tenant_id = val_ticket.tenant_id
         except HTTPException as e:
-            await websocket.close(code=4403, reason=e.detail)
+            close_code = 4404 if e.status_code == 404 else 4403
+            await websocket.close(code=close_code, reason=e.detail)
             return
     elif token:
         try:
@@ -744,6 +823,17 @@ async def student_ws(
             auth = validator.decode_and_validate(token)
             actor_id = auth.user_id
             tenant_id = auth.tenant_id
+
+            session = repository.get_session(session_id)
+            if not session:
+                await websocket.close(code=4404, reason="Session not found")
+                return
+            _verify_session_tenant(session, auth)
+            _verify_session_participant(session, auth)
+        except HTTPException as e:
+            close_code = 4404 if e.status_code == 404 else 4403
+            await websocket.close(code=close_code, reason=e.detail)
+            return
         except Exception:
             await websocket.close(code=4401, reason="Invalid authentication token")
             return
@@ -775,12 +865,15 @@ async def student_ws(
             if msg_type in ("OBSERVATION_SAMPLE", "METRICS"):
                 session = repository.get_session(session_id)
                 policy_id = session.get("policy_id", "CLASSROOM") if session else "CLASSROOM"
+                is_demo = bool(session.get("is_demo", False)) if session else False
+                
                 # Consent enforcement: drop samples if ATTENTION_TELEMETRY was explicitly declined
                 consent_status = repository.get_consent_status(tenant_id, actor_id, "ATTENTION_TELEMETRY", session_id)
                 is_declined = consent_status and consent_status.get("grant_or_decline") == "DECLINE"
                 
                 if policy_id != "NO_ANALYTICS" and not is_declined:
                     payload_data = msg.get("payload") or msg
+                    evt_time = msg.get("occurred_at") or enriched["timestamp"]
                     evt = {
                         "event_id": str(msg.get("event_id") or uuid.uuid4()),
                         "event_type": "OBSERVATION_SAMPLE",
@@ -791,14 +884,31 @@ async def student_ws(
                         "actor_id": actor_id,
                         "actor_role": "participant",
                         "source": "camera",
-                        "occurred_at": msg.get("occurred_at") or enriched["timestamp"],
+                        "occurred_at": evt_time,
                         "policy_id": policy_id,
+                        "is_demo": is_demo,
                         "payload": payload_data,
                     }
                     try:
                         repository.append_event(evt)
                     except Exception:
                         pass
+
+                    # Ingest into live window buffer manager for in-flight evaluation loop
+                    try:
+                        await live_window_manager.buffer_sample(
+                            session_id=session_id,
+                            participant_id=actor_id,
+                            tenant_id=tenant_id,
+                            policy_id=policy_id,
+                            is_demo=is_demo,
+                            sample_data=payload_data,
+                            occurred_at=evt_time,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Error buffering sample in live window manager: {e}")
+
+                    await manager.broadcast_to_teachers(session_id, enriched)
 
             # Ingest browser visibility events with destination_known: False
             elif msg_type in ("PAGE_HIDDEN", "PAGE_VISIBLE", "WINDOW_BLURRED", "WINDOW_FOCUSED", "FULLSCREEN_ENTERED", "FULLSCREEN_EXITED"):
@@ -834,8 +944,7 @@ async def student_ws(
                         repository.append_event(evt)
                     except Exception:
                         pass
-
-            await manager.broadcast_to_teachers(session_id, enriched)
+                    await manager.broadcast_to_teachers(session_id, enriched)
 
     except WebSocketDisconnect:
         manager.disconnect_student(session_id, actor_id)
@@ -878,16 +987,28 @@ async def teacher_ws(
                 return
             actor_id = val_ticket.user_id
         except HTTPException as e:
-            await websocket.close(code=4403, reason=e.detail)
+            close_code = 4404 if e.status_code == 404 else 4403
+            await websocket.close(code=close_code, reason=e.detail)
             return
     elif token:
         try:
             validator = JWTValidator()
             auth = validator.decode_and_validate(token)
-            if not auth.is_teacher:
+            if not auth.is_teacher and not auth.is_admin:
                 await websocket.close(code=4403, reason="Role 'teacher' required")
                 return
             actor_id = auth.user_id
+
+            session = repository.get_session(session_id)
+            if not session:
+                await websocket.close(code=4404, reason="Session not found")
+                return
+            _verify_session_tenant(session, auth)
+            _verify_session_teacher(session, auth)
+        except HTTPException as e:
+            close_code = 4404 if e.status_code == 404 else 4403
+            await websocket.close(code=close_code, reason=e.detail)
+            return
         except Exception:
             await websocket.close(code=4401, reason="Invalid authentication token")
             return
@@ -918,7 +1039,14 @@ def register_embedding(
     """
     Register temporary reference biometric embedding.
     Strictly bound to authenticated student (payload user_id ignored/asserted).
+    Requires explicit IDENTITY_ENROLLMENT consent.
     """
+    if not consent_service.is_scope_granted(auth.tenant_id, auth.user_id, "IDENTITY_ENROLLMENT"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Consent for 'IDENTITY_ENROLLMENT' is required to register embedding",
+        )
+
     if not payload.embedding or not is_finite_array(payload.embedding):
         raise HTTPException(status_code=400, detail="invalid embedding: must be finite numeric vector")
 
@@ -1036,7 +1164,7 @@ def list_session_analytics(
         return {"sessions": result.data or []}
     except Exception as e:
         logger.error(f"Error listing session analytics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error retrieving session analytics")
 
 
 @app.get("/session/{session_id}/analytics", dependencies=[Depends(require_teacher)])
@@ -1064,18 +1192,25 @@ def get_session_analytics(
         raise
     except Exception as e:
         logger.error(f"Error fetching analytics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error retrieving analytics")
 
 
 # ---------------------------------------------------------------------------
 # 7. Teacher Actions, Nudges & Live Controls (W1.4)
 # ---------------------------------------------------------------------------
 
-@app.post("/session/set-mode", dependencies=[Depends(require_teacher)])
+@app.post(
+    "/session/set-mode",
+    dependencies=[Depends(require_teacher)],
+    deprecated=True,
+    summary="[DEPRECATED] Legacy mode toggle endpoint.",
+)
 async def set_session_mode(
     payload: SessionModePayload,
     auth: AuthContext = Depends(require_teacher),
 ):
+    """[DEPRECATED] Retained for legacy client backwards compatibility. Use policy presets."""
+    logger.warning("Invocation of deprecated endpoint /session/set-mode")
     if payload.session_id != "default-session":
         session = repository.get_session(payload.session_id)
         if not session:
@@ -1092,11 +1227,18 @@ async def set_session_mode(
     return {"status": "success", "mode": payload.mode}
 
 
-@app.post("/session/set-class-context", dependencies=[Depends(require_teacher)])
+@app.post(
+    "/session/set-class-context",
+    dependencies=[Depends(require_teacher)],
+    deprecated=True,
+    summary="[DEPRECATED] Legacy class context toggle endpoint.",
+)
 async def set_class_context(
     payload: ClassContextPayload,
     auth: AuthContext = Depends(require_teacher),
 ):
+    """[DEPRECATED] Retained for legacy client backwards compatibility. Use policy presets."""
+    logger.warning("Invocation of deprecated endpoint /session/set-class-context")
     if payload.session_id != "default-session":
         session = repository.get_session(payload.session_id)
         if not session:
@@ -1966,9 +2108,10 @@ async def storage_download(
             detail=str(e),
         )
     except Exception as e:
+        logger.error(f"Error retrieving storage artifact '{path}': {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve artifact: {e}",
+            detail="Failed to retrieve storage artifact",
         )
 
     ext = os.path.splitext(path)[1].lower()

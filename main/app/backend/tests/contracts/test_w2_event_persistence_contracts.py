@@ -149,6 +149,40 @@ class TestW2DomainContractsAndPersistence:
                 payload={"jwt_token": "eyJhbGciOi..."},
             )
 
+    def test_prohibited_nested_keys_rejected(self, clock, id_gen):
+        """PRV-05: Deeply nested prohibited keys (e.g. medical_info, embeddings) are rejected at schema boundary."""
+        with pytest.raises(ValueError, match="Prohibited sensitive field 'medical_info'"):
+            EventEnvelope(
+                event_id=id_gen.next_uuid("evt"),
+                event_type="OBSERVATION_SAMPLE",
+                tenant_id="ten-0001",
+                session_id="ses-0001",
+                participant_id="usr-001",
+                actor_id="usr-001",
+                actor_role="participant",
+                source="browser",
+                occurred_at=clock.now_iso(),
+                policy_id="CLASSROOM",
+                payload={"context": {"extra": {"medical_info": "asthma"}}},
+            )
+
+    def test_prohibited_list_nested_keys_rejected(self, clock, id_gen):
+        """PRV-06: Prohibited keys within list of objects (e.g. continuous_landmarks) are rejected."""
+        with pytest.raises(ValueError, match="Prohibited sensitive field 'continuous_landmarks'"):
+            EventEnvelope(
+                event_id=id_gen.next_uuid("evt"),
+                event_type="OBSERVATION_SAMPLE",
+                tenant_id="ten-0001",
+                session_id="ses-0001",
+                participant_id="usr-001",
+                actor_id="usr-001",
+                actor_role="participant",
+                source="browser",
+                occurred_at=clock.now_iso(),
+                policy_id="CLASSROOM",
+                payload={"frames": [{"frame_id": 1, "continuous_landmarks": [1, 2, 3]}]},
+            )
+
     # -----------------------------------------------------------------------
     # 3. Actor & Source Validation (REST Endpoint)
     # -----------------------------------------------------------------------

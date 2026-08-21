@@ -39,7 +39,10 @@ class HMSComplianceVerifier:
         return jwt.encode(payload, self.secret, algorithm="HS256")
 
     def verify_room_and_template_compliance(
-        self, room_id: Optional[str] = None, custom_config: Optional[Dict[str, Any]] = None
+        self,
+        room_id: Optional[str] = None,
+        template_id: Optional[str] = None,
+        custom_config: Optional[Dict[str, Any]] = None,
     ) -> Tuple[bool, List[str], Dict[str, Any]]:
         """
         Inspects 100ms room and template configuration to ensure:
@@ -55,6 +58,7 @@ class HMSComplianceVerifier:
         target_room = room_id or os.getenv("HMS_ROOM_ID", "mock_room_default")
         audit_meta: Dict[str, Any] = {
             "room_id": target_room,
+            "template_id": template_id,
             "verified_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "provider": "100ms",
             "checks": {},
@@ -124,22 +128,25 @@ class HMSComplianceVerifier:
                 "Authorization": f"Bearer {self.generate_management_token()}",
                 "Content-Type": "application/json",
             }
-            res = requests.get(f"{self.base_url}/rooms/{target_room}", headers=headers, timeout=5)
-            if res.status_code == 200:
-                room_data = res.json()
-                tmpl_id = room_data.get("template_id")
-                audit_meta["template_id"] = tmpl_id
-                if tmpl_id:
-                    t_res = requests.get(f"{self.base_url}/templates/{tmpl_id}", headers=headers, timeout=5)
-                    if t_res.status_code == 200:
-                        t_data = t_res.json()
-                        return self.verify_room_and_template_compliance(room_id=target_room, custom_config=t_data)
-                    else:
-                        violations.append(f"Live provider error: template fetch returned HTTP {t_res.status_code}")
+            tmpl_to_query = template_id
+            if not tmpl_to_query and target_room:
+                res = requests.get(f"{self.base_url}/rooms/{target_room}", headers=headers, timeout=5)
+                if res.status_code == 200:
+                    room_data = res.json()
+                    tmpl_to_query = room_data.get("template_id")
+                    audit_meta["template_id"] = tmpl_to_query
                 else:
-                    violations.append("Live provider error: room has no template_id attached")
-            else:
-                violations.append(f"Live provider error: room fetch returned HTTP {res.status_code}")
+                    violations.append(f"Live provider error: room fetch returned HTTP {res.status_code}")
+
+            if tmpl_to_query:
+                t_res = requests.get(f"{self.base_url}/templates/{tmpl_to_query}", headers=headers, timeout=5)
+                if t_res.status_code == 200:
+                    t_data = t_res.json()
+                    return self.verify_room_and_template_compliance(room_id=target_room, template_id=tmpl_to_query, custom_config=t_data)
+                else:
+                    violations.append(f"Live provider error: template fetch returned HTTP {t_res.status_code}")
+            elif not violations:
+                violations.append("Live provider error: room has no template_id attached and none provided")
         except Exception as e:
             violations.append(f"Live provider verification failed: {e}")
 
