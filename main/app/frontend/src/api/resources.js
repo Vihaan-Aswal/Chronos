@@ -5,13 +5,11 @@
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
+import { getAuthToken } from "./ws-auth.js";
+
 function resolveToken(token) {
   if (token) return token;
-  try {
-    return sessionStorage.getItem("chronos_token") || localStorage.getItem("token") || "";
-  } catch {
-    return "";
-  }
+  return getAuthToken();
 }
 
 function getHeaders(token, isJson = true) {

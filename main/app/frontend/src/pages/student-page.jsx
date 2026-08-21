@@ -2,7 +2,7 @@
 // Workstream W7: Student Health Projection, Self-Recovery, and Return-to-Session Flows
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 
 import JoinScreen from "../components/join-screen.jsx";
 import EngagementTracker from "../components/engagement-tracker.jsx";
@@ -14,12 +14,15 @@ import ResourcePanel from "../components/assessment/resource-panel.jsx";
 import AnswerSubmissionPanel from "../components/assessment/answer-submission-panel.jsx";
 import StudentHealthPanel from "../components/student/student-health-panel.jsx";
 import StudentContextModal from "../components/student/student-context-modal.jsx";
+import PrivacySettingsDrawer from "../components/privacy/privacy-settings-drawer.jsx";
 import { BrowserVisibilityTracker } from "../observation/browser-visibility-tracker.js";
 import "../styles/dashboard-shared.css";
 import "../styles/student-meeting.css";
 
 export default function StudentPage() {
   const location = useLocation();
+  const [params] = useSearchParams();
+
   let user = location.state?.user;
   if (!user) {
     try {
@@ -31,14 +34,22 @@ export default function StudentPage() {
   }
 
   const userId = user?.id || "";
-  const sessionId = "default-session";
+  const sessionId = params.get("sessionId") || location.state?.sessionId || "default-session";
   const userName = user?.email || userId || "Student";
   const readinessCompleted = location.state?.readinessCompleted === true;
 
   const [inMeeting, setInMeeting] = useState(false);
   const [nudgeState, setNudgeState] = useState(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
+  const [isPrivacyDrawerOpen, setIsPrivacyDrawerOpen] = useState(false);
   const [returnToSessionPrompt, setReturnToSessionPrompt] = useState(null);
+  const [visionStatus, setVisionStatus] = useState({
+    cameraActive: true,
+    faceDetected: true,
+    lightingQuality: "optimal",
+    networkStatus: "connected",
+  });
+
   const nudgeTimeoutRef = useRef(null);
   const returnPromptTimeoutRef = useRef(null);
   const readinessAutoJoinRef = useRef(false);
@@ -50,7 +61,7 @@ export default function StudentPage() {
 
   const wsUrl =
     sessionId && userId
-      ? `${import.meta.env.VITE_BACKEND_WS_URL || "ws://localhost:8000"}/ws/engagement/${sessionId}/${userId}`
+      ? `${import.meta.env.VITE_BACKEND_WS_URL || "ws://localhost:8000"}/ws/engagement/${sessionId}`
       : null;
 
   const { connected: wsConnected } = useWebSocket(wsUrl || "", null);
@@ -85,7 +96,7 @@ export default function StudentPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ events: [envelope] }),
+        body: JSON.stringify(envelope),
       }).catch(() => {});
 
       // 2. Return-to-session calm prompt trigger (15s to 60s away)
@@ -140,14 +151,15 @@ export default function StudentPage() {
   const handleNudge = (msg) => {
     if (nudgeTimeoutRef.current) clearTimeout(nudgeTimeoutRef.current);
 
-    const text = msg?.message_text
-      ? msg.message_text
-      : msg?.nudge_type === "hard"
-        ? "Attention Required!"
-        : "Please pay attention!";
+    const text = typeof msg === "string"
+      ? (msg === "hard" ? "Please refocus on the session window" : "Please refocus when ready")
+      : msg?.message_text
+        ? msg.message_text
+        : msg?.nudge_type === "hard"
+          ? "Please refocus on the session window"
+          : "Please refocus when ready";
 
     setNudgeState({ text, id: Date.now() });
-
     nudgeTimeoutRef.current = setTimeout(() => setNudgeState(null), 5000);
   };
 
@@ -181,71 +193,53 @@ export default function StudentPage() {
 
   return (
     <>
-      <NudgeNotification message={nudgeState?.text} key={nudgeState?.id} />
+      <NudgeNotification
+        nudge={nudgeState}
+        onDismiss={() => setNudgeState(null)}
+      />
 
-      {/* Return to Session Calm Prompt Banner */}
+      {/* Return to session calm notification banner */}
       {returnToSessionPrompt && (
-        <div
-          className="fixed top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[#1a1c1e]/95 border border-[#dcc492]/40 shadow-2xl backdrop-blur-md text-xs text-slate-200 animate-in fade-in slide-in-from-top-3"
-          role="status"
-          aria-live="polite"
-        >
-          <span className="w-2 h-2 rounded-full bg-[#dcc492] animate-ping" />
-          <span>
-            Welcome back! You were away for <strong>{returnToSessionPrompt.awaySeconds}s</strong>.
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              setReturnToSessionPrompt(null);
-              setIsContextModalOpen(true);
-            }}
-            className="px-2.5 py-1 rounded-lg bg-[#dcc492] text-[#1a1c1e] font-semibold hover:bg-[#ebd7ad] transition"
-          >
-            Add Context
-          </button>
-          <button
-            type="button"
-            onClick={() => setReturnToSessionPrompt(null)}
-            className="p-1 rounded-lg text-slate-400 hover:text-white"
-            aria-label="Dismiss prompt"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] bg-[#1a2f45] border border-[#dcc492]/50 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="w-8 h-8 rounded-xl bg-[#dcc492]/20 flex items-center justify-center text-[#dcc492]">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
             </svg>
-          </button>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs font-semibold text-[#dcc492]">Welcome back to Chronos</span>
+            <span className="text-xs text-white/80">
+              You were away for {returnToSessionPrompt.awaySeconds} seconds.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 pl-2">
+            <button
+              type="button"
+              onClick={() => {
+                setReturnToSessionPrompt(null);
+                setIsContextModalOpen(true);
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-[#dcc492] text-[#020e18] font-bold hover:opacity-90 transition"
+            >
+              Add Context
+            </button>
+            <button
+              type="button"
+              onClick={() => setReturnToSessionPrompt(null)}
+              className="text-xs px-2 py-1.5 text-white/60 hover:text-white transition"
+              aria-label="Dismiss banner"
+            >
+              x
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Student Structured Context / Appeals Modal */}
-      <StudentContextModal
-        isOpen={isContextModalOpen}
-        onClose={() => setIsContextModalOpen(false)}
-        sessionId={sessionId}
-      />
-
       {showDisconnect && (
         <div
-          style={{
-            backgroundColor: "#ba1a1a",
-            color: "#ffffff",
-            padding: "10px 0",
-            zIndex: 9999,
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "12px",
-            fontSize: "12px",
-            fontWeight: "bold",
-            textTransform: "uppercase",
-            letterSpacing: "0.1em",
-            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-          }}
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-amber-500/90 text-black text-sm font-semibold rounded-full shadow-lg flex items-center gap-2 backdrop-blur-sm"
+          role="alert"
         >
           <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
             <circle
@@ -272,7 +266,7 @@ export default function StudentPage() {
             wsConnected={wsConnected}
             sessionId={sessionId}
             userName={userName}
-            onOpenPrivacy={() => setIsContextModalOpen(true)}
+            onOpenPrivacy={() => setIsPrivacyDrawerOpen(true)}
           />
 
           <div className="sd-status-bar" aria-label="Student session strip">
@@ -351,6 +345,16 @@ export default function StudentPage() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Persistent background vision tracker to keep local ML heartbeats active */}
+            <div className="hidden" aria-hidden="true">
+              <EngagementTracker
+                sessionId={sessionId}
+                userId={userId}
+                onNudge={handleNudge}
+                onVisionStatusChange={setVisionStatus}
+              />
             </div>
 
             {/* Side Rail Panel */}
@@ -457,20 +461,13 @@ export default function StudentPage() {
                   )}
 
                   {activeSideTab === "tracker" && (
-                    <>
-                      <StudentHealthPanel
-                        cameraActive={true}
-                        faceDetected={true}
-                        lightingQuality="optimal"
-                        networkStatus={wsConnected ? "connected" : "reconnecting"}
-                        onOpenContextModal={() => setIsContextModalOpen(true)}
-                      />
-                      <EngagementTracker
-                        sessionId={sessionId}
-                        userId={userId}
-                        onNudge={handleNudge}
-                      />
-                    </>
+                    <StudentHealthPanel
+                      cameraActive={visionStatus.cameraActive}
+                      faceDetected={visionStatus.faceDetected}
+                      lightingQuality={visionStatus.lightingQuality}
+                      networkStatus={wsConnected ? "connected" : "reconnecting"}
+                      onOpenContextModal={() => setIsContextModalOpen(true)}
+                    />
                   )}
                 </div>
               </div>
@@ -478,6 +475,21 @@ export default function StudentPage() {
           </div>
         </div>
       </div>
+
+      {/* Student Structured Context & Appeal Modal */}
+      <StudentContextModal
+        isOpen={isContextModalOpen}
+        onClose={() => setIsContextModalOpen(false)}
+        sessionId={sessionId}
+      />
+
+      {/* Privacy Settings, Consent Withdrawal & DSR Drawer */}
+      <PrivacySettingsDrawer
+        isOpen={isPrivacyDrawerOpen}
+        onClose={() => setIsPrivacyDrawerOpen(false)}
+        sessionId={sessionId}
+        token={sessionStorage.getItem("chronos_token") || localStorage.getItem("token")}
+      />
     </>
   );
 }

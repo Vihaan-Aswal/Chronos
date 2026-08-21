@@ -156,7 +156,7 @@ export default function HomePage() {
                       84.2%
                     </div>
                     <span className="text-[9px] uppercase tracking-widest text-secondary font-bold">
-                      Teacher Performance Index
+                      Classroom Focus Index
                     </span>
                   </div>
                 </div>
@@ -190,7 +190,7 @@ export default function HomePage() {
                         Students needing review
                       </p>
                       <p className="text-lg font-light opacity-90 italic">
-                        Identity check failed for 2 participants
+                        Identity check needs review for 2 participants
                       </p>
                     </div>
                     <div className="px-5 py-2.5 bg-white/10 rounded-full text-[9px] font-bold uppercase tracking-widest border border-white/20">
@@ -464,7 +464,7 @@ export default function HomePage() {
                   </p>
                   <div className="flex flex-wrap gap-4">
                     <span className="px-6 py-3 bg-white rounded-full text-[10px] font-bold uppercase tracking-widest text-secondary border border-surface-container shadow-sm">
-                      Teacher Index
+                      Focus Index
                     </span>
                     <span className="px-6 py-3 bg-white rounded-full text-[10px] font-bold uppercase tracking-widest text-secondary border border-surface-container shadow-sm">
                       Total nudges

@@ -204,6 +204,11 @@ export default function DashboardTopbar({
       </div>
 
       <div className="td-topbar-right">
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-semibold tracking-wide" title="Session running in accelerated demo timing">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          Accelerated Demo Mode
+        </div>
+
         <div
           className={`td-ws-badge ${connected ? "" : "disconnected"}`}
           title="WebSocket connection status"

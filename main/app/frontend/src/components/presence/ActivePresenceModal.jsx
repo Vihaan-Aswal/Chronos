@@ -277,17 +277,25 @@ export default function ActivePresenceModal({
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onDismiss?.();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onDismiss]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="presence-modal-title">
       <div className="relative w-full max-w-lg rounded-2xl bg-[#091926] border border-[#DCC492]/30 shadow-2xl p-6 text-white">
         {/* Top Header & Countdown */}
         <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
           <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-[#DCC492] text-2xl">
+            <span className="material-symbols-outlined text-[#DCC492] text-2xl" aria-hidden="true">
               verified_user
             </span>
             <div>
-              <h3 className="font-headline font-bold text-lg text-[#DCC492]">
+              <h3 id="presence-modal-title" className="font-headline font-bold text-lg text-[#DCC492]">
                 Active Presence Verification
               </h3>
               <p className="text-xs text-white/60">
@@ -356,7 +364,14 @@ export default function ActivePresenceModal({
           <div className="text-base font-medium text-white mb-2">{statusMessage}</div>
 
           {/* Real-time Hold Progress Bar */}
-          <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden max-w-xs mx-auto">
+          <div
+            className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden max-w-xs mx-auto"
+            role="progressbar"
+            aria-valuenow={holdProgress}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Pose hold progress"
+          >
             <div
               className="h-full bg-gradient-to-r from-[#DCC492] to-emerald-400 transition-all duration-100"
               style={{ width: `${holdProgress}%` }}

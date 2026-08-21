@@ -192,11 +192,18 @@ class ChronosDomainRepository:
     # W2 Append-Only Event Store & Idempotency
     # -----------------------------------------------------------------------
 
-    def append_event(self, event_envelope: Dict[str, Any]) -> Dict[str, Any]:
+    def append_event(self, event_envelope: Any) -> Dict[str, Any]:
         """
         Append a single event to the immutable event log with idempotency guarantee.
         If an event with the same event_id already exists, return the existing record.
         """
+        if hasattr(event_envelope, "model_dump"):
+            event_envelope = event_envelope.model_dump()
+        elif hasattr(event_envelope, "dict"):
+            event_envelope = event_envelope.dict()
+        elif not isinstance(event_envelope, dict):
+            event_envelope = dict(event_envelope)
+
         event_id = event_envelope.get("event_id") or str(uuid.uuid4())
         session_id = event_envelope.get("session_id")
         event_envelope["event_id"] = event_id
@@ -209,7 +216,16 @@ class ChronosDomainRepository:
 
         # 2. Server sequence allocation (monotonically increasing per session)
         if "server_sequence" not in event_envelope or event_envelope["server_sequence"] is None:
-            curr_seq = self._session_sequences.get(session_id, 0) + 1
+            if session_id not in self._session_sequences:
+                max_seq = 0
+                try:
+                    events = self.get_session_events(session_id)
+                    if events:
+                        max_seq = max((e.get("server_sequence") or 0) for e in events)
+                except Exception:
+                    max_seq = 0
+                self._session_sequences[session_id] = max_seq
+            curr_seq = self._session_sequences[session_id] + 1
             self._session_sequences[session_id] = curr_seq
             event_envelope["server_sequence"] = curr_seq
         else:
@@ -227,15 +243,22 @@ class ChronosDomainRepository:
         event_envelope["payload"] = sanitized_payload
 
         # 4. Insert into session_events / events table
+        res = None
         try:
             res = self.db.table("session_events").insert(event_envelope).execute()
         except Exception:
-            res = self.db.table("events").insert(event_envelope).execute()
+            try:
+                res = self.db.table("events").insert(event_envelope).execute()
+            except Exception as e:
+                logger.warning(f"Failed to persist event {event_id} to DB: {e}")
 
-        persisted = res.data[0] if res.data else event_envelope
+        persisted = res.data[0] if (res and hasattr(res, "data") and res.data) else event_envelope
 
         # 5. Apply event to incremental projections
-        self._apply_event_to_projections(persisted)
+        try:
+            self._apply_event_to_projections(persisted)
+        except Exception as e:
+            logger.warning(f"Projection update skipped: {e}")
 
         return persisted
 
@@ -245,11 +268,16 @@ class ChronosDomainRepository:
             res = self.db.table("session_events").select("*").eq("event_id", event_id).execute()
             if res.data:
                 return res.data[0]
+        except Exception:
+            pass
+
+        try:
             res = self.db.table("events").select("*").eq("event_id", event_id).execute()
-            return res.data[0] if res.data else None
+            if res.data:
+                return res.data[0]
         except Exception as e:
             logger.warning(f"Error fetching event {event_id}: {e}")
-            return None
+        return None
 
     def get_session_events(
         self,
@@ -276,7 +304,10 @@ class ChronosDomainRepository:
             res = query.execute()
             if res.data:
                 return res.data
+        except Exception:
+            pass
 
+        try:
             # Fallback to events table
             query2 = (
                 self.db.table("events")

@@ -123,17 +123,16 @@ export default function TeacherPage() {
     if (ignoredUserIds.has(s.userId)) return false;
     const hasIdentityIssue =
       s.identityStatus === "mismatch" && (s.identityMismatchCount || 0) >= 2;
-    const hasTabSwitch =
-      (s.antiCheatViolations || 0) > 0 && s.lastViolationType === "tab_switch";
+    const isActionRequired = s.caseState === "ACTION_REQUIRED" || (s.warningStreak || s.strikes || 0) >= 3;
+    const isMonitor = s.caseState === "MONITOR" || (s.warningStreak || 0) >= 2;
     const hasMultiFace = s.multiFaceDetected === true;
-    const hasLivenessFail = s.livenessFailed === true;
+    const hasPresenceFail = s.livenessFailed === true || s.activePresenceState === "QUALITY_FAIL" || s.activePresenceState === "TIMED_OUT";
     return (
-      s.strikes >= 3 ||
-      s.disengaged ||
+      isActionRequired ||
+      isMonitor ||
       hasIdentityIssue ||
-      hasTabSwitch ||
       hasMultiFace ||
-      hasLivenessFail
+      hasPresenceFail
     );
   };
 
@@ -144,11 +143,11 @@ export default function TeacherPage() {
   const severityScore = (s) => {
     const hasIdentity =
       s.identityStatus === "mismatch" && (s.identityMismatchCount || 0) >= 2;
+    const isActionRequired = s.caseState === "ACTION_REQUIRED" || (s.warningStreak || s.strikes || 0) >= 3;
     const hasMultiFace = s.multiFaceDetected === true;
-    const hasTabSwitch = (s.antiCheatViolations || 0) > 0;
-    if (hasIdentity || hasMultiFace) return 3;
-    if (hasTabSwitch || s.strikes >= 3) return 2;
-    if ((s.score || 0) < 0.4) return 1;
+    if (isActionRequired || hasIdentity) return 3;
+    if (s.caseState === "MONITOR" || hasMultiFace) return 2;
+    if ((s.warningStreak || 0) >= 1 || (s.score || 0) < 0.4) return 1;
     return 0;
   };
 
@@ -220,6 +219,9 @@ export default function TeacherPage() {
         studentSnapshot[s.userId] = {
           score: s.score || 0,
           strikes: s.strikes || 0,
+          warningStreak: s.warningStreak || 0,
+          cleanStreak: s.cleanStreak || 0,
+          caseState: s.caseState || "NONE",
           timestamp: s.timestamp || new Date().toISOString(),
           gazeDirection: s.gazeDirection || "center",
           ear: s.ear || 0.35,
@@ -250,31 +252,29 @@ export default function TeacherPage() {
     strikes,
     identityStatus,
     identityMismatchCount,
+    warningStreak,
   ) => {
     if (identityStatus === "mismatch" && identityMismatchCount >= 2)
-      return "Identity Mismatch";
-    if (strikes >= 3) return "Disengaged";
+      return "Identity Review Required";
+    if ((warningStreak || strikes) >= 3) return "Action Required";
+    if ((warningStreak || 0) >= 1) return "Monitor";
     if (score > 0.7) return "Attentive";
-    if (score >= 0.4) return "Distracted";
-    return "Away";
+    if (score >= 0.4) return "Variable";
+    return "Observation Gap";
   };
 
   const getStatusKey = (student) => {
     const hasIdentityIssue =
       student.identityStatus === "mismatch" &&
       (student.identityMismatchCount || 0) >= 2;
-    const hasTabSwitch =
-      (student.antiCheatViolations || 0) > 0 &&
-      student.lastViolationType === "tab_switch";
+    const isActionReq = student.caseState === "ACTION_REQUIRED" || (student.warningStreak || student.strikes || 0) >= 3;
 
     if (hasIdentityIssue) return "identity";
-    if (student.multiFaceDetected || hasTabSwitch) return "risk";
-    if (student.livenessFailed || student.strikes >= 3 || student.disengaged)
-      return "away";
-    if ((student.score || 0) >= 0.4 && (student.score || 0) <= 0.7)
+    if (isActionReq || student.multiFaceDetected) return "risk";
+    if (student.livenessFailed || student.caseState === "MONITOR")
       return "distracted";
-    if ((student.score || 0) < 0.4) return "away";
-    return "attentive";
+    if ((student.score || 0) >= 0.7) return "attentive";
+    return "distracted";
   };
 
   const getPriority = (student) => {
@@ -292,10 +292,11 @@ export default function TeacherPage() {
       student.strikes,
       student.identityStatus,
       student.identityMismatchCount,
+      student.warningStreak,
     );
 
     if (label === "Attentive") return "attentive";
-    if (label === "Distracted") return "distracted";
+    if (label === "Variable") return "distracted";
     return "away";
   };
 
@@ -306,34 +307,32 @@ export default function TeacherPage() {
       student.identityStatus === "mismatch" &&
       (student.identityMismatchCount || 0) >= 2
     ) {
-      signalPills.push({ label: "Identity mismatch", tone: "alert" });
+      signalPills.push({ label: "Identity needs review", tone: "alert" });
     }
 
     if (student.multiFaceDetected) {
       signalPills.push({ label: "Multiple faces", tone: "alert" });
     }
 
-    if (
-      (student.antiCheatViolations || 0) > 0 &&
-      student.lastViolationType === "tab_switch"
-    ) {
-      signalPills.push({ label: "Tab switched", tone: "warn" });
+    if (student.activePresenceState === "PASSED" || student.livenessVerified) {
+      signalPills.push({ label: "Presence verified", tone: "ok" });
     }
 
-    if (student.livenessFailed) {
-      signalPills.push({ label: "Liveness fail", tone: "violet" });
+    if (student.livenessFailed || student.activePresenceState === "QUALITY_FAIL" || student.activePresenceState === "TIMED_OUT") {
+      signalPills.push({ label: "Presence unconfirmed", tone: "violet" });
     }
 
-    if ((student.strikes || 0) > 0) {
+    const streak = student.warningStreak || student.strikes || 0;
+    if (streak > 0) {
       signalPills.push({
-        label: `${student.strikes} strike${student.strikes > 1 ? "s" : ""}`,
-        tone: student.strikes >= 3 ? "alert" : "warn",
+        label: `${streak} warning window${streak > 1 ? "s" : ""}`,
+        tone: streak >= 3 ? "alert" : "warn",
       });
     }
 
     if (signalPills.length === 0) {
       signalPills.push({
-        label: (student.score || 0) >= 0.7 ? "Stable" : "Focus dip",
+        label: (student.score || 0) >= 0.7 ? "Stable" : "Variable focus",
         tone: (student.score || 0) >= 0.7 ? "ok" : "warn",
       });
     }

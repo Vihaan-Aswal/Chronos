@@ -21,6 +21,10 @@ export default function StudentTopbar({ wsConnected, sessionId, userName, onOpen
       </div>
 
       <div className="sd-topbar-right flex items-center gap-3">
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-semibold tracking-wide" title="Session running in accelerated demo timing">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          Accelerated Demo Mode
+        </div>
         {onOpenPrivacy && (
           <button
             type="button"

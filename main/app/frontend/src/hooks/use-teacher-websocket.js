@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { getWebSocketTicket, getAuthToken } from "../api/ws-auth.js";
 
 /**
- * Teacher WebSocket:
- * - Receives engagement metrics + auto-nudge responses
- * - Tracks all active students with detailed facial metrics
- * - Now includes identity verification status
+ * Teacher WebSocket Hook:
+ * - Real-time case updates and student projections from server.
+ * - Single-use ticket admission with zero-trust token fallback.
+ * - Auto-reconnection loop.
  */
 export default function useTeacherWebSocket(sessionId) {
   const [connected, setConnected] = useState(false);
@@ -17,13 +18,23 @@ export default function useTeacherWebSocket(sessionId) {
     if (!sessionId) return;
     let isMounted = true;
 
-    function connect() {
+    async function connect() {
       if (!isMounted) return;
 
       const base = import.meta.env.VITE_BACKEND_WS_URL || "ws://localhost:8000";
-      const wsUrl = `${base}/ws/teacher/${sessionId}`;
+      let wsUrl = `${base}/ws/teacher/${sessionId}`;
 
       try {
+        try {
+          const ticket = await getWebSocketTicket(sessionId, "teacher");
+          wsUrl = `${wsUrl}?ticket=${ticket}`;
+        } catch {
+          const token = getAuthToken();
+          if (token) {
+            wsUrl = `${wsUrl}?token=${token}`;
+          }
+        }
+
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 
@@ -44,7 +55,7 @@ export default function useTeacherWebSocket(sessionId) {
               return;
             }
 
-            const uid = msg.user_id;
+            const uid = msg.user_id || msg.participant_id;
             if (!uid) return;
 
             setStudents((prev) => {
@@ -52,38 +63,23 @@ export default function useTeacherWebSocket(sessionId) {
               const isSimulated =
                 Boolean(msg.is_simulated) || prevStudent.isSimulated === true;
 
-              // --- TYPE handlers ---
-              if (msg.type === "anti_cheat_violation") {
-                return {
-                  ...prev,
-                  [uid]: {
-                    ...prevStudent,
-                    isSimulated,
-                    antiCheatViolations:
-                      (prevStudent.antiCheatViolations || 0) + 1,
-                    lastViolationType: msg.violation_type,
-                    lastViolationTime: msg.timestamp,
-                  },
-                };
-              }
-
-              if (msg.type === "metrics") {
+              // --- Normalized Event / Metric Handlers ---
+              if (msg.type === "metrics" || msg.type === "OBSERVATION_SAMPLE") {
+                const payload = msg.payload || {};
                 return {
                   ...prev,
                   [uid]: {
                     ...prevStudent,
                     score: msg.score ?? prevStudent.score ?? 0,
                     timestamp: msg.timestamp || prevStudent.timestamp,
-                    // Store facial metrics for confusion detection
                     gazeDirection:
                       msg.gaze_direction ||
                       prevStudent.gazeDirection ||
                       "center",
                     ear: msg.ear ?? prevStudent.ear ?? 0,
-                    headPose: msg.head_pose ||
+                    headPose: msg.head_pose || payload.head_pose ||
                       prevStudent.headPose || { yaw: 0, pitch: 0 },
                     presence: msg.presence || prevStudent.presence || "unknown",
-                    // Identity verification
                     identityStatus:
                       msg.identity_status ||
                       prevStudent.identityStatus ||
@@ -92,12 +88,15 @@ export default function useTeacherWebSocket(sessionId) {
                       msg.identity_mismatch_count ??
                       prevStudent.identityMismatchCount ??
                       0,
+                    warningStreak: msg.warning_streak ?? prevStudent.warningStreak ?? 0,
+                    cleanStreak: msg.clean_streak ?? prevStudent.cleanStreak ?? 0,
+                    caseState: msg.case_state || prevStudent.caseState || "NONE",
                     isSimulated,
                   },
                 };
               }
 
-              if (msg.type === "identity_update") {
+              if (msg.type === "identity_update" || msg.type === "IDENTITY_RESULT") {
                 return {
                   ...prev,
                   [uid]: {
@@ -105,6 +104,7 @@ export default function useTeacherWebSocket(sessionId) {
                     isSimulated,
                     identityStatus:
                       msg.identity_status ||
+                      msg.identity_state ||
                       prevStudent.identityStatus ||
                       "checking",
                     identityMismatchCount:
@@ -116,95 +116,24 @@ export default function useTeacherWebSocket(sessionId) {
                 };
               }
 
-              if (msg.type === "auto_disengaged") {
-                const strikeCount =
-                  msg.strike_count ?? prevStudent.strikes ?? 0;
+              if (msg.type === "window_finalized" || msg.type === "WINDOW_FINALIZED") {
                 return {
                   ...prev,
                   [uid]: {
                     ...prevStudent,
                     isSimulated,
-                    strikes: strikeCount,
-                    disengaged: strikeCount >= 3,
+                    warningStreak: msg.warning_streak ?? prevStudent.warningStreak ?? 0,
+                    cleanStreak: msg.clean_streak ?? prevStudent.cleanStreak ?? 0,
+                    observationState: msg.observation_state || prevStudent.observationState,
+                    classification: msg.classification || prevStudent.classification,
+                    attentionPattern: msg.attention_pattern || prevStudent.attentionPattern,
+                    caseState: msg.case_state || prevStudent.caseState,
                     timestamp: msg.timestamp || prevStudent.timestamp,
                   },
                 };
               }
 
-              if (msg.type === "auto_disengaged_strike") {
-                return {
-                  ...prev,
-                  [uid]: {
-                    ...prevStudent,
-                    isSimulated,
-                    strikes: msg.strike_count,
-                    disengaged: true,
-                    timestamp: msg.timestamp || prevStudent.timestamp,
-                  },
-                };
-              }
-
-              if (msg.type === "auto_nudge_response") {
-                const strikeCount =
-                  msg.strike_count ?? prevStudent.strikes ?? 0;
-                return {
-                  ...prev,
-                  [uid]: {
-                    ...prevStudent,
-                    isSimulated,
-                    strikes: strikeCount,
-                    disengaged: strikeCount >= 3,
-                    score: msg.score ?? prevStudent.score ?? 0,
-                    timestamp: msg.timestamp || prevStudent.timestamp,
-                  },
-                };
-              }
-
-              if (msg.type === "nudge") {
-                return {
-                  ...prev,
-                  [uid]: {
-                    ...prevStudent,
-                    isSimulated,
-                    lastManualNudge: Date.now(),
-                  },
-                };
-              }
-
-              if (msg.type === "multi_face_detected") {
-                return {
-                  ...prev,
-                  [uid]: {
-                    ...prevStudent,
-                    isSimulated,
-                    multiFaceDetected: true,
-                    multiFaceCount: msg.face_count ?? 0,
-                    multiFaceTime: msg.timestamp,
-                  },
-                };
-              }
-
-              if (msg.type === "mark_engaged_ack") {
-                return {
-                  ...prev,
-                  [uid]: {
-                    ...prevStudent,
-                    isSimulated,
-                    strikes: 0,
-                    disengaged: false,
-                    manuallyMarkedEngaged: true,
-                    timestamp: msg.timestamp || prevStudent.timestamp,
-                    antiCheatViolations: 0,
-                    lastViolationType: null,
-                    multiFaceDetected: false,
-                    livenessFailed: false,
-                    identityMismatchCount: 0,
-                    identityStatus: "verified",
-                  },
-                };
-              }
-
-              if (msg.type === "liveness_pass" || msg.type === "active_presence_passed") {
+              if (msg.type === "liveness_pass" || msg.type === "active_presence_passed" || msg.type === "ACTIVE_PRESENCE_PASSED") {
                 return {
                   ...prev,
                   [uid]: {
@@ -213,13 +142,19 @@ export default function useTeacherWebSocket(sessionId) {
                     livenessVerified: true,
                     livenessFailed: false,
                     activePresenceState: "PASSED",
-                    livenessLastCheck: msg.timestamp,
+                    livenessLastCheck: msg.timestamp || new Date().toISOString(),
                   },
                 };
               }
 
-              if (msg.type === "liveness_fail" || msg.type === "active_presence_quality_fail" || msg.type === "active_presence_timed_out") {
-                const presenceState = msg.type === "active_presence_timed_out" ? "TIMED_OUT" : "QUALITY_FAIL";
+              if (
+                msg.type === "liveness_fail" ||
+                msg.type === "active_presence_quality_fail" ||
+                msg.type === "active_presence_timed_out" ||
+                msg.type === "ACTIVE_PRESENCE_QUALITY_FAIL" ||
+                msg.type === "ACTIVE_PRESENCE_TIMED_OUT"
+              ) {
+                const presenceState = msg.type.includes("timed_out") ? "TIMED_OUT" : "QUALITY_FAIL";
                 return {
                   ...prev,
                   [uid]: {
@@ -233,7 +168,7 @@ export default function useTeacherWebSocket(sessionId) {
                 };
               }
 
-              if (msg.type === "active_presence_declined") {
+              if (msg.type === "active_presence_declined" || msg.type === "ACTIVE_PRESENCE_DECLINED") {
                 return {
                   ...prev,
                   [uid]: {
@@ -245,7 +180,7 @@ export default function useTeacherWebSocket(sessionId) {
                 };
               }
 
-              if (msg.type === "active_presence_manual_review") {
+              if (msg.type === "active_presence_manual_review" || msg.type === "ACTIVE_PRESENCE_MANUAL_REVIEW") {
                 return {
                   ...prev,
                   [uid]: {
@@ -257,7 +192,7 @@ export default function useTeacherWebSocket(sessionId) {
                 };
               }
 
-              // fallback
+              // Fallback
               return {
                 ...prev,
                 [uid]: {

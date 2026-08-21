@@ -32,7 +32,7 @@ function debugLog(...args) {
   }
 }
 
-export default function EngagementTracker({ sessionId, userId, onNudge }) {
+export default function EngagementTracker({ sessionId, userId, onNudge, onVisionStatusChange }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const cropCanvasRef = useRef(null);
@@ -51,6 +51,11 @@ export default function EngagementTracker({ sessionId, userId, onNudge }) {
   const adapterRef = useRef(null);
   const visibilityTrackerRef = useRef(null);
   const currentPoseRef = useRef({ yaw: 0, pitch: 0, roll: 0 });
+  const onVisionStatusChangeRef = useRef(onVisionStatusChange);
+
+  useEffect(() => {
+    onVisionStatusChangeRef.current = onVisionStatusChange;
+  }, [onVisionStatusChange]);
 
   // Identity verification state
   const identityStateRef = useRef({
@@ -61,7 +66,9 @@ export default function EngagementTracker({ sessionId, userId, onNudge }) {
   });
 
   // WebSocket connection for telemetry transmission and server events
-  const { connected, send } = useWebSocket(sessionId, (message) => {
+  const wsBase = import.meta.env.VITE_BACKEND_WS_URL || "ws://localhost:8000";
+  const wsUrl = sessionId && userId ? `${wsBase}/ws/engagement/${sessionId}` : null;
+  const { connected, send } = useWebSocket(wsUrl, (message) => {
     debugLog("[EngagementTracker] Received WebSocket message:", message);
 
     if (
@@ -159,6 +166,25 @@ export default function EngagementTracker({ sessionId, userId, onNudge }) {
     let isMounted = true;
 
     async function initVision() {
+      const isCameraOptional = sessionStorage.getItem("chronos_camera_optional") === "true";
+      if (isCameraOptional) {
+        setCameraActive(false);
+        onVisionStatusChangeRef.current?.({
+          cameraActive: false,
+          faceDetected: false,
+          lightingQuality: "optional",
+          networkStatus: "connected",
+        });
+        if (adapterRef.current) {
+          adapterRef.current.updateMetrics({
+            cameraActive: false,
+            faceCount: 0,
+            technicalReasons: ["CAMERA_OPTIONAL_MODE"],
+          });
+        }
+        return;
+      }
+
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { width: 720, height: 540 },
@@ -193,6 +219,12 @@ export default function EngagementTracker({ sessionId, userId, onNudge }) {
       } catch (err) {
         debugLog("[EngagementTracker] Camera/Vision init failed:", err);
         setCameraActive(false);
+        onVisionStatusChangeRef.current?.({
+          cameraActive: false,
+          faceDetected: false,
+          lightingQuality: "low",
+          networkStatus: "connected",
+        });
         if (adapterRef.current) {
           adapterRef.current.updateMetrics({
             cameraActive: false,
@@ -238,11 +270,8 @@ export default function EngagementTracker({ sessionId, userId, onNudge }) {
                 }
               }
 
-              if (lighting.brightnessScore < 0.6) {
-                setLightingStatus("low");
-              } else if (lighting.brightnessScore > 0.95) {
-                setLightingStatus("optimal");
-              }
+              const currentLightingQuality = lighting.brightnessScore < 0.6 ? "low" : "optimal";
+              setLightingStatus(currentLightingQuality);
 
               if (faceCount > 0) {
                 const primaryLandmarks = faces[0];
@@ -254,6 +283,13 @@ export default function EngagementTracker({ sessionId, userId, onNudge }) {
 
               const combinedQuality = Math.min(lighting.brightnessScore, sharpness.sharpnessScore);
               setQualityScore(combinedQuality);
+
+              onVisionStatusChangeRef.current?.({
+                cameraActive: true,
+                faceDetected: faceCount === 1,
+                lightingQuality: currentLightingQuality,
+                networkStatus: "connected",
+              });
 
               const processingMs = performance.now() - startTime;
 

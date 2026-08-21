@@ -2736,10 +2736,10 @@ async def record_export_audit(
 
 
 
-@app.get("/admin/provider-compliance")
+@app.get("/admin/provider-compliance", dependencies=[Depends(require_admin)])
 async def verify_provider_compliance(
     room_id: Optional[str] = None,
-    auth: AuthContext = Depends(get_auth_context),
+    auth: AuthContext = Depends(require_admin),
 ):
     """
     Verifies meeting provider (100ms) recording, transcription, and AI summary disablement.
