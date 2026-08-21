@@ -104,7 +104,7 @@ export default function StudentCard({
   isSimulated,
   isFlagged,
   livenessLoading,
-  signals,
+  signals = [],
   onMarkEngaged,
   onMessage,
   onIgnore,

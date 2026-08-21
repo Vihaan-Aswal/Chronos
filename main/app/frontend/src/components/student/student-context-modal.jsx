@@ -1,7 +1,7 @@
 // src/components/student/student-context-modal.jsx
 // Workstream W7: Student Context & Structured Appeals Modal
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const CANONICAL_CATEGORIES = [
   {
@@ -54,6 +54,17 @@ export default function StudentContextModal({
   const [submitting, setSubmitting] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        onClose?.();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 

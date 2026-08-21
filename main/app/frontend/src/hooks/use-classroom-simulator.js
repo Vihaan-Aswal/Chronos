@@ -2,14 +2,13 @@
 // Workstream W7: 50-Participant Classroom Simulator with Correlated Outages & Self-Recovery
 
 import { useEffect, useRef } from "react";
-import { getAuthToken } from "../api/ws-auth.js";
 
 const SIM_COUNT = 50;
-const SIM_PREFIX = "sim_";
+const SIM_PREFIX = "usr-sim-";
 const METRICS_INTERVAL_MS = 1000; // 1.0s Demo Clock
 
 export function isSimulatedStudentId(id) {
-  return String(id || "").startsWith(SIM_PREFIX);
+  return String(id || "").startsWith(SIM_PREFIX) || String(id || "").startsWith("sim_");
 }
 
 function clamp(value, min, max) {
@@ -138,12 +137,13 @@ export default function useClassroomSimulator(sessionId, enabled) {
 
     const wsBase =
       import.meta.env.VITE_BACKEND_WS_URL || "ws://localhost:8000";
-    const token = getAuthToken();
 
     for (let i = 1; i <= SIM_COUNT; i += 1) {
       const padded = String(i).padStart(2, "0");
       const userId = `${SIM_PREFIX}${padded}`;
-      const url = `${wsBase}/ws/engagement/${sessionId}?token=${token || "sim_token"}`;
+      // Each simulated student socket uses its own distinct cryptographic participant token
+      const simToken = `mock-jwt:${userId}:ten-default:student`;
+      const url = `${wsBase}/ws/engagement/${sessionId}?token=${simToken}`;
 
       let ws = null;
       try {
