@@ -91,7 +91,7 @@ but it is now a ruled two-column choice instead of a card grid with jargon.
   - home 98 / 100 / 96 / 91 (perf/a11y/BP/SEO), LCP 0.5s — unchanged from baseline.
   - signin 100 / 100 / 96 / 91, LCP 0.5s — baseline 88 / 96 / 96 / 91, LCP 2.2s.
   - signup 100 / 100 / 96 / 91, LCP 0.5s — baseline 88 / 96 / 96 / 91, LCP 2.2s.
-- **Bundle:** JS 3,090.16 kB (gzip 862.26) vs baseline 3,240.79 (908.20);
+- **Bundle:** JS 3,090.33 kB (gzip 862.30) vs baseline 3,240.79 (908.20);
   CSS 83.60 kB (gzip 15.25) vs 109.63 (20.61). No new runtime dependencies.
 - **Tests:** 26 Playwright tests pass (auth, guard, role choice, readiness, teacher room,
   student room, records, 404, desk). Run:
