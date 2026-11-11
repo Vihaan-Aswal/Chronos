@@ -120,6 +120,7 @@
   max-width: 1480px;
 }
 
+.app.page,
 .app .page {
   min-height: 100vh;
   display: flex;
