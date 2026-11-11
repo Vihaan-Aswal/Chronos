@@ -51,7 +51,7 @@
 - Lighthouse baseline: `lighthouse-baseline/`; final: `lighthouse-final/`.
   Final (desktop preset): home 98/100/96/91 · signin 100/100/96/91 · signup 100/100/96/91.
 - Bundle final: JS 3,090.33 kB (gzip 862.30) vs 3,240.79 (908.20) baseline;
-  CSS 83.60 kB (gzip 15.25) vs 109.63 (20.61).
+  CSS 83.65 kB (gzip 15.25) vs 109.63 (20.61).
 - Tests: 26 Playwright tests pass (`npx playwright test --config e2e/playwright.config.js`).
 - Homepage: `git diff 426493c --` on `home-page.jsx`, `home-page.css`, `components/home/*`,
   `chronos-mark.jsx`, `index.css`, `index.html` is empty. Final screenshots match the

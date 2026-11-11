@@ -119,6 +119,7 @@
 dialog.rec {
   width: 100%;
   max-width: none;
+  height: 100vh;
   height: 100dvh;
   max-height: none;
   margin: 0;
@@ -132,6 +133,9 @@ dialog.rec::backdrop {
 }
 
 .rec-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   border-bottom: 1px solid rgba(216, 190, 138, 0.35);
   background: var(--forest);
   color: var(--cream);
