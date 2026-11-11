@@ -25,12 +25,12 @@
 ## Pages
 | Page | Status |
 |---|---|
-| Foundation (system CSS + primitives) | not started |
-| `/teacher` live (pilot) | not started |
-| `/signin`, `/signup` | not started |
-| `/choose-role` | not started |
-| `/readiness` + JoinScreen | not started |
-| `/student` live | not started |
+| Foundation (system CSS + primitives) | done |
+| `/teacher` live (pilot) | done — pilot calibration recorded in `decisions.md` |
+| `/signin`, `/signup` | done |
+| `/choose-role` | done |
+| `/readiness` + JoinScreen | done |
+| `/student` live | in progress — join + expired states done, live room next |
 | `/records` + report | not started |
 | `/teacher` class desk | not started |
 | `/meeting`, 404, error boundary | not started |
@@ -38,8 +38,9 @@
 
 ## Skills used
 - `impeccable context` (setup), `craft-floor` (before UI edits).
-- To run per page: `critique` + `audit` + `polish` passes (recorded per page below).
+- Pilot critique: craft-floor checks (contrast, spacing, states, browser surfaces) + homepage comparison; findings recorded in `decisions.md`.
 
 ## Next action
-Write `src/styles/app-system.css` and the shared primitives in `src/components/app/`,
-then build the pilot `/teacher` live room.
+Rebuild `/student` live: forest room bar, cream "Your signals" rail (state, history strip,
+identity, camera check), restyle `EngagementTracker` render and canvas, ruled nudge note.
+

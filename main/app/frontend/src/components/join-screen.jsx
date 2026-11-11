@@ -1,27 +1,43 @@
 // src/components/JoinScreen.jsx
+//
+// Camera + face + identity check. The detection and verification logic is
+// unchanged; the presentation and the failure states are in-product now.
 
 import { useEffect, useRef, useState } from "react";
 import { loadEmbedder, getEmbedding } from "../utils/embedder";
 import { fetchIdentity, registerIdentity } from "../api/identity";
+import {
+  AlertIcon,
+  CameraOffIcon,
+  CheckIcon,
+  SearchIcon,
+  ShieldIcon,
+} from "./app/icons.jsx";
 
-function JoinScreen({ user, onJoin }) {
+function JoinScreen({ user, onJoin, role = "student" }) {
   const videoRef = useRef(null);
   const cropCanvasRef = useRef(null);
   const lightCanvasRef = useRef(null);
+  const pendingEmbeddingRef = useRef(null);
 
   const [facePresent, setFacePresent] = useState(false);
   const [isCentered, setIsCentered] = useState(false);
   const [lightStatus, setLightStatus] = useState("unknown");
   const [ready, setReady] = useState(false);
   const [mediaError, setMediaError] = useState(null);
+  const [engineError, setEngineError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
 
   const userId = user?.id || user?.user_id || "unknown-user";
+  const cameraOff = Boolean(mediaError);
+  const engineOff = Boolean(engineError);
 
   useEffect(() => {
     let stream;
     let faceLandmarker;
     let animationFrameId;
+    let cancelled = false;
 
     (async () => {
       try {
@@ -34,12 +50,22 @@ function JoinScreen({ user, onJoin }) {
     async function init() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (cancelled) return;
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
+      } catch (err) {
+        console.error("camera error:", err);
+        if (!cancelled) {
+          setMediaError(
+            "Camera access is blocked. Allow the camera in your browser, then retry the check.",
+          );
+        }
+        return;
+      }
 
+      try {
         const vision = await import("@mediapipe/tasks-vision");
-        const FilesetResolver = vision.FilesetResolver;
-        const FaceLandmarker = vision.FaceLandmarker;
+        const { FilesetResolver, FaceLandmarker } = vision;
 
         const fileset = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.4/wasm",
@@ -56,10 +82,12 @@ function JoinScreen({ user, onJoin }) {
 
         detect();
       } catch (err) {
-        console.error("init error:", err);
-        setMediaError(
-          "Camera access is required for AI engagement features. Please allow access in your browser.",
-        );
+        console.error("face model error:", err);
+        if (!cancelled) {
+          setEngineError(
+            "The face check could not start. Reload the page and try again.",
+          );
+        }
       }
     }
 
@@ -93,7 +121,10 @@ function JoinScreen({ user, onJoin }) {
       }
 
       try {
-        const result = faceLandmarker.detectForVideo(video, performance.now());
+        const result = faceLandmarker.detectForVideo(
+          video,
+          performance.now(),
+        );
         const faces = result.faceLandmarks;
         const hasFace = faces && faces.length > 0;
 
@@ -148,6 +179,7 @@ function JoinScreen({ user, onJoin }) {
     init();
 
     return () => {
+      cancelled = true;
       if (stream) {
         try {
           stream.getTracks().forEach((t) => t.stop());
@@ -174,24 +206,44 @@ function JoinScreen({ user, onJoin }) {
     return Math.sqrt(sum);
   }
 
+  function flag(title, message) {
+    setResult({ tone: "flag", title, message });
+  }
+
   async function handleJoin() {
     if (loading) return;
 
     if (userId === "unknown-user") {
-      return alert(
-        "User session not found or invalid. Please sign out and sign back in.",
+      flag(
+        "Session not found",
+        "Sign out, sign back in, and try the check again.",
       );
+      return;
     }
 
     const canvas = cropCanvasRef.current;
-    if (!canvas) return alert("Internal error: crop canvas missing");
-    if (!facePresent)
-      return alert("Please ensure your face is visible in the camera");
-    if (!isCentered) return alert("Please center your face in the frame");
-    if (lightStatus !== "good")
-      return alert("Please adjust lighting conditions before joining");
+    if (!canvas) {
+      flag("The check could not run", "Reload the page and try again.");
+      return;
+    }
+    if (!facePresent) {
+      flag("No face in frame", "Sit in front of the camera and try again.");
+      return;
+    }
+    if (!isCentered) {
+      flag("Move to the centre", "Keep your whole face inside the guide.");
+      return;
+    }
+    if (lightStatus !== "good") {
+      flag(
+        "Adjust the light",
+        "Even light on your face makes the check reliable.",
+      );
+      return;
+    }
 
     setLoading(true);
+    setResult(null);
 
     let emb;
     try {
@@ -199,25 +251,31 @@ function JoinScreen({ user, onJoin }) {
     } catch (err) {
       console.error("getEmbedding error:", err);
       setLoading(false);
-      return alert(
-        "Face embedding failed. Try adjusting position or lighting.",
+      flag(
+        "The face reading failed",
+        "Adjust the light or your position, then try again.",
       );
+      return;
     }
 
     if (!emb || !emb.length) {
       setLoading(false);
-      return alert("Face not detected properly. Try again.");
+      flag("No face reading", "Center your face and try again.");
+      return;
     }
 
     const arr = Array.from(emb).map((v) => Number(v));
     if (arr.some((v) => !isFinite(v))) {
       setLoading(false);
-      return alert("Bad face embedding. Adjust your face and try again.");
+      flag("The face reading was unclear", "Adjust your face and try again.");
+      return;
     }
-    if (arr.length !== 128)
+    if (arr.length !== 128) {
       console.warn("Unexpected embedding length:", arr.length);
+    }
 
     const normalizedEmb = normalize(arr);
+    pendingEmbeddingRef.current = normalizedEmb;
 
     let info;
     try {
@@ -231,11 +289,12 @@ function JoinScreen({ user, onJoin }) {
       const r = await registerIdentity(userId, normalizedEmb);
       setLoading(false);
       if (r && r.status === "success") {
-        alert("Face registered successfully! Welcome!");
-        return onJoin?.();
+        onJoin?.();
+        return;
       }
-      alert(
-        `Failed to register identity: ${r?.message || info?.error || "Unknown server error"}.`,
+      flag(
+        "The face could not be registered",
+        r?.message || info?.error || "Check the connection and try again.",
       );
       return;
     }
@@ -245,10 +304,13 @@ function JoinScreen({ user, onJoin }) {
       const r = await registerIdentity(userId, normalizedEmb);
       setLoading(false);
       if (r && r.status === "success") {
-        alert("Face registered! You may join now.");
-        return onJoin?.();
+        onJoin?.();
+        return;
       }
-      alert(`Failed to register identity: ${r?.message || "Unknown error"}.`);
+      flag(
+        "The face could not be registered",
+        r?.message || "Check the connection and try again.",
+      );
       return;
     }
 
@@ -260,117 +322,163 @@ function JoinScreen({ user, onJoin }) {
 
     if (dist < verifyThreshold) {
       setLoading(false);
-      alert("Identity verified! Welcome back!");
-      return onJoin?.();
-    } else if (dist < uncertainThreshold) {
-      setLoading(false);
-      const retry = confirm(
-        `Face verification uncertain. This might be due to lighting or angle. Try again?`,
-      );
-      if (retry) return;
-
-      const override = confirm(
-        "Would you like to re-register your face? This will replace your stored identity.",
-      );
-      if (override) {
-        const r = await registerIdentity(userId, normalizedEmb);
-        if (r && r.status === "success") {
-          alert("Face re-registered successfully!");
-          return onJoin?.();
-        }
-      }
-      return;
-    } else {
-      setLoading(false);
-      alert(
-        `Face verification failed! The face doesn't match the registered identity. Please ensure you're using the correct account.`,
-      );
+      onJoin?.();
       return;
     }
+
+    if (dist < uncertainThreshold) {
+      setLoading(false);
+      setResult({
+        tone: "warn",
+        kind: "uncertain",
+        title: "The check is uncertain",
+        message:
+          "Lighting or angle can cause this. Try again, or re-register this face for the account.",
+      });
+      return;
+    }
+
+    setLoading(false);
+    flag(
+      "This face does not match",
+      "Check that you are signed in with the account this face was enrolled with, then try again.",
+    );
   }
 
-  const roleLabel =
-    user?.role === "teacher"
-      ? "Verify & Join as Teacher"
-      : "Verify & Join Meeting";
+  async function handleReregister() {
+    const emb = pendingEmbeddingRef.current;
+    if (!emb) {
+      flag("Try the check again", "The face reading was not kept.");
+      return;
+    }
+    setLoading(true);
+    const r = await registerIdentity(userId, emb);
+    setLoading(false);
+    if (r && r.status === "success") {
+      onJoin?.();
+      return;
+    }
+    flag(
+      "The face could not be re-registered",
+      r?.message || "Try again with even light and a centred face.",
+    );
+  }
 
-  const StatusRow = ({ label, ok, statusText }) => (
-    <div className="flex items-center justify-between py-5 border-b border-surface-container-high/60 last:border-0">
-      <div className="flex items-center gap-4">
-        <span
-          className={`material-symbols-outlined text-2xl ${ok ? "text-primary" : "text-secondary/30"}`}
-          style={{ fontVariationSettings: `'FILL' ${ok ? 1 : 0}` }}
-        >
-          check_circle
-        </span>
-        <span className="font-body text-base font-medium text-primary">
-          {label}
-        </span>
-      </div>
-      <span
-        className={`font-label text-[0.7rem] uppercase tracking-[0.2em] font-bold ${
-          ok ? "text-primary" : "text-secondary/60"
-        }`}
-      >
-        {statusText}
-      </span>
-    </div>
-  );
+  const faceCheck = cameraOff
+    ? {
+        ok: false,
+        state: "Camera off",
+        fix: "Allow camera access in your browser.",
+      }
+    : facePresent
+      ? { ok: true, state: "Ready", fix: "A face is in frame." }
+      : {
+          ok: false,
+          state: "Waiting",
+          fix: "Sit in front of the camera.",
+        };
+
+  const centerCheck = !facePresent
+    ? {
+        ok: false,
+        state: "Waiting",
+        fix: "Centred once a face is found.",
+      }
+    : isCentered
+      ? { ok: true, state: "Ready", fix: "Your face is centred." }
+      : {
+          ok: false,
+          state: "Off-centre",
+          fix: "Move to the middle of the frame.",
+        };
+
+  const lightCheck =
+    lightStatus === "good"
+      ? { ok: true, state: "Good", fix: "Even light on your face." }
+      : lightStatus === "too_dark"
+        ? {
+            ok: false,
+            state: "Too dark",
+            fix: "Face a light or move nearer a lamp.",
+          }
+        : lightStatus === "too_bright"
+          ? {
+              ok: false,
+              state: "Too bright",
+              fix: "Move away from a bright window or lamp.",
+            }
+          : {
+              ok: false,
+              state: "Checking",
+              fix: "Reading the light in the frame.",
+            };
+
+  const canJoin = ready && !loading && !cameraOff && !engineOff;
+
+  const reason = cameraOff
+    ? "The camera is off. Allow access, then retry the check."
+    : engineOff
+      ? "The face check is not running. Reload to try again."
+      : !facePresent
+        ? "Sit in front of the camera to begin."
+        : !isCentered
+          ? "Move your face to the middle of the frame."
+          : lightStatus !== "good"
+            ? "Adjust the light on your face."
+            : "The check reads your face once for identity. Nothing is recorded.";
 
   return (
-    <div className="w-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-8 md:gap-12 items-start">
-      {/* ── 1. Large Camera Preview Section ──────────────────────────────── */}
-      <div className="relative w-full aspect-video bg-surface-container-high rounded-2xl overflow-hidden shadow-2xl">
+    <div className="ready-grid">
+      <div className="ready-stage">
         <video
           ref={videoRef}
           autoPlay
           playsInline
-          className="w-full h-full object-cover grayscale-[10%] brightness-95"
-          style={{ backgroundColor: "#0F1E2B" }}
+          muted
+          className="ready-video"
+          aria-label="Camera preview"
         />
 
-        {/* Face Guide Overlay */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          {mediaError ? (
-            <div
-              className="px-6 py-4 rounded-xl text-center max-w-sm pointer-events-auto"
-              style={{
-                backgroundColor: "rgba(186, 26, 26, 0.9)",
-                color: "#ffffff",
-              }}
-            >
-              <span className="material-symbols-outlined text-4xl mb-2">
-                videocam_off
-              </span>
-              <p className="font-body text-sm font-medium">{mediaError}</p>
+        {!cameraOff && !engineOff && (
+          <div className="ready-guide" aria-hidden="true">
+            <span />
+          </div>
+        )}
+
+        {(cameraOff || engineOff) && (
+          <div className="ready-error" role="alert">
+            <div className="ready-error-inner">
+              <CameraOffIcon />
+              <h3>{cameraOff ? "The camera is off" : "The check did not start"}</h3>
+              <p>{mediaError || engineError}</p>
               <button
+                type="button"
+                className="btn btn-cream"
                 onClick={() => window.location.reload()}
-                className="mt-4 px-4 py-2 rounded-full text-xs uppercase tracking-wider transition-colors"
-                style={{ backgroundColor: "rgba(255, 255, 255, 0.2)" }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor =
-                    "rgba(255, 255, 255, 0.3)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.backgroundColor =
-                    "rgba(255, 255, 255, 0.2)")
-                }
               >
-                Retry
+                Retry check
               </button>
             </div>
-          ) : (
-            <div
-              className="w-1/4 aspect-[3/4] opacity-50"
-              style={{
-                border: "2px dashed rgba(220, 196, 146, 0.4)",
-                borderRadius: "50% / 60% 60% 40% 40%",
-              }}
-            />
-          )}
+          </div>
+        )}
+
+        <div className="ready-stage-foot">
+          <span className={facePresent ? "" : "is-wait"}>
+            <i aria-hidden="true" />
+            {facePresent ? "Face in frame" : "Looking for a face"}
+          </span>
+          <span className={lightStatus === "good" ? "" : "is-wait"}>
+            <i aria-hidden="true" />
+            {lightStatus === "good"
+              ? "Lighting good"
+              : lightStatus === "too_dark"
+                ? "Too dark"
+                : lightStatus === "too_bright"
+                  ? "Too bright"
+                  : "Reading light"}
+          </span>
         </div>
 
-        {/* Hidden canvases for logic */}
         <canvas
           ref={lightCanvasRef}
           width={300}
@@ -385,104 +493,108 @@ function JoinScreen({ user, onJoin }) {
         />
       </div>
 
-      {/* ── 2. Checklist & Action Section ────────────────────────────────── */}
-      <div className="w-full">
-        <div
-          className="p-8 md:p-10 rounded-2xl shadow-xl border"
-          style={{
-            backgroundColor: "#FAF7F2",
-            borderColor: "rgba(222,218,212,0.4)",
-          }}
-        >
-          <div className="flex flex-col gap-10">
-            <div className="space-y-6">
-              <h2 className="font-headline text-3xl text-center md:text-left text-primary">
-                Readiness Checklist
-              </h2>
+      <div className="ready-panel">
+        <div className="ready-panel-head">
+          <h2 className="panel-title">Readiness</h2>
+          <p className="meta">Three checks. Nothing is recorded.</p>
+        </div>
 
-              <div className="flex flex-col gap-1">
-                <StatusRow
-                  label="Face Detected"
-                  ok={facePresent}
-                  statusText={facePresent ? "Ready" : "Searching..."}
-                />
-                <StatusRow
-                  label="Face Centered"
-                  ok={isCentered}
-                  statusText={isCentered ? "Ready" : "Please Center"}
-                />
-                <StatusRow
-                  label="Lighting"
-                  ok={lightStatus === "good"}
-                  statusText={
-                    lightStatus === "good"
-                      ? "Optimal"
-                      : lightStatus === "too_dark"
-                        ? "Too Dark"
-                        : lightStatus === "too_bright"
-                          ? "Too Bright"
-                          : "Analyzing..."
-                  }
-                />
+        <ul className="ready-checks">
+          <li className={`ready-check ${faceCheck.ok ? "is-ok" : "is-bad"}`}>
+            <span className="ready-check-icon" aria-hidden="true">
+              {faceCheck.ok ? <CheckIcon /> : <SearchIcon />}
+            </span>
+            <div>
+              <p className="ready-check-label">Face in frame</p>
+              <p className="ready-check-fix">{faceCheck.fix}</p>
+            </div>
+            <span className="ready-check-state">{faceCheck.state}</span>
+          </li>
+
+          <li className={`ready-check ${centerCheck.ok ? "is-ok" : "is-bad"}`}>
+            <span className="ready-check-icon" aria-hidden="true">
+              {centerCheck.ok ? <CheckIcon /> : <SearchIcon />}
+            </span>
+            <div>
+              <p className="ready-check-label">Face centred</p>
+              <p className="ready-check-fix">{centerCheck.fix}</p>
+            </div>
+            <span className="ready-check-state">{centerCheck.state}</span>
+          </li>
+
+          <li className={`ready-check ${lightCheck.ok ? "is-ok" : "is-bad"}`}>
+            <span className="ready-check-icon" aria-hidden="true">
+              {lightCheck.ok ? <CheckIcon /> : <AlertIcon />}
+            </span>
+            <div>
+              <p className="ready-check-label">Lighting</p>
+              <p className="ready-check-fix">{lightCheck.fix}</p>
+            </div>
+            <span className="ready-check-state">{lightCheck.state}</span>
+          </li>
+        </ul>
+
+        {result && (
+          <div
+            className={`notice ${result.tone === "warn" ? "notice-quiet" : "notice-flag"} ready-result`}
+            role={result.tone === "flag" ? "alert" : "status"}
+          >
+            <AlertIcon />
+            <div>
+              <p className="ready-result-title">{result.title}</p>
+              <p>{result.message}</p>
+              <div className="ready-result-actions">
+                <button
+                  type="button"
+                  className="btn btn-line"
+                  onClick={() => setResult(null)}
+                >
+                  Try again
+                </button>
+                {result.kind === "uncertain" && (
+                  <button
+                    type="button"
+                    className="btn btn-ink"
+                    onClick={handleReregister}
+                    disabled={loading}
+                  >
+                    Re-register this face
+                  </button>
+                )}
               </div>
             </div>
-
-            <div className="flex flex-col gap-6 items-center">
-              <button
-                disabled={!ready || loading}
-                onClick={handleJoin}
-                className="w-full max-w-sm py-6 rounded-sm font-label text-xs uppercase tracking-[0.25em] font-bold shadow-md transition-all active:scale-[0.98] disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-3"
-                style={{ backgroundColor: "#DCC492", color: "#251A00" }}
-              >
-                {loading && (
-                  <svg
-                    className="animate-spin h-4 w-4 text-[#251A00]"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                )}
-                {loading
-                  ? "Verifying..."
-                  : ready
-                    ? roleLabel
-                    : "Adjust your position"}
-              </button>
-
-              <button
-                type="button"
-                className="font-label text-[0.7rem] uppercase tracking-widest text-secondary hover:text-primary transition-colors underline underline-offset-8 decoration-outline-variant/40"
-                onClick={() => window.location.reload()}
-              >
-                Retry Check
-              </button>
-            </div>
           </div>
+        )}
 
-          {/* Privacy assurance note */}
-          <div className="mt-10 pt-6 border-t border-outline-variant/10 flex gap-4 items-start md:items-center justify-center">
-            <span className="material-symbols-outlined text-secondary text-lg mt-0.5 md:mt-0">
-              verified_user
-            </span>
-            <p className="font-body text-[0.8rem] text-on-surface-variant opacity-80 leading-snug">
-              Privacy-aware verification. Only essential readiness signals are
-              checked.
-            </p>
-          </div>
+        <div className="ready-actions">
+          <button
+            type="button"
+            className="btn btn-ink btn-lg btn-block"
+            disabled={!canJoin}
+            onClick={handleJoin}
+          >
+            {loading
+              ? "Checking your identity"
+              : ready
+                ? `Verify and join as ${role}`
+                : "Adjust your position"}
+          </button>
+          <p className="ready-reason">{reason}</p>
+          <button
+            type="button"
+            className="text-btn"
+            onClick={() => window.location.reload()}
+          >
+            Retry check
+          </button>
+        </div>
+
+        <div className="ready-note">
+          <ShieldIcon />
+          <p>
+            A face embedding is kept to verify you. The video is not. No audio
+            or page content is stored.
+          </p>
         </div>
       </div>
     </div>

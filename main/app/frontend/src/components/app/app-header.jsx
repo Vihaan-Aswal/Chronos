@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Brand from "./brand.jsx";
 import { signOut } from "./sign-out.js";
 

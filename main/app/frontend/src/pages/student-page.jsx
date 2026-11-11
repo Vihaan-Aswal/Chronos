@@ -1,7 +1,7 @@
 // src/pages/StudentPage.jsx
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import JoinScreen from "../components/join-screen.jsx";
 import EngagementTracker from "../components/engagement-tracker.jsx";
@@ -9,6 +9,11 @@ import NudgeNotification from "../components/nudge-notification.jsx";
 import HMSMeeting from "../meeting/hms-meeting.jsx";
 import useWebSocket from "../hooks/use-websocket.js";
 import StudentTopbar from "../components/student/student-topbar.jsx";
+import ReadyLayout from "../components/app/ready-layout.jsx";
+import AppHeader from "../components/app/app-header.jsx";
+import AppFooter from "../components/app/app-footer.jsx";
+import "../styles/app-system.css";
+import "../styles/readiness.css";
 import "../styles/dashboard-shared.css";
 import "../styles/student-meeting.css";
 
@@ -85,28 +90,48 @@ export default function StudentPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6">
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 max-w-md text-center">
-          <div className="text-red-500 text-5xl mb-4">!</div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">
-            Session Expired
-          </h2>
-          <p className="text-slate-600 mb-4">
-            No user found. Please login again.
-          </p>
-          <a
-            href="/"
-            className="inline-block px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-500 transition"
-          >
-            Back to Login
-          </a>
-        </div>
+      <div className="app page">
+        <AppHeader links={[{ label: "Home", to: "/" }]} />
+        <main className="page-main" id="main">
+          <div className="wrap ready-page">
+            <header className="ready-head">
+              <h1 className="page-title">
+                This session has <em>ended.</em>
+              </h1>
+              <p className="page-lede">
+                No signed-in student was found on this device. Sign in again
+                with the account you used to join.
+              </p>
+            </header>
+            <div className="row">
+              <Link className="btn btn-ink" to="/signin">
+                Sign in
+              </Link>
+              <Link className="btn btn-line" to="/">
+                Back to the homepage
+              </Link>
+            </div>
+          </div>
+        </main>
+        <AppFooter />
       </div>
     );
   }
 
   if (!inMeeting) {
-    return <JoinScreen user={user} onJoin={handleJoin} />;
+    return (
+      <ReadyLayout
+        user={user}
+        title={
+          <>
+            Before you <em>join.</em>
+          </>
+        }
+        lede="You are joining as a student. Only your own state is shown to you; your teacher sees repeated concerns, not every glance."
+      >
+        <JoinScreen user={user} role="student" onJoin={handleJoin} />
+      </ReadyLayout>
+    );
   }
 
   return (

@@ -1,0 +1,203 @@
+/* Auth — a forest door into the cream record. */
+
+.auth {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  background: var(--cream);
+}
+
+.auth-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  padding: 44px clamp(28px, 4vw, 56px);
+  background: var(--forest);
+  color: var(--cream);
+}
+
+.auth-aside .app-brand {
+  color: var(--cream);
+}
+
+.auth-aside .app-brand:hover {
+  color: var(--sage);
+}
+
+.auth-aside-body {
+  margin-top: auto;
+}
+
+.auth-aside h1 {
+  max-width: 12ch;
+  font-family: var(--serif);
+  font-size: clamp(40px, 4.6vw, 64px);
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+}
+
+.auth-aside h1 em {
+  font-style: italic;
+  color: var(--sage);
+}
+
+.auth-aside-lede {
+  margin-top: 18px;
+  max-width: 40ch;
+  color: var(--sage);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.auth-facts {
+  margin-top: auto;
+  border-top: 1px solid var(--line-cream);
+}
+
+.auth-fact {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line-cream);
+  color: var(--sage);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.auth-fact .icon {
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+}
+
+.auth-fact.is-kept .icon {
+  color: var(--sage);
+}
+
+.auth-fact.is-never .icon {
+  color: #f2b8b2;
+}
+
+.auth-main {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 28px;
+  padding: 56px clamp(24px, 5vw, 72px) 32px;
+}
+
+.auth-form {
+  align-self: center;
+  justify-self: center;
+  width: 100%;
+  max-width: 440px;
+}
+
+.auth-title {
+  font-family: var(--serif);
+  font-size: clamp(34px, 3.6vw, 44px);
+  line-height: 1;
+  letter-spacing: -0.025em;
+}
+
+.auth-sub {
+  margin-top: 8px;
+  color: var(--slate);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.auth-form form {
+  display: grid;
+  gap: 16px;
+  margin-top: 26px;
+}
+
+.auth-form .btn-block {
+  margin-top: 6px;
+}
+
+.auth-switch {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--slate);
+  font-size: 13px;
+}
+
+.auth-switch a {
+  color: var(--ink);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+.auth-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-self: end;
+  gap: 8px 16px;
+  width: 100%;
+  max-width: 440px;
+  margin-inline: auto;
+  color: var(--slate);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.auth-notice {
+  margin-top: 20px;
+}
+
+.auth-notice .icon {
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+}
+
+@media (max-width: 900px) {
+  .auth {
+    grid-template-columns: 1fr;
+    min-height: 100vh;
+  }
+
+  .auth-aside {
+    gap: 18px;
+    padding: 24px 24px 28px;
+  }
+
+  .auth-aside-body {
+    margin-top: 18px;
+  }
+
+  .auth-aside h1 {
+    max-width: 16ch;
+    font-size: clamp(30px, 8vw, 40px);
+  }
+
+  .auth-aside-lede {
+    margin-top: 10px;
+    font-size: 13px;
+  }
+
+  .auth-facts {
+    display: none;
+  }
+
+  .auth-main {
+    grid-template-rows: auto auto;
+    align-items: start;
+    padding: 36px 24px 28px;
+  }
+
+  .auth-form {
+    align-self: start;
+  }
+
+  .auth-foot {
+    align-self: auto;
+  }
+}

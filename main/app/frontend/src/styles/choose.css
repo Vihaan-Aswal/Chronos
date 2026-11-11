@@ -1,0 +1,133 @@
+/* Choose role — a ruled fork, not a card grid. */
+
+.choose {
+  padding-block: clamp(40px, 6vw, 72px) clamp(48px, 7vw, 88px);
+}
+
+.choose-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: end;
+  gap: clamp(24px, 4vw, 64px);
+  padding-bottom: clamp(28px, 4vw, 44px);
+}
+
+.choose-head h1 {
+  font-family: var(--serif);
+  font-size: clamp(38px, 4.8vw, 60px);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+}
+
+.choose-head h1 em {
+  font-style: italic;
+  color: var(--sage-ink);
+}
+
+.choose-head p {
+  max-width: 44ch;
+  color: var(--slate);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.choose-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.choose-col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 28px 32px 32px 0;
+}
+
+.choose-col + .choose-col {
+  padding-left: 32px;
+  padding-right: 0;
+  border-left: 1px solid var(--line);
+}
+
+.choose-col h2 {
+  font-family: var(--serif);
+  font-size: clamp(28px, 2.8vw, 36px);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+}
+
+.choose-col > p {
+  max-width: 40ch;
+  color: var(--slate);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.choose-facts {
+  border-top: 1px solid var(--line-soft);
+}
+
+.choose-fact {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.choose-fact .icon {
+  width: 13px;
+  height: 13px;
+  margin-top: 3px;
+  color: var(--sage-ink);
+}
+
+.choose-col .btn {
+  margin-top: auto;
+}
+
+.choose-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 24px;
+  margin-top: 24px;
+  color: var(--slate);
+  font-size: 12px;
+}
+
+.choose-foot a {
+  color: var(--ink);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 860px) {
+  .choose-head {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .choose-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .choose-col {
+    padding: 24px 0 26px;
+  }
+
+  .choose-col + .choose-col {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .choose-col .btn {
+    margin-top: 8px;
+  }
+}

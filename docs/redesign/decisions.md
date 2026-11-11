@@ -95,3 +95,21 @@ Format: decision — alternatives considered — reason. Newest first.
 ## D23 — One new shared header component, not a fork of the homepage header
 - **Alternatives:** extract the homepage's `Brand`/topbar into shared components (would edit frozen files).
 - **Reason:** Hard Rule 1. A new `AppHeader`/`Brand` lives in `components/app/` and reads the same tokens; the homepage keeps its own private header untouched.
+
+## Pilot calibration (after `/teacher` live)
+
+Compared side by side with the frozen homepage at 1280 and 375:
+
+- **Same product?** Yes. The forest field holding a cream rail reads as the homepage's room window inverted. Newsreader titles + Manrope labels carry the voice.
+- **Generic?** The first pass had a console-ish bar and a card-like rail. Fixes: ruled student rows instead of cards, serif "In the room" heading, duplicate status badges removed, one fact per row, a visible "Hide students" control, and a compact native dialog.
+- **Density?** 13px row names, 10px labels, 44px targets. Right for a working room; the marketing type scale would have been too large.
+- **Lessons applied to every remaining page:** forest is a field, cream is the working surface; one primary action per panel; states explain themselves in one line; never show the same signal twice; controls that hide the primary job must be visible.
+- **Kept open for motion:** the room bar, KPI strip, stage, rail and rows are separate, stable blocks; the later motion pass can enter the rail rows and stage without markup changes.
+
+## D24 — Add the NO_DATA state to the teacher roster
+- **Alternatives:** keep showing "Away" when no face is in frame.
+- **Reason:** PRODUCT.md defines NO_DATA as a camera miss, not a verdict. The roster shows "No data" with the dashed dot when `presence === "no_face"`, and does not count it as a flag. The rest of the status logic is unchanged.
+
+## D25 — Readiness outcomes are in-product panels
+- **Alternatives:** keep `alert` / `confirm` for identity outcomes.
+- **Reason:** same decisions (try again / re-register / stop), readable and keyboard reachable, consistent with the record. The thresholds (0.55 / 0.65) and API calls are untouched.
