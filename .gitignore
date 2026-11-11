@@ -1,0 +1,8 @@
+# Impeccable local agent skill (installed locally, not shared)
+.opencode/skills/impeccable/
+.opencode/commands/impeccable.md
+
+# Impeccable generated context and working state
+.impeccable/
+PRODUCT.md
+DESIGN.md

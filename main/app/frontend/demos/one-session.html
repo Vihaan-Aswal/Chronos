@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>One Session — Chronos homepage direction</title>
+  <meta name="description" content="A Chronos homepage direction: one 42-minute class told as a story." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Manrope:wght@200..800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/demos/base.css" />
+  <style>
+    .d-session {
+      --os-ground: #f1f0ea;
+      --os-paper: #faf9f3;
+      --os-ink: #1b2422;
+      --os-muted: #5b635d;
+      --os-ox: #6e2b2b;
+      --os-sage: #4f634d;
+      --os-rule: #c9c6bb;
+      --os-rule-soft: #dedbd1;
+      --os-gold: #6f5424;
+      --focus: #6e2b2b;
+      background: var(--os-ground);
+      color: var(--os-ink);
+    }
+    .d-session ::selection { background: #e2d3c4; color: var(--os-ink); }
+
+    .os-head { background: rgba(241, 240, 234, 0.9); border-bottom: 1px solid transparent; }
+    .os-head.is-scrolled { background: rgba(241, 240, 234, 0.97); border-bottom-color: var(--os-rule); backdrop-filter: blur(12px); }
+    .os-head-in { display: flex; align-items: center; gap: 26px; min-height: 68px; }
+    .os-brand {
+      display: flex; align-items: center; gap: 9px; text-decoration: none;
+      font-size: 14px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; white-space: nowrap;
+    }
+    .os-brand img { width: 22px; height: 22px; }
+    .os-brand-tag { padding-left: 9px; border-left: 1px solid var(--os-rule); color: var(--os-muted); font-size: 9px; letter-spacing: 0.18em; }
+    .os-nav { display: flex; gap: 23px; margin-left: auto; }
+    .os-nav a {
+      color: var(--os-muted); text-decoration: none; font-size: 10px; font-weight: 800;
+      letter-spacing: 0.14em; text-transform: uppercase; padding: 8px 0; border-bottom: 1px solid transparent;
+    }
+    .os-nav a:hover { color: var(--os-ink); border-bottom-color: var(--os-ox); }
+    .os-head-actions { display: flex; align-items: center; gap: 16px; }
+    .os-join {
+      color: var(--os-muted); text-decoration: none; font-size: 10px; font-weight: 800;
+      letter-spacing: 0.14em; text-transform: uppercase; border-bottom: 1px solid var(--os-rule);
+      padding-bottom: 3px; white-space: nowrap;
+    }
+    .os-join:hover { color: var(--os-ink); border-color: var(--os-ink); }
+    .os-host {
+      display: inline-flex; align-items: center; gap: 9px; padding: 12px 17px;
+      background: var(--os-ink); color: var(--os-paper); border: 1px solid var(--os-ink);
+      font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+      text-decoration: none; white-space: nowrap; transition: background 150ms ease;
+    }
+    .os-host:hover { background: var(--os-ox); border-color: var(--os-ox); }
+    .os-host .icon { width: 13px; height: 13px; }
+
+    .os-hero { padding: clamp(42px, 6vw, 82px) 0 clamp(40px, 5vw, 64px); }
+    .os-hero-grid {
+      display: grid; grid-template-columns: 176px minmax(0, 680px) minmax(0, 250px);
+      gap: clamp(22px, 3.2vw, 42px); align-items: start;
+    }
+    .os-margin { padding-top: 6px; }
+    .os-kicker {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 18px;
+      color: var(--os-ox); font-size: 9px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
+    }
+    .os-kicker .dot { width: 5px; height: 5px; background: var(--os-ox); border-radius: 50%; }
+    .os-meta { border-top: 1px solid var(--os-ink); }
+    .os-meta div { display: flex; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--os-rule); }
+    .os-meta dt { color: var(--os-muted); font-size: 7.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .os-meta dd { font-size: 9px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+    .os-folio { display: flex; flex-direction: column; gap: 3px; margin-top: 20px; }
+    .os-folio button {
+      display: flex; align-items: center; gap: 7px; padding: 7px 8px;
+      border: 1px solid var(--os-rule); background: transparent;
+      color: var(--os-muted); font-size: 7.5px; font-weight: 800;
+      letter-spacing: 0.1em; text-transform: uppercase; text-align: left;
+    }
+    .os-folio button::before { content: ""; width: 5px; height: 5px; border: 1px solid var(--os-rule); border-radius: 50%; flex: none; }
+    .os-folio button[aria-pressed="true"] { color: var(--os-ink); border-color: var(--os-ink); background: var(--os-paper); }
+    .os-folio button[aria-pressed="true"]::before { background: var(--os-ox); border-color: var(--os-ox); }
+    .os-folio button:hover { color: var(--os-ink); }
+
+    .os-hero-main h1 {
+      max-width: 16ch; font-family: var(--font-display);
+      font-size: clamp(42px, 5.4vw, 72px); font-weight: 500; line-height: 1.01; letter-spacing: -0.025em;
+    }
+    .os-hero-main h1 em { color: var(--os-ox); font-weight: 400; }
+    .os-lede { max-width: 44ch; margin-top: 22px; color: var(--os-muted); font-size: clamp(15px, 1.4vw, 17px); line-height: 1.7; }
+    .os-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin-top: 28px; }
+    .os-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+      min-height: 44px; padding: 12px 18px; border: 1px solid var(--os-ink);
+      font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+      text-decoration: none; transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+    }
+    .os-btn-fill { background: var(--os-ink); color: var(--os-paper); }
+    .os-btn-fill:hover { background: var(--os-ox); border-color: var(--os-ox); }
+    .os-btn:hover { border-color: var(--os-ox); color: var(--os-ox); }
+    .os-btn-fill:hover { color: var(--os-paper); }
+    .os-btn .icon { width: 14px; height: 14px; }
+    .os-fine { margin-top: 24px; color: var(--os-muted); font-size: 10.5px; line-height: 1.6; }
+
+    .os-notes { padding-top: 50px; }
+    .os-notes blockquote {
+      padding-top: 16px; border-top: 2px solid var(--os-ink);
+      font-family: var(--font-display); font-size: clamp(20px, 2vw, 25px);
+      font-style: italic; line-height: 1.25; letter-spacing: -0.01em;
+    }
+    .os-notes cite {
+      display: block; margin-top: 12px; color: var(--os-muted);
+      font-family: var(--font-body); font-size: 8.5px; font-style: normal;
+      font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase;
+    }
+    .os-note-empty { padding-top: 16px; border-top: 2px solid var(--os-ink); color: var(--os-muted); font-family: var(--font-display); font-size: 20px; font-style: italic; line-height: 1.3; }
+
+    .os-story { padding: clamp(40px, 5vw, 66px) 0 clamp(56px, 7vw, 92px); }
+    .os-story-head {
+      display: flex; justify-content: space-between; gap: 14px; padding: 9px 0;
+      border-top: 1px solid var(--os-ink); border-bottom: 1px solid var(--os-rule);
+      color: var(--os-muted); font-size: 8.5px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
+    }
+    .os-story-head span:last-child { color: var(--os-ox); }
+
+    .os-beat {
+      position: relative; display: grid;
+      grid-template-columns: 176px minmax(0, 680px) minmax(0, 250px);
+      gap: clamp(22px, 3.2vw, 42px);
+      padding: 30px 0 32px; border-bottom: 1px solid var(--os-rule-soft);
+    }
+    .os-beat::before {
+      content: ""; position: absolute; left: 176px; top: 0; bottom: 0; width: 1px; background: var(--os-rule-soft);
+    }
+    .os-beat::after {
+      content: ""; position: absolute; left: 173px; top: 37px; width: 7px; height: 7px;
+      border-radius: 50%; background: var(--os-ground); border: 1px solid var(--os-ox);
+    }
+    .os-minute {
+      padding-top: 2px; text-align: right; color: var(--os-ox);
+      font-size: 11px; font-weight: 800; letter-spacing: 0.06em; font-variant-numeric: tabular-nums;
+    }
+    .os-minute span { display: block; margin-top: 4px; color: var(--os-muted); font-size: 7.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+    .os-beat-main h3 {
+      font-family: var(--font-display); font-size: clamp(26px, 2.7vw, 34px);
+      font-weight: 500; line-height: 1.05; letter-spacing: -0.02em;
+    }
+    .os-beat-main h3 em { color: var(--os-ox); font-weight: 400; }
+    .os-beat-main p { max-width: 58ch; margin-top: 10px; color: var(--os-muted); font-size: 13.5px; line-height: 1.7; }
+    .os-signal {
+      display: inline-flex; align-items: center; gap: 7px; margin-top: 13px;
+      padding: 4px 8px; border: 1px solid var(--os-rule);
+      color: var(--os-muted); font-size: 8px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+    }
+    .os-signal i { width: 5px; height: 5px; border-radius: 50%; background: var(--os-sage); }
+    .os-signal.amber i { background: #9a6b1d; }
+    .os-signal.red i { background: var(--os-ox); }
+    .os-signal.blue i { background: #3f6d7f; }
+    .os-beat-note {
+      padding-top: 5px; color: var(--os-muted);
+      font-size: 11px; line-height: 1.6;
+    }
+    .os-beat-note b {
+      display: block; margin-bottom: 4px; color: var(--os-ox);
+      font-size: 7.5px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+    }
+
+    .os-blank {
+      margin-top: 30px; padding: 26px 28px 34px;
+      background-color: var(--os-paper);
+      background-image: repeating-linear-gradient(transparent 0 31px, var(--os-rule-soft) 31px 32px);
+      border: 1px solid var(--os-rule);
+    }
+    .os-blank-stamp {
+      display: inline-block; padding: 6px 10px; border: 1px solid var(--os-ox);
+      color: var(--os-ox); font-size: 9px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
+      transform: rotate(-1.2deg);
+    }
+    .os-blank h2 {
+      max-width: 17ch; margin-top: 22px;
+      font-family: var(--font-display); font-size: clamp(30px, 3.4vw, 44px);
+      font-weight: 500; line-height: 1.02; letter-spacing: -0.02em;
+    }
+    .os-blank p { max-width: 46ch; margin-top: 12px; color: var(--os-muted); font-size: 13px; line-height: 1.7; }
+    .os-blank .os-btn { margin-top: 22px; }
+
+    .os-section { padding: clamp(56px, 7vw, 94px) 0; border-top: 1px solid var(--os-rule); }
+    .os-section-head { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 30px; align-items: end; margin-bottom: 30px; }
+    .os-section-head h2 { font-family: var(--font-display); font-size: clamp(34px, 4vw, 52px); font-weight: 500; line-height: 1; letter-spacing: -0.02em; }
+    .os-section-head p { max-width: 52ch; color: var(--os-muted); font-size: 14px; line-height: 1.7; }
+    .os-section-head .eyebrow { display: block; margin-bottom: 10px; color: var(--os-ox); font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; }
+
+    .os-teacher { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 36px; align-items: start; }
+    .os-teacher-copy h3 { font-family: var(--font-display); font-size: clamp(26px, 3vw, 36px); font-weight: 500; line-height: 1.05; letter-spacing: -0.015em; }
+    .os-teacher-copy p { margin-top: 12px; color: var(--os-muted); font-size: 12.5px; line-height: 1.7; }
+    .os-board { border-top: 2px solid var(--os-ink); }
+    .os-board-row {
+      display: grid; grid-template-columns: 1.1fr 0.7fr 0.8fr 1.2fr;
+      gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--os-rule-soft);
+      font-size: 11px; align-items: center;
+    }
+    .os-board-row.head { color: var(--os-muted); font-size: 7.5px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; }
+    .os-board-row b { font-weight: 800; }
+    .os-board-row .score { font-variant-numeric: tabular-nums; font-weight: 800; }
+    .os-board-row .state { font-size: 8px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .os-board-row .state.att { color: var(--os-sage); }
+    .os-board-row .state.dis { color: #9a6b1d; }
+    .os-board-row .act { color: var(--os-ox); font-size: 9px; font-weight: 800; text-align: right; }
+    .os-board-note { margin-top: 12px; padding: 11px 13px; border: 1px dashed var(--os-rule); color: var(--os-muted); font-size: 11px; line-height: 1.6; }
+    .os-board-note b { color: var(--os-ox); }
+
+    .os-student { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 38px; align-items: center; }
+    .os-student-frame {
+      padding: 18px; background: #14201d; color: #e9efe9;
+      box-shadow: 10px 10px 0 rgba(27, 36, 34, 0.12);
+    }
+    .os-student-top { display: flex; justify-content: space-between; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid #34443f; color: #a9b9b0; font-size: 8px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+    .os-student-body { padding: 26px 6px 10px; }
+    .os-student-body .small { color: #a9b9b0; font-size: 8px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+    .os-student-body h3 { margin-top: 9px; font-family: var(--font-display); font-size: clamp(26px, 2.8vw, 34px); font-weight: 400; font-style: italic; line-height: 1.1; }
+    .os-student-body p { margin-top: 10px; color: #b9c8bf; font-size: 11.5px; line-height: 1.65; }
+    .os-student-body .os-btn { margin-top: 18px; border-color: #d8c9a7; color: #f4e9cf; }
+    .os-student-body .os-btn:hover { background: #d8c9a7; color: #14201d; }
+    .os-student-caption { margin-top: 12px; color: var(--os-muted); font-size: 10px; line-height: 1.5; }
+    .os-student-copy h3 { font-family: var(--font-display); font-size: clamp(28px, 3.2vw, 40px); font-weight: 500; line-height: 1.02; letter-spacing: -0.02em; }
+    .os-student-copy p { margin-top: 12px; color: var(--os-muted); font-size: 12.5px; line-height: 1.7; }
+    .os-student-copy ul { margin-top: 16px; border-top: 1px solid var(--os-rule); }
+    .os-student-copy li { display: flex; gap: 9px; padding: 9px 0; border-bottom: 1px solid var(--os-rule-soft); font-size: 11.5px; line-height: 1.5; }
+    .os-student-copy li .icon { width: 13px; height: 13px; color: var(--os-ox); flex: none; margin-top: 2px; }
+
+    .os-record { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 38px; align-items: start; }
+    .os-record-copy h3 { font-family: var(--font-display); font-size: clamp(28px, 3.2vw, 40px); font-weight: 500; line-height: 1.02; letter-spacing: -0.02em; }
+    .os-record-copy p { margin-top: 12px; color: var(--os-muted); font-size: 12.5px; line-height: 1.7; }
+    .os-record-copy .os-note { margin-top: 16px; padding: 12px 14px; border: 1px dashed var(--os-rule); color: var(--os-muted); font-size: 11px; line-height: 1.6; }
+    .os-record-copy .os-note b { color: var(--os-ox); }
+    .os-receipt { border: 1px solid var(--os-ink); background: var(--os-paper); padding: 16px; }
+    .os-receipt-top { display: flex; justify-content: space-between; gap: 10px; padding-bottom: 9px; border-bottom: 1px solid var(--os-ink); color: var(--os-muted); font-size: 8px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; }
+    .os-receipt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 10px; border-top: 1px solid var(--os-rule); border-left: 1px solid var(--os-rule); }
+    .os-receipt-cell { padding: 9px 10px; border-right: 1px solid var(--os-rule); border-bottom: 1px solid var(--os-rule); }
+    .os-receipt-cell span { display: block; color: var(--os-muted); font-size: 7px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .os-receipt-cell b { display: block; margin-top: 2px; font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .os-receipt-cell.tpi b { color: var(--os-ox); font-size: 30px; }
+    .os-receipt-note { margin-top: 9px; color: var(--os-muted); font-size: 9px; line-height: 1.55; }
+    .os-receipt-bar { display: flex; height: 8px; margin-top: 10px; border: 1px solid var(--os-ink); }
+    .os-receipt-bar span { display: block; height: 100%; }
+    .os-receipt-legend { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; color: var(--os-muted); font-size: 7.5px; }
+    .os-receipt-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--os-rule); color: var(--os-muted); font-size: 7.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+
+    .os-cta { padding: clamp(62px, 8vw, 110px) 0; border-top: 1px solid var(--os-rule); }
+    .os-cta-in { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 36px; align-items: end; }
+    .os-cta h2 { max-width: 14ch; font-family: var(--font-display); font-size: clamp(40px, 5vw, 64px); font-weight: 500; line-height: 0.98; letter-spacing: -0.025em; }
+    .os-cta h2 em { color: var(--os-ox); }
+    .os-cta p { max-width: 40ch; margin-top: 14px; color: var(--os-muted); font-size: 13px; line-height: 1.7; }
+    .os-cta-actions { display: flex; flex-direction: column; gap: 9px; }
+    .os-cta-actions .os-btn { justify-content: space-between; }
+
+    .os-foot { padding: 34px 0 26px; background: var(--os-ink); color: var(--os-paper); }
+    .os-foot-grid { display: grid; grid-template-columns: 1.4fr 0.7fr 0.7fr 1fr; gap: 26px; padding-bottom: 24px; border-bottom: 1px solid rgba(250, 249, 243, 0.2); }
+    .os-foot-brand { display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; }
+    .os-foot-brand img { width: 21px; height: 21px; }
+    .os-foot p { margin-top: 10px; max-width: 30ch; color: #b5bdb4; font-size: 10.5px; line-height: 1.6; }
+    .os-foot h3 { margin-bottom: 8px; color: #d8c9a7; font-size: 8px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; }
+    .os-foot li { margin-top: 6px; }
+    .os-foot a { color: #d1d7ce; font-size: 10.5px; text-decoration: none; }
+    .os-foot a:hover { color: #fff; text-decoration: underline; }
+    .os-foot-bottom { display: flex; justify-content: space-between; gap: 14px; padding-top: 14px; color: #8f9a8f; font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+
+    @media (max-width: 1120px) {
+      .os-hero-grid, .os-beat { grid-template-columns: 150px minmax(0, 1fr); }
+      .os-notes { grid-column: 2; padding-top: 26px; }
+      .os-notes blockquote, .os-note-empty { max-width: 42ch; }
+      .os-beat::before { left: 150px; }
+      .os-beat::after { left: 147px; }
+      .os-beat-note { grid-column: 2; padding-top: 0; }
+      .os-story-head { max-width: none; }
+    }
+    @media (max-width: 900px) {
+      .os-section-head { grid-template-columns: 1fr; gap: 14px; }
+      .os-teacher, .os-student, .os-record { grid-template-columns: 1fr; gap: 26px; }
+      .os-cta-in { grid-template-columns: 1fr; align-items: start; }
+      .os-cta-actions { max-width: 340px; }
+    }
+    @media (max-width: 860px) {
+      .os-nav { display: none; }
+      .os-head-in { gap: 12px; }
+      .os-head-actions { margin-left: auto; gap: 10px; }
+      .os-brand-tag { display: none; }
+      .os-hero-grid, .os-beat { grid-template-columns: 1fr; gap: 14px; }
+      .os-beat::before, .os-beat::after { display: none; }
+      .os-margin { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; align-items: start; }
+      .os-kicker { grid-column: 1 / -1; }
+      .os-meta { grid-column: 1; }
+      .os-folio { grid-column: 2; margin-top: 0; }
+      .os-hero-main h1 { max-width: 15ch; }
+      .os-notes { grid-column: 1; padding-top: 10px; }
+      .os-beat { padding: 24px 0; }
+      .os-minute { text-align: left; padding-top: 0; }
+      .os-minute span { display: inline; margin-left: 8px; }
+      .os-beat-note { padding-top: 0; }
+      .os-story-head { font-size: 8px; }
+      .os-foot-grid { grid-template-columns: 1fr 1fr; }
+      .os-foot-bottom { flex-direction: column; gap: 7px; }
+      .os-board-row { grid-template-columns: 1.2fr 0.6fr 0.8fr; }
+      .os-board-row .act { grid-column: 1 / -1; text-align: left; }
+    }
+    @media (max-width: 430px) {
+      .os-join { display: none; }
+      .os-host { padding: 10px 12px; font-size: 9px; }
+      .os-hero-main h1 { font-size: 40px; }
+      .os-margin { grid-template-columns: 1fr; }
+      .os-meta { grid-column: 1; }
+      .os-folio { grid-column: 1; margin-top: 12px; flex-direction: row; flex-wrap: wrap; }
+      .os-folio button { flex: 1; }
+      .os-beat-main h3 { font-size: 26px; }
+      .os-blank { padding: 20px 18px 26px; }
+      .os-receipt-grid { grid-template-columns: 1fr 1fr; }
+      .os-student-frame { padding: 12px; }
+    }
+
+    /* Legibility floor for the marginalia. */
+    .os-meta dt, .os-folio button, .os-minute span, .os-beat-note b { font-size: 8.5px; }
+    .os-story-head { font-size: 9px; }
+    .os-board-row.head, .os-receipt-cell span, .os-receipt-foot { font-size: 8.5px; }
+  </style>
+</head>
+<body class="d-session">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="os-head" data-header>
+    <div class="wrap os-head-in">
+      <a class="os-brand" href="#top" aria-label="Chronos home">
+        <img src="/logo_dark.svg" alt="" width="22" height="22" />
+        <span>Chronos</span>
+        <span class="os-brand-tag">One session</span>
+      </a>
+      <nav class="os-nav" aria-label="Primary">
+        <a href="#session">The session</a>
+        <a href="#teacher">The teacher</a>
+        <a href="#student">The student</a>
+        <a href="#record">The record</a>
+        <a href="/signin">Sign in</a>
+      </nav>
+      <div class="os-head-actions">
+        <a class="os-join" href="/signin?next=/student">Join a class</a>
+        <a class="os-host" href="/signup">
+          Host a class
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="os-hero" id="top">
+      <div class="wrap os-hero-grid">
+        <aside class="os-margin" aria-label="Session details">
+          <p class="os-kicker"><span class="dot" aria-hidden="true"></span> One session / PHY-201</p>
+          <dl class="os-meta">
+            <div><dt>Date</dt><dd>11 Nov 2026</dd></div>
+            <div><dt>Duration</dt><dd data-os-duration>42:00</dd></div>
+            <div><dt>Learners</dt><dd data-os-learners>24</dd></div>
+            <div><dt>TPI</dt><dd data-os-tpi>75 / 100</dd></div>
+          </dl>
+          <div class="os-folio" role="group" aria-label="Story state">
+            <button type="button" data-os-state="before" aria-pressed="false">Folio 0 · Before class</button>
+            <button type="button" data-os-state="after" aria-pressed="true">Folio 1 · After class</button>
+          </div>
+        </aside>
+
+        <div class="os-hero-main">
+          <div data-os-after>
+            <h1>At 12:40, <em>Maya</em> stopped looking at the board.</h1>
+            <p class="os-lede">
+              This is one 42-minute class, told the way the teacher experienced it: the drift,
+              the nudge, the return, and the note she wrote afterwards.
+            </p>
+          </div>
+          <div data-os-before hidden>
+            <h1>The first page is blank <em>until a class happens.</em></h1>
+            <p class="os-lede">
+              No session, no record, no invented history. Host a class and this page fills with
+              one real session — the drift, the nudge, the return, and the note.
+            </p>
+          </div>
+          <div class="os-actions">
+            <a class="os-btn os-btn-fill" href="/signup">
+              Host a class
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+            </a>
+            <a class="os-btn" href="/signin?next=/student">Join a class</a>
+          </div>
+          <p class="sr-only" role="status" aria-live="polite" data-os-live></p>
+          <p class="os-fine">Illustrative session data. The student is seen as signals, not a face on file; the teacher sees a state, not a feed.</p>
+        </div>
+
+        <aside class="os-notes">
+          <blockquote data-os-after>
+            “I didn't need a score. I needed to know who to check on.”
+            <cite>Ms. Rao · Physics</cite>
+          </blockquote>
+          <div class="os-note-empty" data-os-before hidden>Nothing recorded. That is the honest starting point.</div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="os-story" id="session">
+      <div class="wrap">
+        <h2 class="sr-only">The session, moment by moment</h2>
+        <div class="os-story-head"><span>42 minutes · seven moments</span><span>Read top to bottom</span></div>
+
+        <div data-os-after>
+          <article class="os-beat">
+            <div class="os-minute">00:00<span>Start</span></div>
+            <div class="os-beat-main">
+              <h3>The room fills.</h3>
+              <p>Twenty-four learners join. Cameras on, the usual shuffle of notebooks and headphones. The first eight minutes are quiet.</p>
+              <span class="os-signal"><i></i> 24 present · 0 flags</span>
+            </div>
+            <aside class="os-beat-note"><b>What the student sees</b>No score. No rank. The student sees their own state only when a check needs an answer.</aside>
+          </article>
+
+          <article class="os-beat">
+            <div class="os-minute">12:40<span>Drift</span></div>
+            <div class="os-beat-main">
+              <h3>Maya drifts.</h3>
+              <p>Her gaze moves left and stays there. The score falls to 0.44 — distracted, not gone. One strike. The teacher sees the flag and waits.</p>
+              <span class="os-signal amber"><i></i> 0.44 · distracted · 1 strike</span>
+            </div>
+            <aside class="os-beat-note"><b>Why wait</b>A single dip is not a pattern. The student gets the first move, and time to take it.</aside>
+          </article>
+
+          <article class="os-beat">
+            <div class="os-minute">13:10<span>Nudge</span></div>
+            <div class="os-beat-main">
+              <h3>The nudge goes to Maya, not the class.</h3>
+              <p>A soft message appears on her screen: “Take a breath — we're on the worked example.” No accusation. No grade. No public callout.</p>
+              <span class="os-signal blue"><i></i> Student-first · no teacher action yet</span>
+            </div>
+            <aside class="os-beat-note"><b>The rule</b>The student is nudged and gets time to recover. The teacher is not asked to discipline a dip.</aside>
+          </article>
+
+          <article class="os-beat">
+            <div class="os-minute">15:02<span>Return</span></div>
+            <div class="os-beat-main">
+              <h3>She comes back.</h3>
+              <p>Maya's gaze returns to the board. The score climbs to 0.72. The flag clears. The teacher marks her engaged, and the record notes it.</p>
+              <span class="os-signal"><i></i> 0.72 · attentive · flag cleared</span>
+            </div>
+            <aside class="os-beat-note"><b>What changed</b>The nudge, not a punishment. The teacher's mark is the last word, and it is a human one.</aside>
+          </article>
+
+          <article class="os-beat">
+            <div class="os-minute">26:10<span>Identity</span></div>
+            <div class="os-beat-main">
+              <h3>Dev's identity check.</h3>
+              <p>Two consecutive low-similarity checks. The system asks for a liveness action — turn your head. Dev turns. The check passes. No accusation is recorded.</p>
+              <span class="os-signal blue"><i></i> 2 checks · liveness passed</span>
+            </div>
+            <aside class="os-beat-note"><b>What it is not</b>Identity mismatch is a question, not a verdict. The student can answer it in 3–5 seconds.</aside>
+          </article>
+
+          <article class="os-beat">
+            <div class="os-minute">31:20<span>NO_DATA</span></div>
+            <div class="os-beat-main">
+              <h3>The camera misses Maya.</h3>
+              <p>No face in frame for twenty seconds. The state reads NO_DATA. It is not “disengaged,” and it is not a strike. The camera missed; the student did not misbehave.</p>
+              <span class="os-signal"><i></i> NO_DATA · no strike</span>
+            </div>
+            <aside class="os-beat-note"><b>The honest label</b>A camera miss is a camera miss. The report keeps the gap visible instead of filling it in.</aside>
+          </article>
+
+          <article class="os-beat">
+            <div class="os-minute">42:00<span>Record</span></div>
+            <div class="os-beat-main">
+              <h3>The note.</h3>
+              <p>The class ends. The teacher writes one line: “Check in with Maya before the problem set. She came back on her own.” The session becomes a record, not a recording.</p>
+              <span class="os-signal"><i></i> TPI 75 · 24 learners · 1 note</span>
+            </div>
+            <aside class="os-beat-note"><b>After class</b>The record holds the timeline, the distribution and the teacher's note. It does not hold a frame of video.</aside>
+          </article>
+        </div>
+
+        <div data-os-before hidden>
+          <div class="os-blank">
+            <span class="os-blank-stamp">No session yet</span>
+            <h2>There is nothing to read until you host.</h2>
+            <p>
+              This is the first-class state: no timeline, no TPI, no invented history. Start a
+              session and the page fills with one real class.
+            </p>
+            <a class="os-btn os-btn-fill" href="/signup">
+              Host your first class
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="os-section" id="teacher">
+      <div class="wrap">
+        <div class="os-section-head">
+          <div><span class="eyebrow">At 13:05</span><h2>What the teacher saw.</h2></div>
+          <p>
+            A small board, not a wall of video. The flag is a reason to look. The teacher can
+            nudge, message, mark engaged, ignore or remove — and doing nothing is a choice too.
+          </p>
+        </div>
+        <div class="os-teacher">
+          <div class="os-teacher-copy">
+            <h3>The board is quiet on purpose.</h3>
+            <p>
+              There is no feed, no thumbnail wall, no red alarm. The teacher sees the room's state
+              and one student who may need a human. The rest is left alone.
+            </p>
+            <p style="margin-top:10px">At 13:05, the board showed three rows. Only one needed a decision.</p>
+          </div>
+          <div class="os-board">
+            <div class="os-board-row head"><span>Learner</span><span>Score</span><span>State</span><span>Teacher action</span></div>
+            <div class="os-board-row"><b>Maya R.</b><span class="score">44%</span><span class="state dis">Distracted</span><span class="act">Waits · no action</span></div>
+            <div class="os-board-row"><b>Dev P.</b><span class="score">78%</span><span class="state att">Attentive</span><span class="act">—</span></div>
+            <div class="os-board-row"><b>Ana S.</b><span class="score">86%</span><span class="state att">Attentive</span><span class="act">—</span></div>
+            <div class="os-board-note"><b>The decision is the product.</b> A flag is not an instruction. The teacher waited, the student returned, and the record says so.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="os-section" id="student">
+      <div class="wrap">
+        <div class="os-section-head">
+          <div><span class="eyebrow">At 13:10</span><h2>What the student saw.</h2></div>
+          <p>
+            The nudge is written for a person, not a case file. It does not say “you are
+            disengaged.” It says the worked example is waiting.
+          </p>
+        </div>
+        <div class="os-student">
+          <div>
+            <div class="os-student-frame">
+              <div class="os-student-top"><span>Chronos · student view</span><span>PHY-201</span></div>
+              <div class="os-student-body">
+                <span class="small">A moment away</span>
+                <h3>“Take a breath. The worked example is on the board when you're ready.”</h3>
+                <p>No score is shown. No one else sees this message. You can return when you can.</p>
+                <a class="os-btn" href="#session">I'm back</a>
+              </div>
+            </div>
+            <p class="os-student-caption">Illustrative student view. The nudge is private; the teacher sees that it was sent, not what the student read.</p>
+          </div>
+          <div class="os-student-copy">
+            <h3>Student first. Teacher last word.</h3>
+            <p>
+              The student gets the nudge and the time. The teacher sees the flag and decides.
+              Nothing is automated, and no student score changes a grade.
+            </p>
+            <ul>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> A nudge is an invitation back, not a punishment.</li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> Identity checks can ask for a liveness action in a 3–5 second window.</li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> No face in frame is NO_DATA, not disengagement.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="os-section" id="record">
+      <div class="wrap">
+        <div class="os-section-head">
+          <div><span class="eyebrow">At 42:00</span><h2>What the record kept.</h2></div>
+          <p>
+            One integer, one timeline, one distribution, one note. TPI is 60% mean engagement
+            plus 40% attention retention, computed after class. It is a session index for the
+            teacher — not a grade, not a ranking.
+          </p>
+        </div>
+        <div class="os-record">
+          <div class="os-record-copy">
+            <h3>The note is the part that matters.</h3>
+            <p>
+              The record can show that Maya returned. It cannot show why, or what the teacher
+              noticed. That is why the note sits beside the numbers, not below them.
+            </p>
+            <div class="os-note"><b>Students at risk: 0.</b> Maya returned after one nudge and did not meet the at-risk criteria. The teacher's note is a human follow-up, separate from the flag.</div>
+          </div>
+          <div class="os-receipt">
+            <div class="os-receipt-top"><span>Session record</span><span>PHY-201 · 42:00</span></div>
+            <div class="os-receipt-grid">
+              <div class="os-receipt-cell tpi"><span>TPI</span><b>75</b></div>
+              <div class="os-receipt-cell"><span>Mean engagement</span><b>0.71</b></div>
+              <div class="os-receipt-cell"><span>Attention retention</span><b>0.80</b></div>
+              <div class="os-receipt-cell"><span>Learners</span><b>24</b></div>
+            </div>
+            <div class="os-receipt-bar" aria-hidden="true">
+              <span style="width:75%;background:var(--os-sage)"></span>
+              <span style="width:16.7%;background:#c8a45e"></span>
+              <span style="width:8.3%;background:var(--os-ox)"></span>
+            </div>
+            <div class="os-receipt-legend"><span>18 attentive</span><span>4 distracted</span><span>2 away</span></div>
+            <p class="os-receipt-note">TPI = (mean engagement × 60%) + (attention retention × 40%). Rounded to an integer, 0–100.</p>
+            <div class="os-receipt-foot"><span>No video stored</span><span>PDF · 4 pages</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="os-cta" id="start">
+      <div class="wrap os-cta-in">
+        <div>
+          <h2>Your first class <em>has no history.</em></h2>
+          <p>Host a session, or join one with the link your teacher shared. The page starts blank, and that is honest.</p>
+        </div>
+        <div class="os-cta-actions">
+          <a class="os-btn os-btn-fill" href="/signup">
+            Host a class
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+          </a>
+          <a class="os-btn" href="/signin?next=/student">Join a class</a>
+          <a class="os-btn" href="/signin">Sign in</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="os-foot">
+    <div class="wrap">
+      <div class="os-foot-grid">
+        <div>
+          <div class="os-foot-brand"><img src="/logo_light.svg" alt="" width="21" height="21" /> Chronos</div>
+          <p>Explainable engagement and identity signals for live sessions. Teacher judgment stays central.</p>
+        </div>
+        <div>
+          <h3>Experience</h3>
+          <ul>
+            <li><a href="/signup">Host a class</a></li>
+            <li><a href="/signin?next=/student">Join a class</a></li>
+            <li><a href="/signin">Sign in</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>The session</h3>
+          <ul>
+            <li><a href="#session">The story</a></li>
+            <li><a href="#student">The student</a></li>
+            <li><a href="#record">The record</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Status</h3>
+          <p style="margin-top:0">No video stored. No page or app content. No automated discipline.</p>
+        </div>
+      </div>
+      <div class="os-foot-bottom">
+        <span>© 2026 Chronos — Intelligence for Presence</span>
+        <span>Illustrative data · Not a proctoring tool</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/demos/shared.js" defer></script>
+  <script>
+    (() => {
+      const buttons = Array.from(document.querySelectorAll("[data-os-state]"));
+      const afters = Array.from(document.querySelectorAll("[data-os-after]"));
+      const befores = Array.from(document.querySelectorAll("[data-os-before]"));
+      const duration = document.querySelector("[data-os-duration]");
+      const learners = document.querySelector("[data-os-learners]");
+      const tpi = document.querySelector("[data-os-tpi]");
+      const live = document.querySelector("[data-os-live]");
+      if (!buttons.length) return;
+
+      function setState(state) {
+        buttons.forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.osState === state));
+        });
+        afters.forEach((el) => { el.hidden = state !== "after"; });
+        befores.forEach((el) => { el.hidden = state !== "before"; });
+        if (duration) duration.textContent = state === "before" ? "—" : "42:00";
+        if (learners) learners.textContent = state === "before" ? "0" : "24";
+        if (tpi) tpi.textContent = state === "before" ? "—" : "75 / 100";
+        if (live) live.textContent = state === "before" ? "Showing the empty first-class state. Nothing has been recorded." : "Showing the completed 42-minute session.";
+      }
+
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => setState(button.dataset.osState));
+      });
+      const initial = new URLSearchParams(window.location.search).get("state");
+      setState(initial === "before" ? "before" : "after");
+    })();
+  </script>
+</body>
+</html>

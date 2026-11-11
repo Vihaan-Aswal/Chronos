@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Case File — Chronos homepage direction</title>
+  <meta name="description" content="A Chronos homepage direction: an openable exception file for NO_DATA, light, multi-face and identity." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/demos/base.css" />
+  <style>
+    .d-case {
+      --cf-table: #0c0c0b;
+      --cf-cover: #171715;
+      --cf-paper: #e8e1d2;
+      --cf-paper-2: #ded5c4;
+      --cf-ink: #181815;
+      --cf-muted: #5b554c;
+      --cf-red: #b3261e;
+      --cf-red-bright: #e05243;
+      --cf-rule: #c9c1b1;
+      --cf-rule-dark: #3a3a35;
+      --cf-display: "Bodoni Moda", "Bodoni MT", Didot, "Times New Roman", serif;
+      --cf-body: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --cf-mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --focus: #e05243;
+      background: var(--cf-table);
+      color: var(--cf-paper);
+      font-family: var(--cf-body);
+    }
+    .d-case ::selection { background: var(--cf-red); color: #fff; }
+
+    .cf-head { background: rgba(12, 12, 11, 0.9); border-bottom: 1px solid transparent; }
+    .cf-head.is-scrolled { background: rgba(12, 12, 11, 0.98); border-bottom-color: var(--cf-rule-dark); backdrop-filter: blur(12px); }
+    .cf-head-in { display: flex; align-items: center; gap: 26px; min-height: 66px; }
+    .cf-brand { display: flex; align-items: center; gap: 9px; text-decoration: none; color: var(--cf-paper); font-family: var(--cf-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+    .cf-brand img { width: 22px; height: 22px; }
+    .cf-brand-tag { padding-left: 9px; border-left: 1px solid var(--cf-rule-dark); color: #a9a395; font-size: 9px; letter-spacing: 0.16em; }
+    .cf-nav { display: flex; gap: 23px; margin-left: auto; }
+    .cf-nav a { color: #a9a395; text-decoration: none; font-family: var(--cf-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 8px 0; border-bottom: 1px solid transparent; }
+    .cf-nav a:hover { color: var(--cf-paper); border-bottom-color: var(--cf-red-bright); }
+    .cf-head-actions { display: flex; align-items: center; gap: 16px; }
+    .cf-join { color: #a9a395; text-decoration: none; font-family: var(--cf-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 1px solid var(--cf-rule-dark); padding-bottom: 3px; white-space: nowrap; }
+    .cf-join:hover { color: var(--cf-paper); border-color: var(--cf-paper); }
+    .cf-host { display: inline-flex; align-items: center; gap: 9px; padding: 11px 16px; background: var(--cf-paper); color: var(--cf-ink); border: 1px solid var(--cf-paper); font-family: var(--cf-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; white-space: nowrap; transition: background 150ms ease, color 150ms ease; }
+    .cf-host:hover { background: var(--cf-red); border-color: var(--cf-red); color: #fff; }
+    .cf-host .icon { width: 13px; height: 13px; }
+
+    .cf-stage { padding: clamp(28px, 4vw, 54px) 0 clamp(42px, 5vw, 70px); }
+    .cf-stage-in { display: grid; grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr); gap: clamp(22px, 3vw, 38px); align-items: start; }
+
+    .cf-cover { position: relative; background: var(--cf-cover); border: 1px solid var(--cf-rule-dark); padding: 20px; min-height: 560px; display: flex; flex-direction: column; }
+    .cf-cover::before { content: ""; position: absolute; top: 0; left: 0; width: 5px; height: 100%; background: var(--cf-red); }
+    .cf-cover-top { display: flex; justify-content: space-between; gap: 10px; color: #8f8a7e; font-family: var(--cf-mono); font-size: 8px; letter-spacing: 0.13em; text-transform: uppercase; }
+    .cf-cover-label { position: relative; margin-top: 34px; padding: 20px 18px 18px; background: var(--cf-paper); color: var(--cf-ink); border: 1px solid var(--cf-paper); box-shadow: 7px 7px 0 rgba(0, 0, 0, 0.35); }
+    .cf-cover h1 { max-width: 9ch; font-family: var(--cf-display); font-size: clamp(40px, 4.4vw, 60px); font-weight: 500; line-height: 0.92; letter-spacing: -0.035em; }
+    .cf-cover-copy { max-width: 34ch; margin-top: 14px; color: var(--cf-muted); font-size: 12px; line-height: 1.65; }
+    .cf-mode { display: flex; margin-top: 18px; border-top: 1px solid var(--cf-rule); }
+    .cf-mode button { flex: 1; padding: 8px 8px 0 0; color: var(--cf-muted); font-family: var(--cf-mono); font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; text-align: left; }
+    .cf-mode button:last-child { padding-left: 8px; border-left: 1px solid var(--cf-rule); }
+    .cf-mode button[aria-pressed="true"] { color: var(--cf-red); }
+    .cf-mode button:hover { color: var(--cf-ink); }
+    .cf-cover-stamp { position: absolute; top: 18px; right: 18px; padding: 7px 10px; border: 2px solid var(--cf-red); color: var(--cf-red); font-family: var(--cf-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; transform: rotate(3deg); }
+    .cf-cover-foot { display: flex; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--cf-rule-dark); color: #8f8a7e; font-family: var(--cf-mono); font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+    .cf-file { position: relative; min-width: 0; }
+    .cf-tabs { display: flex; align-items: flex-end; gap: 3px; padding-left: 10px; }
+    .cf-tab { position: relative; padding: 9px 11px 8px; background: var(--cf-paper-2); border: 1px solid var(--cf-ink); border-bottom: 0; color: var(--cf-muted); font-family: var(--cf-mono); font-size: 8px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; text-align: left; }
+    .cf-tab[aria-selected="true"] { background: var(--cf-paper); color: var(--cf-ink); padding-top: 12px; }
+    .cf-tab:hover { color: var(--cf-ink); }
+    .cf-tab:disabled { opacity: 0.35; cursor: not-allowed; }
+    .cf-paper {
+      position: relative; background: var(--cf-paper); color: var(--cf-ink);
+      border: 1px solid var(--cf-ink); min-height: 560px;
+      box-shadow: 9px 9px 0 rgba(0, 0, 0, 0.28);
+      padding: 0 22px 20px 38px;
+      background-image: radial-gradient(circle at 14px 50%, var(--cf-table) 0 4px, transparent 4.5px);
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+    }
+    .cf-paper::before { content: ""; position: absolute; top: 0; bottom: 0; left: 22px; width: 1px; background: rgba(179, 38, 30, 0.25); }
+    .cf-doc-top { display: flex; justify-content: space-between; gap: 10px; padding: 12px 0 10px; border-bottom: 1px solid var(--cf-ink); color: var(--cf-muted); font-family: var(--cf-mono); font-size: 8px; letter-spacing: 0.11em; text-transform: uppercase; }
+    .cf-doc-top b { color: var(--cf-red); }
+    .cf-doc h2 { max-width: 12ch; margin-top: 20px; font-family: var(--cf-display); font-size: clamp(34px, 4vw, 54px); font-weight: 500; line-height: 0.94; letter-spacing: -0.035em; }
+    .cf-lede { max-width: 46ch; margin-top: 12px; color: var(--cf-muted); font-size: 14px; line-height: 1.6; }
+    .cf-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 20px; border-top: 1px solid var(--cf-ink); border-left: 1px solid var(--cf-rule); }
+    .cf-fact { padding: 11px 12px; border-right: 1px solid var(--cf-rule); border-bottom: 1px solid var(--cf-rule); }
+    .cf-fact dt { color: var(--cf-red); font-family: var(--cf-mono); font-size: 7.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+    .cf-fact dd { margin: 5px 0 0; color: var(--cf-ink); font-size: 11.5px; line-height: 1.5; }
+    .cf-fact dd b { font-weight: 700; }
+    .cf-decision { display: flex; align-items: baseline; gap: 12px; margin-top: 18px; padding: 11px 13px; background: var(--cf-ink); color: var(--cf-paper); }
+    .cf-decision span { color: #b9b1a2; font-family: var(--cf-mono); font-size: 7.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+    .cf-decision b { font-family: var(--cf-display); font-size: 23px; font-weight: 500; font-style: italic; }
+    .cf-never { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--cf-rule); color: var(--cf-muted); font-family: var(--cf-mono); font-size: 8px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .cf-never b { color: var(--cf-ink); font-weight: 700; }
+    .cf-redact { display: inline-block; width: 46px; height: 9px; background: var(--cf-ink); vertical-align: middle; }
+    .cf-never small { width: 100%; color: var(--cf-muted); font-size: 7px; letter-spacing: 0.04em; text-transform: none; }
+    .cf-empty { padding: 24px 0; }
+    .cf-empty h2 { max-width: 12ch; margin-top: 12px; font-family: var(--cf-display); font-size: clamp(34px, 4vw, 54px); font-weight: 500; line-height: 0.94; letter-spacing: -0.035em; }
+    .cf-empty p { max-width: 42ch; margin-top: 12px; color: var(--cf-muted); font-size: 13px; line-height: 1.65; }
+    .cf-empty .cf-stamp { display: inline-block; margin-top: 18px; padding: 6px 9px; border: 1px solid var(--cf-red); color: var(--cf-red); font-family: var(--cf-mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; transform: rotate(-1deg); }
+
+    .cf-rule { padding: clamp(34px, 5vw, 58px) 0; border-top: 1px solid var(--cf-rule-dark); border-bottom: 1px solid var(--cf-rule-dark); }
+    .cf-rule-in { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 32px; align-items: end; }
+    .cf-rule blockquote { max-width: 18ch; font-family: var(--cf-display); font-size: clamp(30px, 4vw, 54px); font-weight: 500; font-style: italic; line-height: 1; letter-spacing: -0.03em; color: var(--cf-paper); }
+    .cf-rule blockquote em { color: var(--cf-red-bright); font-style: italic; }
+    .cf-rule-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
+    .cf-rule-list span { padding: 8px 0; border-top: 1px solid var(--cf-rule-dark); color: #b9b1a2; font-family: var(--cf-mono); font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+    .cf-cta { padding: clamp(48px, 6vw, 82px) 0; background: var(--cf-paper); color: var(--cf-ink); }
+    .cf-cta-in { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 34px; align-items: end; }
+    .cf-cta h2 { max-width: 14ch; font-family: var(--cf-display); font-size: clamp(38px, 5vw, 64px); font-weight: 500; line-height: 0.94; letter-spacing: -0.035em; }
+    .cf-cta p { max-width: 40ch; margin-top: 12px; color: var(--cf-muted); font-size: 12.5px; line-height: 1.65; }
+    .cf-cta-actions { display: flex; flex-direction: column; gap: 8px; }
+    .cf-cta-actions a { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 44px; padding: 11px 15px; border: 1px solid var(--cf-ink); color: var(--cf-ink); font-family: var(--cf-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; transition: background 150ms ease, color 150ms ease; }
+    .cf-cta-actions a:first-child { background: var(--cf-ink); color: var(--cf-paper); }
+    .cf-cta-actions a:hover { background: var(--cf-red); border-color: var(--cf-red); color: #fff; }
+    .cf-cta-actions .icon { width: 13px; height: 13px; }
+
+    .cf-foot { padding: 30px 0 24px; background: #050505; color: var(--cf-paper); }
+    .cf-foot-in { display: flex; justify-content: space-between; gap: 22px; align-items: flex-start; }
+    .cf-foot-brand { display: flex; align-items: center; gap: 9px; font-family: var(--cf-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+    .cf-foot-brand img { width: 21px; height: 21px; }
+    .cf-foot p { max-width: 34ch; margin-top: 8px; color: #8f8a7e; font-size: 10px; line-height: 1.6; }
+    .cf-foot-links { display: flex; gap: 20px; }
+    .cf-foot-links a { color: #b9b1a2; font-family: var(--cf-mono); font-size: 9px; text-decoration: none; }
+    .cf-foot-links a:hover { color: #fff; text-decoration: underline; }
+    .cf-foot-bottom { display: flex; justify-content: space-between; gap: 14px; margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--cf-rule-dark); color: #6f6a60; font-family: var(--cf-mono); font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+    @media (max-width: 1000px) {
+      .cf-stage-in { grid-template-columns: 1fr; }
+      .cf-cover { min-height: 0; }
+      .cf-cover-label { margin-top: 24px; }
+      .cf-rule-in { grid-template-columns: 1fr; gap: 22px; }
+      .cf-cta-in { grid-template-columns: 1fr; align-items: start; }
+      .cf-cta-actions { max-width: 320px; }
+    }
+    @media (max-width: 780px) {
+      .cf-nav { display: none; }
+      .cf-head-in { gap: 12px; }
+      .cf-head-actions { margin-left: auto; gap: 10px; }
+      .cf-brand-tag { display: none; }
+      .cf-facts { grid-template-columns: 1fr; }
+      .cf-foot-in { flex-direction: column; }
+      .cf-foot-bottom { flex-direction: column; gap: 7px; }
+    }
+    @media (max-width: 520px) {
+      .cf-join { display: none; }
+      .cf-host { padding: 9px 11px; font-size: 8px; }
+      .cf-cover { padding: 15px; }
+      .cf-cover h1 { font-size: 42px; }
+      .cf-cover-stamp { top: 14px; right: 14px; }
+      .cf-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding-left: 0; }
+      .cf-tab { border-bottom: 1px solid var(--cf-ink); }
+      .cf-tab[aria-selected="true"] { padding-top: 9px; }
+      .cf-paper { padding: 0 14px 16px 28px; min-height: 0; }
+      .cf-paper::before { left: 16px; }
+      .cf-doc h2, .cf-empty h2 { font-size: 36px; }
+      .cf-rule-list { grid-template-columns: 1fr; }
+      .cf-cta-actions a { font-size: 8.5px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .cf-host, .cf-cta-actions a { transition: none; }
+    }
+  </style>
+</head>
+<body class="d-case">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="cf-head" data-header>
+    <div class="wrap cf-head-in">
+      <a class="cf-brand" href="#top" aria-label="Chronos home">
+        <img src="/logo_light.svg" alt="" width="22" height="22" />
+        <span>Chronos</span>
+        <span class="cf-brand-tag">The case file</span>
+      </a>
+      <nav class="cf-nav" aria-label="Primary">
+        <a href="#file">The cases</a>
+        <a href="#rule">The rule</a>
+        <a href="/signin">Sign in</a>
+      </nav>
+      <div class="cf-head-actions">
+        <a class="cf-join" href="/signin?next=/student">Join a class</a>
+        <a class="cf-host" href="/signup">
+          Host a class
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="cf-stage" id="top">
+      <div class="wrap cf-stage-in">
+        <aside class="cf-cover">
+          <div class="cf-cover-top"><span>Chronos / exception file</span><span>2026</span></div>
+          <div class="cf-cover-label">
+            <h1>The exception file.</h1>
+            <span class="cf-cover-stamp" data-cf-stamp>4 cases</span>
+            <p class="cf-cover-copy">Integrity is not the average. It is what the system does when the camera misses, the light fails, a second face appears, or the identity check is uncertain.</p>
+            <div class="cf-mode" role="group" aria-label="Case file state">
+              <button type="button" data-cf-mode="before" aria-pressed="false">No cases</button>
+              <button type="button" data-cf-mode="after" aria-pressed="true">Four cases</button>
+            </div>
+          </div>
+          <div class="cf-cover-foot"><span>File 03 / 2026</span><span>Illustrative</span></div>
+        </aside>
+
+        <div class="cf-file" id="file">
+          <div class="cf-tabs" role="tablist" aria-label="Exception cases">
+            <button class="cf-tab" type="button" role="tab" id="tab-nodata" aria-controls="case-nodata" aria-selected="true" data-cf-case="nodata">01 / No data</button>
+            <button class="cf-tab" type="button" role="tab" id="tab-light" aria-controls="case-light" aria-selected="false" data-cf-case="light" tabindex="-1">02 / Light</button>
+            <button class="cf-tab" type="button" role="tab" id="tab-multi" aria-controls="case-multi" aria-selected="false" data-cf-case="multi" tabindex="-1">03 / Multi-face</button>
+            <button class="cf-tab" type="button" role="tab" id="tab-identity" aria-controls="case-identity" aria-selected="false" data-cf-case="identity" tabindex="-1">04 / Identity</button>
+          </div>
+
+          <div class="cf-paper">
+            <div class="cf-doc-top"><span>Case <b>01</b> / 04</span><span>No data</span><span>13:05</span></div>
+
+            <article class="cf-doc" role="tabpanel" id="case-nodata" aria-labelledby="tab-nodata">
+              <h2>No face in frame.</h2>
+              <p class="cf-lede">The camera missed Maya for 20 seconds at 13:05.</p>
+              <dl class="cf-facts">
+                <div class="cf-fact"><dt>System did</dt><dd><b>NO_DATA.</b> No strike. No state change.</dd></div>
+                <div class="cf-fact"><dt>System refused</dt><dd>It did not call her disengaged. It did not guess a state from the last frame.</dd></div>
+                <div class="cf-fact"><dt>Student saw</dt><dd>Nothing. No score, no message, no public callout.</dd></div>
+                <div class="cf-fact"><dt>Teacher saw</dt><dd>A 20-second gap in the timeline. No action required.</dd></div>
+              </dl>
+              <div class="cf-decision"><span>Teacher decision</span><b>Wait.</b></div>
+              <div class="cf-never"><span>Stored</span><b>session analytics</b><span>·</span><b>0 frames</b><span class="cf-redact" aria-hidden="true"></span><small>black = never stored: video frames, page content, app content</small></div>
+            </article>
+
+            <article class="cf-doc" role="tabpanel" id="case-light" aria-labelledby="tab-light" hidden>
+              <h2>Too dark to read.</h2>
+              <p class="cf-lede">The room dropped below the light threshold at 09:12.</p>
+              <dl class="cf-facts">
+                <div class="cf-fact"><dt>System did</dt><dd><b>Reported “too dark.”</b> Asked for more light.</dd></div>
+                <div class="cf-fact"><dt>System refused</dt><dd>It did not guess a state. It did not store a frame to inspect later.</dd></div>
+                <div class="cf-fact"><dt>Student saw</dt><dd>A plain instruction: face a window or soften a lamp.</dd></div>
+                <div class="cf-fact"><dt>Teacher saw</dt><dd>The check paused. No flag against the student.</dd></div>
+              </dl>
+              <div class="cf-decision"><span>Teacher decision</span><b>Pause the check.</b></div>
+              <div class="cf-never"><span>Stored</span><b>brightness read</b><span>·</span><b>0 frames</b><span class="cf-redact" aria-hidden="true"></span><small>black = never stored: video frames, page content, app content</small></div>
+            </article>
+
+            <article class="cf-doc" role="tabpanel" id="case-multi" aria-labelledby="tab-multi" hidden>
+              <h2>Two faces in frame.</h2>
+              <p class="cf-lede">A second face entered the frame at 18:44.</p>
+              <dl class="cf-facts">
+                <div class="cf-fact"><dt>System did</dt><dd><b>Flagged multi-face.</b> Kept the state separate from identity.</dd></div>
+                <div class="cf-fact"><dt>System refused</dt><dd>It did not assume cheating. It did not remove the student.</dd></div>
+                <div class="cf-fact"><dt>Student saw</dt><dd>A request to check who is in frame.</dd></div>
+                <div class="cf-fact"><dt>Teacher saw</dt><dd>The flag. The teacher decided what it meant.</dd></div>
+              </dl>
+              <div class="cf-decision"><span>Teacher decision</span><b>Ask; do not accuse.</b></div>
+              <div class="cf-never"><span>Stored</span><b>1 flag</b><span>·</span><b>0 frames</b><span class="cf-redact" aria-hidden="true"></span><small>black = never stored: video frames, page content, app content</small></div>
+            </article>
+
+            <article class="cf-doc" role="tabpanel" id="case-identity" aria-labelledby="tab-identity" hidden>
+              <h2>Two checks, one question.</h2>
+              <p class="cf-lede">Two consecutive low-similarity checks at 26:10.</p>
+              <dl class="cf-facts">
+                <div class="cf-fact"><dt>System did</dt><dd><b>Asked for a liveness action.</b> Turn your head. A 3–5 second window.</dd></div>
+                <div class="cf-fact"><dt>System refused</dt><dd>It did not fail the student. It did not auto-remove.</dd></div>
+                <div class="cf-fact"><dt>Student saw</dt><dd>Turned. The check passed. No photo stored.</dd></div>
+                <div class="cf-fact"><dt>Teacher saw</dt><dd>The flag. Waited for the action, then decided.</dd></div>
+              </dl>
+              <div class="cf-decision"><span>Teacher decision</span><b>Ask for liveness.</b></div>
+              <div class="cf-never"><span>Stored</span><b>1 embedding</b><span>·</span><b>0 frames</b><span class="cf-redact" aria-hidden="true"></span><small>black = never stored: video frames, page content, app content</small></div>
+            </article>
+
+            <div class="cf-empty" data-cf-empty hidden>
+              <h2>Nothing to review yet.</h2>
+              <p>The file opens after a class. Until then there is no exception to read, no flag to explain, and no student to name.</p>
+              <span class="cf-stamp">No cases</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-rule" id="rule">
+      <div class="wrap cf-rule-in">
+        <blockquote>“A flag is a reason to look, <em>not a reason to punish.</em>”</blockquote>
+        <div class="cf-rule-list">
+          <span>Not proctoring</span>
+          <span>Not emotion recognition</span>
+          <span>Not attendance</span>
+          <span>No automated discipline</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-cta" id="start">
+      <div class="wrap cf-cta-in">
+        <div>
+          <h2>Open the file after the class.</h2>
+          <p>Host a session, or join one with the link your teacher shared. The edge cases are the proof.</p>
+        </div>
+        <div class="cf-cta-actions">
+          <a href="/signup">
+            Host a class
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+          </a>
+          <a href="/signin?next=/student">Join a class</a>
+          <a href="/signin">Sign in</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="cf-foot">
+    <div class="wrap">
+      <div class="cf-foot-in">
+        <div>
+          <div class="cf-foot-brand"><img src="/logo_light.svg" alt="" width="21" height="21" /> Chronos</div>
+          <p>Explainable engagement and identity signals for live sessions. Teacher judgment stays central.</p>
+        </div>
+        <div class="cf-foot-links">
+          <a href="#file">The cases</a>
+          <a href="#rule">The rule</a>
+          <a href="/">Real home</a>
+        </div>
+      </div>
+      <div class="cf-foot-bottom">
+        <span>© 2026 Chronos — Intelligence for Presence</span>
+        <span>Illustrative data · Not a proctoring tool</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/demos/shared.js" defer></script>
+  <script>
+    (() => {
+      const tabs = Array.from(document.querySelectorAll("[data-cf-case]"));
+      const panels = Array.from(document.querySelectorAll(".cf-doc"));
+      const empty = document.querySelector("[data-cf-empty]");
+      const stamp = document.querySelector("[data-cf-stamp]");
+      const modeButtons = Array.from(document.querySelectorAll("[data-cf-mode]"));
+      const top = document.querySelector(".cf-doc-top");
+      if (!tabs.length || !panels.length) return;
+
+      const META = {
+        nodata: { n: "01", name: "No data", time: "13:05" },
+        light: { n: "02", name: "Light", time: "09:12" },
+        multi: { n: "03", name: "Multi-face", time: "18:44" },
+        identity: { n: "04", name: "Identity", time: "26:10" },
+      };
+      let mode = "after";
+
+      function selectCase(id, focus = false) {
+        tabs.forEach((tab) => {
+          const active = tab.dataset.cfCase === id;
+          tab.setAttribute("aria-selected", String(active));
+          tab.tabIndex = active ? 0 : -1;
+          if (active && focus) tab.focus();
+        });
+        panels.forEach((panel) => { panel.hidden = panel.id !== `case-${id}`; });
+        const meta = META[id];
+        if (top && meta) top.innerHTML = `<span>Case <b>${meta.n}</b> / 04</span><span>${meta.name}</span><span>${meta.time}</span>`;
+      }
+      function setMode(next) {
+        mode = next;
+        modeButtons.forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.cfMode === next));
+        });
+        const before = next === "before";
+        tabs.forEach((tab) => { tab.disabled = before; });
+        if (before) {
+          tabs.forEach((tab) => {
+            tab.setAttribute("aria-selected", "false");
+            tab.tabIndex = -1;
+          });
+        }
+        panels.forEach((panel) => { panel.hidden = before; });
+        if (empty) empty.hidden = !before;
+        if (stamp) stamp.textContent = before ? "0 cases" : "4 cases";
+        if (top) top.innerHTML = before ? "<span>Case file</span><span>Empty</span><span>—</span>" : "<span>Case <b>01</b> / 04</span><span>No data</span><span>13:05</span>";
+        if (!before) selectCase("nodata");
+      }
+
+      tabs.forEach((tab, index) => {
+        tab.addEventListener("click", () => selectCase(tab.dataset.cfCase));
+        tab.addEventListener("keydown", (event) => {
+          const keys = ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "Home", "End"];
+          if (!keys.includes(event.key)) return;
+          event.preventDefault();
+          let next = index;
+          if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % tabs.length;
+          if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (index - 1 + tabs.length) % tabs.length;
+          if (event.key === "Home") next = 0;
+          if (event.key === "End") next = tabs.length - 1;
+          selectCase(tabs[next].dataset.cfCase, true);
+        });
+      });
+      modeButtons.forEach((button) => {
+        button.addEventListener("click", () => setMode(button.dataset.cfMode));
+      });
+      const initial = new URLSearchParams(window.location.search).get("state");
+      setMode(initial === "before" ? "before" : "after");
+    })();
+  </script>
+</body>
+</html>

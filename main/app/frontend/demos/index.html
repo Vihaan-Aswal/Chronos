@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chronos — Homepage directions</title>
+  <meta name="description" content="Ten complete homepage directions for Chronos, with the argument, lead and world of each." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Manrope:wght@200..800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/demos/base.css" />
+  <style>
+    .gallery {
+      --g-bg: #f4f2ec;
+      --g-ink: #1b1c1a;
+      --g-muted: #5b6167;
+      --g-rule: #cfccc2;
+      --g-rule-soft: #e1ded5;
+      --g-paper: #fbfaf6;
+      --g-gold: #7a5c25;
+      --focus: #051624;
+      background: var(--g-bg);
+      color: var(--g-ink);
+    }
+    .g-head { background: rgba(244, 242, 236, 0.9); border-bottom: 1px solid transparent; }
+    .g-head.is-scrolled { background: rgba(251, 250, 246, 0.96); border-bottom-color: var(--g-rule); backdrop-filter: blur(12px); }
+    .g-head-in { display: flex; align-items: center; gap: 24px; min-height: 68px; }
+    .g-brand { display: flex; align-items: center; gap: 9px; text-decoration: none; font-size: 14px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; white-space: nowrap; }
+    .g-brand img { width: 22px; height: 22px; }
+    .g-brand-tag { padding-left: 9px; border-left: 1px solid var(--g-rule); color: var(--g-muted); font-size: 9px; letter-spacing: 0.16em; }
+    .g-head-meta { margin-left: auto; display: flex; align-items: center; gap: 18px; color: var(--g-muted); font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+    .g-head-meta a { color: var(--g-ink); text-decoration: none; border-bottom: 1px solid var(--g-rule); padding-bottom: 3px; }
+    .g-head-meta a:hover { border-color: var(--g-ink); }
+
+    .g-hero { padding: clamp(46px, 6vw, 82px) 0 clamp(34px, 4vw, 52px); }
+    .g-hero-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr); gap: 42px; align-items: end; }
+    .g-kicker { display: flex; align-items: center; gap: 9px; margin-bottom: 18px; color: var(--g-gold); font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; }
+    .g-kicker .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--g-gold); }
+    .g-hero h1 { max-width: 17ch; font-family: var(--font-display); font-size: clamp(42px, 5.4vw, 72px); font-weight: 500; line-height: 0.98; letter-spacing: -0.025em; }
+    .g-hero h1 em { color: var(--g-gold); font-weight: 400; }
+    .g-hero-side p { max-width: 42ch; color: var(--g-muted); font-size: 13.5px; line-height: 1.7; }
+    .g-hero-side p + p { margin-top: 10px; }
+    .g-hero-side b { color: var(--g-ink); }
+
+    .g-diagnosis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 2px solid var(--g-ink); border-bottom: 1px solid var(--g-rule); }
+    .g-diag { padding: 18px 24px 20px 0; border-right: 1px solid var(--g-rule); }
+    .g-diag + .g-diag { padding-left: 24px; }
+    .g-diag:last-child { border-right: 0; padding-right: 0; }
+    .g-diag h2 { font-size: 9px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+    .g-diag h2.good { color: var(--g-gold); }
+    .g-diag h2.bad { color: #9e3b2e; }
+    .g-diag ul { margin-top: 10px; }
+    .g-diag li { position: relative; padding: 5px 0 5px 13px; color: var(--g-muted); font-size: 11px; line-height: 1.55; }
+    .g-diag li::before { content: ""; position: absolute; left: 0; top: 12px; width: 4px; height: 4px; border-radius: 50%; background: var(--g-rule); }
+    .g-diag.bad li::before { background: #9e3b2e; }
+    .g-diag.good li::before { background: var(--g-gold); }
+
+    .g-list { padding: clamp(44px, 5vw, 70px) 0 clamp(56px, 7vw, 90px); }
+    .g-list-head { display: flex; justify-content: space-between; gap: 18px; align-items: baseline; margin-bottom: 18px; }
+    .g-list-head h2 { font-family: var(--font-display); font-size: clamp(30px, 3.6vw, 44px); font-weight: 500; line-height: 1; letter-spacing: -0.02em; }
+    .g-list-head span { color: var(--g-muted); font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+    .g-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .g-card { display: flex; flex-direction: column; border: 1px solid var(--g-rule); background: var(--g-paper); padding: 18px; transition: border-color 160ms ease, transform 160ms ease; }
+    .g-card:hover { border-color: var(--g-ink); transform: translateY(-2px); }
+    .g-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+    .g-card-num { color: var(--g-gold); font-size: 9px; font-weight: 800; letter-spacing: 0.16em; }
+    .g-swatch { display: flex; gap: 3px; }
+    .g-swatch span { width: 13px; height: 13px; border: 1px solid rgba(27, 28, 26, 0.16); }
+    .g-card h3 { margin-top: 8px; font-family: var(--font-display); font-size: clamp(27px, 3vw, 36px); font-weight: 500; line-height: 1; letter-spacing: -0.02em; }
+    .g-card h3 a { text-decoration: none; }
+    .g-card h3 a:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.12em; }
+    .g-argument { margin-top: 10px; color: var(--g-ink); font-family: var(--font-display); font-size: 17px; font-style: italic; line-height: 1.3; }
+    .g-defs { margin-top: 14px; border-top: 1px solid var(--g-rule); }
+    .g-def { display: grid; grid-template-columns: 78px 1fr; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--g-rule-soft); font-size: 10.5px; line-height: 1.5; }
+    .g-def dt { color: var(--g-muted); font-size: 7.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; padding-top: 2px; }
+    .g-def dd { color: var(--g-muted); }
+    .g-def dd b { color: var(--g-ink); font-weight: 700; }
+    .g-open { display: inline-flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--g-ink); color: var(--g-ink); font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; text-decoration: none; }
+    .g-open:hover { color: var(--g-gold); }
+    .g-open .icon { width: 14px; height: 14px; }
+
+    .g-endnote { display: flex; flex-direction: column; justify-content: center; grid-column: 1 / -1; border: 1px dashed var(--g-rule); padding: 18px; }
+    .g-endnote h3 { margin-top: 8px; font-family: var(--font-display); font-size: clamp(27px, 3vw, 36px); font-weight: 500; line-height: 1; letter-spacing: -0.02em; }
+    .g-endnote p { max-width: 46ch; margin-top: 10px; color: var(--g-muted); font-size: 11.5px; line-height: 1.65; }
+    .g-endnote .g-open { margin-top: 18px; }
+
+    .g-note { display: flex; gap: 12px; margin-top: 18px; padding: 14px 16px; border: 1px dashed var(--g-rule); background: var(--g-paper); }
+    .g-note .icon { width: 18px; height: 18px; color: var(--g-gold); flex: none; margin-top: 1px; }
+    .g-note b { display: block; font-size: 9px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; }
+    .g-note p { margin-top: 3px; color: var(--g-muted); font-size: 11px; line-height: 1.6; }
+
+    .g-foot { padding: 30px 0 24px; background: #051624; color: #f4f2ec; }
+    .g-foot-in { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
+    .g-foot-brand { display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; }
+    .g-foot-brand img { width: 21px; height: 21px; }
+    .g-foot p { max-width: 34ch; margin-top: 8px; color: #aab4bb; font-size: 10.5px; line-height: 1.6; }
+    .g-foot-links { display: flex; gap: 22px; }
+    .g-foot-links a { color: #c7d0d5; font-size: 10px; text-decoration: none; }
+    .g-foot-links a:hover { color: #fff; text-decoration: underline; }
+    .g-foot-bottom { display: flex; justify-content: space-between; gap: 14px; margin-top: 22px; padding-top: 12px; border-top: 1px solid rgba(244, 242, 236, 0.16); color: #7f8d95; font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+
+    @media (max-width: 1000px) {
+      .g-hero-grid { grid-template-columns: 1fr; gap: 20px; }
+      .g-diagnosis { grid-template-columns: 1fr; }
+      .g-diag, .g-diag + .g-diag { padding: 16px 0; border-right: 0; border-bottom: 1px solid var(--g-rule); }
+      .g-diag:last-child { border-bottom: 0; }
+    }
+    @media (max-width: 820px) {
+      .g-grid { grid-template-columns: 1fr; }
+      .g-head-meta { display: none; }
+    }
+    @media (max-width: 520px) {
+      .g-hero h1 { font-size: 40px; }
+      .g-list-head { flex-direction: column; gap: 6px; }
+      .g-card { padding: 14px; }
+      .g-def { grid-template-columns: 68px 1fr; }
+      .g-foot-in { flex-direction: column; }
+      .g-foot-bottom { flex-direction: column; gap: 7px; }
+    }
+
+    /* Legibility floor for the index. */
+    .g-def { font-size: 11px; }
+    .g-def dt { font-size: 8.5px; }
+    .g-foot-bottom { font-size: 9px; }
+    .g-head-meta { font-size: 10px; }
+    .g-card-num, .g-list-head span { font-size: 9.5px; }
+  </style>
+</head>
+<body class="gallery">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="g-head" data-header>
+    <div class="wrap g-head-in">
+      <a class="g-brand" href="/demos/" aria-label="Chronos homepage directions">
+        <img src="/logo_dark.svg" alt="" width="22" height="22" />
+        <span>Chronos</span>
+        <span class="g-brand-tag">Homepage directions</span>
+      </a>
+      <div class="g-head-meta">
+        <span>11 Nov 2026 · 10 directions</span>
+        <a href="/">Open the real home</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="g-hero">
+      <div class="wrap g-hero-grid">
+        <div>
+          <p class="g-kicker"><span class="dot" aria-hidden="true"></span> Design exploration / not a shipping build</p>
+          <h1>Ten ways to introduce <em>the same room.</em></h1>
+        </div>
+        <div class="g-hero-side">
+          <p>Each direction is a complete homepage. They differ in <b>what they prove first</b>, <b>what owns the first viewport</b>, and <b>the world they build</b> — not just in colour.</p>
+          <p>Open them at 1440, 768 and 390. Every demo works with no backend and no account. Sample sessions are illustrative.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="g-diagnosis" aria-label="Diagnosis of the current home">
+      <div class="g-diag good">
+        <h2 class="good">What the current home gets right</h2>
+        <ul>
+          <li>A coherent parchment/midnight palette and a real brand mark.</li>
+          <li>Privacy is present as an argument, not an afterthought.</li>
+          <li>“Signals, not surveillance” and “teacher judgment stays central” are the right sentences.</li>
+        </ul>
+      </div>
+      <div class="g-diag bad">
+        <h2 class="bad">What it doesn't do</h2>
+        <ul>
+          <li>The hero shows a fake dashboard with a live “84.2% TPI” — TPI is a post-class integer, not a live metric.</li>
+          <li>It claims explainable states, nudges and identity but never shows one real state, nudge or record.</li>
+          <li>Only “Sign up” exists. A student with an invite link has no door; neither role is named.</li>
+          <li>At 390 the header's Sign in / Sign up pair crowds and wraps; the hero preview's bars and alert are blank on first paint.</li>
+        </ul>
+      </div>
+      <div class="g-diag">
+        <h2>What every direction keeps</h2>
+        <ul>
+          <li>Two roles, one room keyed by the session link.</li>
+          <li>Inference in the student's browser; embedding and analytics stored, frames and page content never.</li>
+          <li>Student first, teacher last word; nothing automated.</li>
+          <li>Both states of the lead: before the first class and after a completed one.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="g-list">
+      <div class="wrap">
+        <div class="g-list-head">
+          <h2>The ten directions.</h2>
+          <span>Argument · lead · world · trade-off</span>
+        </div>
+
+        <div class="g-grid">
+          <article class="g-card">
+            <div class="g-card-top">
+              <span class="g-card-num">01 / THE RECORD</span>
+              <span class="g-swatch" aria-hidden="true"><span style="background:#e7e9e4"></span><span style="background:#14212b"></span><span style="background:#96382c"></span></span>
+            </div>
+            <h3><a href="/demos/the-record.html">The Record</a></h3>
+            <p class="g-argument">The proof is the artifact: a completed session record with receipts.</p>
+            <dl class="g-defs">
+              <div class="g-def"><dt>Lead</dt><dd>A real session dossier — TPI, timeline, distribution, at-risk learners, PDF — with a first-class empty page one click away.</dd></div>
+              <div class="g-def"><dt>World</dt><dd>Registry ledger: cool grey paper, ink, oxide red, hard rules, tabular numerals, Manrope-led.</dd></div>
+              <div class="g-def"><dt>Optimizes</dt><dd>Concreteness and post-class trust. A skeptical teacher can see exactly what they get.</dd></div>
+              <div class="g-def"><dt>Trades</dt><dd>Immediacy. It sells the end of the class before the beginning; a teacher who wants to start now sees the archive first.</dd></div>
+            </dl>
+            <a class="g-open" href="/demos/the-record.html">Open The Record <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+          </article>
+
+          <article class="g-card">
+            <div class="g-card-top">
+              <span class="g-card-num">02 / THE INSTRUMENT</span>
+              <span class="g-swatch" aria-hidden="true"><span style="background:#07100e"></span><span style="background:#8fe3b0"></span><span style="background:#e6b45c"></span></span>
+            </div>
+            <h3><a href="/demos/the-instrument.html">The Instrument</a></h3>
+            <p class="g-argument">You can operate it: one student drifts, you nudge, they return, you end the class.</p>
+            <dl class="g-defs">
+              <div class="g-def"><dt>Lead</dt><dd>A working 20-learner console in the hero. Start a class, select a student, nudge, mark engaged, message, ignore, remove, end.</dd></div>
+              <div class="g-def"><dt>World</dt><dd>Night desk: near-black blue, phosphor mint, amber, thin chrome, dense Manrope, tabular data.</dd></div>
+              <div class="g-def"><dt>Optimizes</dt><dd>Product proof and teacher agency. It is impossible to leave without knowing what the tool does.</dd></div>
+              <div class="g-def"><dt>Trades</dt><dd>Warmth and student voice. A console-first page can still feel like supervision, even with the copy insisting otherwise.</dd></div>
+            </dl>
+            <a class="g-open" href="/demos/the-instrument.html">Open The Instrument <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+          </article>
+
+          <article class="g-card">
+            <div class="g-card-top">
+              <span class="g-card-num">03 / THE SIGNAL CHAIN</span>
+              <span class="g-swatch" aria-hidden="true"><span style="background:#e8f0f2"></span><span style="background:#1f6f8b"></span><span style="background:#a33a2e"></span></span>
+            </div>
+            <h3><a href="/demos/the-signal-chain.html">The Signal Chain</a></h3>
+            <p class="g-argument">You can see exactly what crosses the device boundary, and what never does.</p>
+            <dl class="g-defs">
+              <div class="g-def"><dt>Lead</dt><dd>A drafting-sheet diagram: camera → landmarks → state → boundary → nudge → teacher → record, with stored/never-stored counters.</dd></div>
+              <div class="g-def"><dt>World</dt><dd>Blueprint: pale cyan ground, ink, cyan, oxide red, grid paper, title block, measured labels.</dd></div>
+              <div class="g-def"><dt>Optimizes</dt><dd>Privacy trust and mechanism clarity. The claim is locatable on the sheet, not just asserted.</dd></div>
+              <div class="g-def"><dt>Trades</dt><dd>Emotional pull. It is a diagram-first page for a skeptical buyer, not a student or a hurried teacher.</dd></div>
+            </dl>
+            <a class="g-open" href="/demos/the-signal-chain.html">Open The Signal Chain <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+          </article>
+
+          <article class="g-card">
+            <div class="g-card-top">
+              <span class="g-card-num">04 / ONE SESSION</span>
+              <span class="g-swatch" aria-hidden="true"><span style="background:#f1f0ea"></span><span style="background:#6e2b2b"></span><span style="background:#4f634d"></span></span>
+            </div>
+            <h3><a href="/demos/one-session.html">One Session</a></h3>
+            <p class="g-argument">One 42-minute class, told as a story: the drift, the nudge, the return, the note.</p>
+            <dl class="g-defs">
+              <div class="g-def"><dt>Lead</dt><dd>A seven-beat narrative with minute markers and marginalia: 00:00, 12:40, 13:10, 15:02, 26:10, 31:20, 42:00.</dd></div>
+              <div class="g-def"><dt>World</dt><dd>Annotated manuscript: chalk paper, oxblood, sage, wide margins, ruled lines, Newsreader-led.</dd></div>
+              <div class="g-def"><dt>Optimizes</dt><dd>Empathy and student-first judgment. It makes the human moment the product.</dd></div>
+              <div class="g-def"><dt>Trades</dt><dd>Feature completeness. A buyer sees one story, not the whole system; the console and the archive are implied.</dd></div>
+            </dl>
+            <a class="g-open" href="/demos/one-session.html">Open One Session <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+          </article>
+
+          <article class="g-card">
+            <div class="g-card-top">
+              <span class="g-card-num">05 / TWO DOORS</span>
+              <span class="g-swatch" aria-hidden="true"><span style="background:#0d2b2a"></span><span style="background:#e9dfd0"></span><span style="background:#b45f3f"></span></span>
+            </div>
+            <h3><a href="/demos/two-doors.html">Two Doors</a></h3>
+            <p class="g-argument">Two roles, one room: choose your door and see your version of the product.</p>
+            <dl class="g-defs">
+              <div class="g-def"><dt>Lead</dt><dd>A full-viewport split threshold. Teacher side and student side each carry their own empty/after state and CTA.</dd></div>
+              <div class="g-def"><dt>World</dt><dd>Threshold: deep teal, plaster, terracotta, brass, tall arches, warm light, Newsreader display.</dd></div>
+              <div class="g-def"><dt>Optimizes</dt><dd>Role clarity and emotional entry. Both users know which door is theirs in one second.</dd></div>
+              <div class="g-def"><dt>Trades</dt><dd>Depth. A chooser can feel like a fork before it feels like a product; the mechanism lives below the fold.</dd></div>
+            </dl>
+            <a class="g-open" href="/demos/two-doors.html">Open Two Doors <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+          </article>
+
+          <article class="g-card">
+            <div class="g-card-top">
+              <span class="g-card-num">06 / THE READINESS CHECK</span>
+              <span class="g-swatch" aria-hidden="true"><span style="background:#e7eee8"></span><span style="background:#173b32"></span><span style="background:#e0b25e"></span></span>
+            </div>
+            <h3><a href="/demos/the-readiness-check.html">The Readiness Check</a></h3>
+            <p class="g-argument">Trust is decided in the twenty seconds before class, not in a privacy badge.</p>
+            <dl class="g-defs">
+              <div class="g-def"><dt>Lead</dt><dd>A working readiness panel: camera, light, face, identity, consent, verify — first-time and returning states.</dd></div>
+              <div class="g-def"><dt>World</dt><dd>Daylight clinic: pale sage, white, deep green, amber, soft radii, practical Manrope, gentle status ticks.</dd></div>
+              <div class="g-def"><dt>Optimizes</dt><dd>First-run honesty, consent and recovery. Every failure has a name and a way out.</dd></div>
+              <div class="g-def"><dt>Trades</dt><dd>The classroom's live energy and the record's proof. It is a narrow moment, not the whole product.</dd></div>
+            </dl>
+            <a class="g-open" href="/demos/the-readiness-check.html">Open The Readiness Check <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+          </article>
+
+          <article class="g-card">
+            <div class="g-card-top">
+              <span class="g-card-num">07 / THE STANCE</span>
+              <span class="g-swatch" aria-hidden="true"><span style="background:#0b0b0b"></span><span style="background:#f2eee3"></span><span style="background:#d6402c"></span></span>
+            </div>
+            <h3><a href="/demos/the-stance.html">The Stance</a></h3>
+            <p class="g-argument">A position, stated plainly: what Chronos refuses to do — and what it does instead.</p>
+            <dl class="g-defs">
+              <div class="g-def"><dt>Lead</dt><dd>A full-width typographic statement that changes from the blank first class to one completed class, with a receipt of zeros or one record.</dd></div>
+              <div class="g-def"><dt>World</dt><dd>Broadside: black, bone, signal red, heavy Manrope, hard rules, no shadows, no decoration.</dd></div>
+              <div class="g-def"><dt>Optimizes</dt><dd>Trust through refusal. It says what the product will not do before it says what it does.</dd></div>
+              <div class="g-def"><dt>Trades</dt><dd>Proof by assertion. The least demonstrative direction; the mechanism lives in the receipt and the copy, not a live surface.</dd></div>
+            </dl>
+            <a class="g-open" href="/demos/the-stance.html">Open The Stance <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+          </article>
+
+          <article class="g-card">
+            <div class="g-card-top">
+              <span class="g-card-num">08 / THE CLOCK</span>
+              <span class="g-swatch" aria-hidden="true"><span style="background:#f2eee3"></span><span style="background:#1d4ed8"></span><span style="background:#d23b2a"></span></span>
+            </div>
+            <h3><a href="/demos/the-clock.html">The Clock</a></h3>
+            <p class="g-argument">Time is the unit; a session is only legible as 42 minutes.</p>
+            <dl class="g-defs">
+              <div class="g-def"><dt>Lead</dt><dd>A full-viewport 42-minute dial you scrub; the copy and the TPI resolve with the clock.</dd></div>
+              <div class="g-def"><dt>World</dt><dd>Swiss railway chronograph: bone, cobalt, signal red; Bricolage Grotesque + system mono; giant tabular numerals; no cards.</dd></div>
+              <div class="g-def"><dt>Optimizes</dt><dd>A live calculation and a time axis you can feel. The record only exists at 42:00.</dd></div>
+              <div class="g-def"><dt>Trades</dt><dd>The human story is compressed into the tape; a cold first impression.</dd></div>
+            </dl>
+            <a class="g-open" href="/demos/the-clock.html">Open The Clock <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+          </article>
+
+          <article class="g-card">
+            <div class="g-card-top">
+              <span class="g-card-num">09 / THE CASE FILE</span>
+              <span class="g-swatch" aria-hidden="true"><span style="background:#0c0c0b"></span><span style="background:#e8e1d2"></span><span style="background:#b3261e"></span></span>
+            </div>
+            <h3><a href="/demos/the-case-file.html">The Case File</a></h3>
+            <p class="g-argument">Integrity is proved at the edges, not the average.</p>
+            <dl class="g-defs">
+              <div class="g-def"><dt>Lead</dt><dd>An openable exception dossier: NO_DATA, bad light, multi-face, identity mismatch.</dd></div>
+              <div class="g-def"><dt>World</dt><dd>Redacted forensic file: black, off-white, red; Bodoni Moda + system sans/mono; stamps, redaction bars.</dd></div>
+              <div class="g-def"><dt>Optimizes</dt><dd>The refusals as proof. Every edge case has a student view, a teacher view and a decision.</dd></div>
+              <div class="g-def"><dt>Trades</dt><dd>It is an exception file, not a normal class; everyday use is implied.</dd></div>
+            </dl>
+            <a class="g-open" href="/demos/the-case-file.html">Open The Case File <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+          </article>
+
+          <article class="g-card">
+            <div class="g-card-top">
+              <span class="g-card-num">10 / THE STUDENT MIRROR</span>
+              <span class="g-swatch" aria-hidden="true"><span style="background:#dfe8ee"></span><span style="background:#122027"></span><span style="background:#2b7f8c"></span></span>
+            </div>
+            <h3><a href="/demos/the-student-mirror.html">The Student Mirror</a></h3>
+            <p class="g-argument">The student is a person, not a row; show exactly what is measured and what is not.</p>
+            <dl class="g-defs">
+              <div class="g-def"><dt>Lead</dt><dd>A two-way mirror: the student's own signals, a switch to the teacher's view, a liveness action, a storage drawer.</dd></div>
+              <div class="g-def"><dt>World</dt><dd>Intimate optical instrument: cool silver-blue; Newsreader + Manrope (the one allowed); mirror frame; soft light.</dd></div>
+              <div class="g-def"><dt>Optimizes</dt><dd>Consent and legibility from the student's side; the teacher's view is one switch away.</dd></div>
+              <div class="g-def"><dt>Trades</dt><dd>One student's view, not the whole room; the class-level picture is elsewhere.</dd></div>
+            </dl>
+            <a class="g-open" href="/demos/the-student-mirror.html">Open The Student Mirror <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+          </article>
+
+          <aside class="g-endnote">
+            <span class="g-card-num">END / 10</span>
+            <h3>That's ten.</h3>
+            <p>Every direction keeps the same product truth: two roles, one room; inference in the student's browser; an embedding and session analytics stored, frames never; student first, teacher last word. The last three were built to break the first seven's section grammar: a clock, a file, a mirror.</p>
+            <a class="g-open" href="/">Open the real home <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+          </aside>
+        </div>
+
+        <div class="g-note">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg>
+          <div>
+            <b>Read this before judging a direction.</b>
+            <p>All session names, scores and quotes are illustrative. Nothing here is wired into the app, and deleting <code>demos/</code> leaves the repo as it was. The demos are standalone HTML; the real home still lives at <a href="/">/</a>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="g-foot">
+    <div class="wrap">
+      <div class="g-foot-in">
+        <div>
+          <div class="g-foot-brand"><img src="/logo_light.svg" alt="" width="21" height="21" /> Chronos</div>
+          <p>Ten homepage directions. The product truth is shared; the argument, lead and world are not.</p>
+        </div>
+        <div class="g-foot-links">
+          <a href="/">Real home</a>
+          <a href="/demos/the-record.html">The Record</a>
+          <a href="/demos/the-instrument.html">The Instrument</a>
+          <a href="/demos/the-signal-chain.html">The Signal Chain</a>
+        </div>
+      </div>
+      <div class="g-foot-bottom">
+        <span>© 2026 Chronos — design exploration</span>
+        <span>Illustrative data · not a shipping build</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/demos/shared.js" defer></script>
+</body>
+</html>

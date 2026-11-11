@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Readiness Check — Chronos homepage direction</title>
+  <meta name="description" content="A Chronos homepage direction: the twenty seconds before class, handled honestly." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Manrope:wght@200..800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/demos/base.css" />
+  <style>
+    .d-readiness {
+      --rd-bg: #e7eee8;
+      --rd-card: #ffffff;
+      --rd-soft: #f3f8f4;
+      --rd-ink: #1b2420;
+      --rd-muted: #55655d;
+      --rd-green: #173b32;
+      --rd-green-2: #2f6b52;
+      --rd-amber: #8a5a13;
+      --rd-amber-bright: #e0b25e;
+      --rd-coral: #9e3b2e;
+      --rd-rule: #cfdad2;
+      --rd-rule-soft: #e2ebe4;
+      --focus: #173b32;
+      background: var(--rd-bg);
+      color: var(--rd-ink);
+    }
+    .d-readiness ::selection { background: #cfe3d5; color: var(--rd-ink); }
+
+    .rd-head { background: rgba(231, 238, 232, 0.9); border-bottom: 1px solid transparent; }
+    .rd-head.is-scrolled { background: rgba(255, 255, 255, 0.94); border-bottom-color: var(--rd-rule); backdrop-filter: blur(12px); }
+    .rd-head-in { display: flex; align-items: center; gap: 26px; min-height: 68px; }
+    .rd-brand { display: flex; align-items: center; gap: 9px; text-decoration: none; font-size: 14px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; white-space: nowrap; }
+    .rd-brand img { width: 22px; height: 22px; }
+    .rd-brand-tag { padding-left: 9px; border-left: 1px solid var(--rd-rule); color: var(--rd-muted); font-size: 9px; letter-spacing: 0.18em; }
+    .rd-nav { display: flex; gap: 23px; margin-left: auto; }
+    .rd-nav a { color: var(--rd-muted); text-decoration: none; font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; padding: 8px 0; border-bottom: 1px solid transparent; }
+    .rd-nav a:hover { color: var(--rd-ink); border-bottom-color: var(--rd-green-2); }
+    .rd-head-actions { display: flex; align-items: center; gap: 16px; }
+    .rd-head-join { color: var(--rd-muted); text-decoration: none; font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; border-bottom: 1px solid var(--rd-rule); padding-bottom: 3px; white-space: nowrap; }
+    .rd-head-join:hover { color: var(--rd-ink); border-color: var(--rd-ink); }
+    .rd-head-host { display: inline-flex; align-items: center; gap: 9px; padding: 11px 16px; background: var(--rd-green); color: #fff; border: 1px solid var(--rd-green); font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; text-decoration: none; white-space: nowrap; transition: background 150ms ease; }
+    .rd-head-host:hover { background: var(--rd-green-2); border-color: var(--rd-green-2); }
+    .rd-head-host .icon { width: 13px; height: 13px; }
+
+    .rd-hero { position: relative; padding: clamp(38px, 5vw, 68px) 0 clamp(52px, 6vw, 82px); }
+    .rd-hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 78% 18%, rgba(255, 255, 255, 0.7), transparent 55%); pointer-events: none; }
+    .rd-hero-grid { position: relative; display: grid; grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr); gap: clamp(30px, 4.5vw, 62px); align-items: start; }
+    .rd-intro { padding-top: 10px; }
+    .rd-kicker { display: flex; align-items: center; gap: 9px; margin-bottom: 20px; color: var(--rd-green-2); font-size: 10px; font-weight: 800; letter-spacing: 0.19em; text-transform: uppercase; }
+    .rd-kicker .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--rd-green-2); box-shadow: 0 0 0 4px rgba(47, 107, 82, 0.12); }
+    .rd-intro h1 { max-width: 13ch; font-family: var(--font-display); font-size: clamp(42px, 5vw, 66px); font-weight: 500; line-height: 0.99; letter-spacing: -0.025em; }
+    .rd-intro h1 em { color: var(--rd-green-2); font-weight: 400; }
+    .rd-lede { max-width: 42ch; margin-top: 22px; color: var(--rd-muted); font-size: clamp(14px, 1.3vw, 16px); line-height: 1.7; }
+    .rd-actions { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 26px; }
+    .rd-btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 12px 17px; border: 1px solid var(--rd-green); border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; text-decoration: none; transition: background 150ms ease, color 150ms ease, border-color 150ms ease; }
+    .rd-btn-fill { background: var(--rd-green); color: #fff; }
+    .rd-btn-fill:hover { background: var(--rd-green-2); border-color: var(--rd-green-2); }
+    .rd-btn:hover { border-color: var(--rd-green-2); color: var(--rd-green-2); }
+    .rd-btn-fill:hover { color: #fff; }
+    .rd-btn .icon { width: 14px; height: 14px; }
+    .rd-fine { margin-top: 22px; color: var(--rd-muted); font-size: 10.5px; line-height: 1.6; }
+    .rd-fine a { color: var(--rd-green-2); text-underline-offset: 0.2em; }
+
+    .rd-panel { border: 1px solid var(--rd-rule); background: var(--rd-card); border-radius: 12px; box-shadow: 0 26px 60px -28px rgba(23, 59, 50, 0.34); overflow: hidden; }
+    .rd-panel-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 15px; border-bottom: 1px solid var(--rd-rule); background: var(--rd-soft); }
+    .rd-panel-top span:first-child { display: flex; align-items: center; gap: 8px; font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+    .rd-panel-top .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--rd-green-2); }
+    .rd-step { color: var(--rd-muted); font-size: 8px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .rd-panel-toggle { display: flex; border-bottom: 1px solid var(--rd-rule); }
+    .rd-panel-toggle button { flex: 1; padding: 8px 10px; border-right: 1px solid var(--rd-rule); color: var(--rd-muted); font-size: 8px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; border-bottom: 2px solid transparent; }
+    .rd-panel-toggle button:last-child { border-right: 0; }
+    .rd-panel-toggle button[aria-pressed="true"] { color: var(--rd-ink); border-bottom-color: var(--rd-green-2); background: #fff; }
+    .rd-panel-toggle button:hover { color: var(--rd-ink); }
+    .rd-panel-body { padding: 13px 15px 15px; }
+
+    .rd-camera { border: 1px solid var(--rd-rule); border-radius: 8px; overflow: hidden; }
+    .rd-camera-top { display: flex; justify-content: space-between; gap: 10px; padding: 7px 9px; background: var(--rd-soft); border-bottom: 1px solid var(--rd-rule); color: var(--rd-muted); font-size: 7.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .rd-camera-view {
+      position: relative; min-height: 190px; display: grid; place-items: center;
+      background: #10251f;
+      background-image: radial-gradient(ellipse at 50% 30%, rgba(224, 178, 94, 0.13), transparent 55%);
+      overflow: hidden;
+    }
+    .rd-face-guide {
+      width: 30%; height: 58%; min-width: 90px; min-height: 120px;
+      border: 1.5px dashed rgba(224, 178, 94, 0.7);
+      border-radius: 50% / 42% 42% 50% 50%;
+      position: relative;
+    }
+    .rd-face-guide::before, .rd-face-guide::after { content: ""; position: absolute; top: 44%; width: 5px; height: 5px; border-radius: 50%; background: rgba(224, 178, 94, 0.75); }
+    .rd-face-guide::before { left: 30%; }
+    .rd-face-guide::after { right: 30%; }
+    .rd-camera-hint { position: absolute; bottom: 12px; left: 12px; right: 12px; color: #cfdcd4; font-size: 9px; line-height: 1.4; text-align: center; }
+    .rd-camera.is-on .rd-face-guide { border-style: solid; border-color: rgba(143, 227, 176, 0.8); }
+    .rd-camera.is-on .rd-camera-hint { color: #a9d8bd; }
+    .rd-allow { width: 100%; padding: 9px 12px; border-top: 1px solid var(--rd-rule); background: var(--rd-green); color: #fff; font-size: 8.5px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; }
+    .rd-allow:hover { background: var(--rd-green-2); }
+    .rd-allow:disabled { opacity: 0.55; cursor: default; }
+    .rd-illustration { padding: 6px 9px; border-top: 1px solid var(--rd-rule); color: var(--rd-muted); font-size: 7.5px; line-height: 1.4; text-align: center; }
+
+    .rd-status { margin-top: 11px; border-top: 1px solid var(--rd-rule); }
+    .rd-status li { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rd-rule-soft); }
+    .rd-status .mark { width: 14px; height: 14px; border: 1px solid var(--rd-rule); border-radius: 50%; display: grid; place-items: center; }
+    .rd-status .mark .icon { width: 9px; height: 9px; opacity: 0; color: var(--rd-green-2); }
+    .rd-status li.is-ok .mark { border-color: var(--rd-green-2); background: rgba(47, 107, 82, 0.1); }
+    .rd-status li.is-ok .mark .icon { opacity: 1; }
+    .rd-status li.is-warn .mark { border-color: var(--rd-amber-bright); background: rgba(224, 178, 94, 0.18); }
+    .rd-status b { font-size: 10px; font-weight: 800; }
+    .rd-status .status { color: var(--rd-muted); font-size: 8px; font-weight: 700; letter-spacing: 0.06em; text-align: right; }
+    .rd-status li.is-ok .status { color: var(--rd-green-2); }
+    .rd-status li.is-warn .status { color: var(--rd-amber); }
+
+    .rd-consent { display: flex; align-items: flex-start; gap: 9px; margin-top: 11px; color: var(--rd-muted); font-size: 9px; line-height: 1.5; cursor: pointer; }
+    .rd-consent input { width: 15px; height: 15px; margin: 0; accent-color: var(--rd-green); flex: none; }
+    .rd-verify { width: 100%; margin-top: 11px; padding: 11px 14px; border-radius: 6px; background: var(--rd-green); color: #fff; font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; transition: background 150ms ease, opacity 150ms ease; }
+    .rd-verify:hover:not(:disabled) { background: var(--rd-green-2); }
+    .rd-verify:disabled { opacity: 0.4; cursor: not-allowed; }
+    .rd-panel-note { margin-top: 9px; color: var(--rd-muted); font-size: 8.5px; line-height: 1.5; text-align: center; }
+    .rd-panel-note.ok { color: var(--rd-green-2); font-weight: 700; }
+    .rd-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+    .rd-section { padding: clamp(56px, 7vw, 94px) 0; border-top: 1px solid var(--rd-rule); }
+    .rd-section.white { background: var(--rd-card); }
+    .rd-section-head { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 30px; align-items: end; margin-bottom: 30px; }
+    .rd-section-head h2 { font-family: var(--font-display); font-size: clamp(34px, 4vw, 52px); font-weight: 500; line-height: 1; letter-spacing: -0.02em; }
+    .rd-section-head p { max-width: 52ch; color: var(--rd-muted); font-size: 14px; line-height: 1.7; }
+    .rd-section-head .eyebrow { display: block; margin-bottom: 10px; color: var(--rd-green-2); font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; }
+
+    .rd-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .rd-check-card { padding: 18px; border: 1px solid var(--rd-rule); border-radius: 10px; background: var(--rd-card); }
+    .rd-check-card .icon { width: 20px; height: 20px; color: var(--rd-green-2); }
+    .rd-check-card h3 { margin-top: 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.02em; }
+    .rd-check-card p { margin-top: 6px; color: var(--rd-muted); font-size: 11px; line-height: 1.6; }
+    .rd-check-card .not { display: block; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--rd-rule-soft); color: var(--rd-muted); font-size: 9.5px; line-height: 1.5; }
+    .rd-check-card .not b { color: var(--rd-coral); }
+    .rd-nodata { display: flex; gap: 11px; margin-top: 14px; padding: 13px 15px; border: 1px dashed var(--rd-rule); border-radius: 8px; background: var(--rd-soft); }
+    .rd-nodata .icon { width: 17px; height: 17px; color: var(--rd-amber); flex: none; margin-top: 1px; }
+    .rd-nodata b { display: block; font-size: 9px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .rd-nodata p { margin-top: 3px; color: var(--rd-muted); font-size: 11px; line-height: 1.55; }
+
+    .rd-during { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--rd-ink); }
+    .rd-during-step { position: relative; padding: 18px 18px 20px 0; border-right: 1px solid var(--rd-rule); }
+    .rd-during-step:last-child { border-right: 0; padding-right: 0; }
+    .rd-during-step + .rd-during-step { padding-left: 18px; }
+    .rd-during-step .num { color: var(--rd-green-2); font-size: 9px; font-weight: 800; letter-spacing: 0.16em; }
+    .rd-during-step h3 { margin-top: 9px; font-size: 11px; font-weight: 800; line-height: 1.3; }
+    .rd-during-step p { margin-top: 5px; color: var(--rd-muted); font-size: 10px; line-height: 1.5; }
+    .rd-mode-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .rd-mode { padding: 8px 11px; border: 1px solid var(--rd-rule); border-radius: 999px; color: var(--rd-muted); font-size: 8.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+    .rd-mode b { color: var(--rd-ink); }
+
+    .rd-privacy { display: grid; grid-template-columns: 1fr 1fr; border-top: 2px solid var(--rd-ink); }
+    .rd-privacy-col { padding: 18px 26px 8px 0; }
+    .rd-privacy-col + .rd-privacy-col { padding-left: 26px; border-left: 1px solid var(--rd-rule); }
+    .rd-privacy-col h3 { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+    .rd-privacy-col h3 .icon { width: 14px; height: 14px; }
+    .rd-privacy-col.yes h3 { color: var(--rd-green-2); }
+    .rd-privacy-col.no h3 { color: var(--rd-coral); }
+    .rd-privacy-col li { display: flex; gap: 9px; padding: 9px 0; border-bottom: 1px solid var(--rd-rule-soft); font-size: 11.5px; line-height: 1.55; }
+    .rd-privacy-col li .icon { width: 13px; height: 13px; margin-top: 3px; flex: none; }
+    .rd-privacy-col.yes li .icon { color: var(--rd-green-2); }
+    .rd-privacy-col.no li .icon { color: var(--rd-coral); }
+    .rd-privacy-col li span { color: var(--rd-muted); }
+
+    .rd-recovery { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .rd-recovery-card { padding: 16px 18px; border: 1px solid var(--rd-rule); border-radius: 10px; background: var(--rd-card); }
+    .rd-recovery-card .problem { display: flex; align-items: center; gap: 7px; color: var(--rd-coral); font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .rd-recovery-card .problem .icon { width: 13px; height: 13px; }
+    .rd-recovery-card h3 { margin-top: 7px; font-size: 12px; font-weight: 800; }
+    .rd-recovery-card p { margin-top: 5px; color: var(--rd-muted); font-size: 10.5px; line-height: 1.55; }
+    .rd-recovery-card .fix { display: block; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--rd-rule-soft); color: var(--rd-green-2); font-size: 9.5px; font-weight: 700; line-height: 1.5; }
+
+    .rd-cta { padding: clamp(62px, 8vw, 110px) 0; background: var(--rd-green); color: #fff; }
+    .rd-cta-in { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 38px; align-items: end; }
+    .rd-cta h2 { max-width: 14ch; font-family: var(--font-display); font-size: clamp(40px, 5vw, 64px); font-weight: 500; line-height: 0.98; letter-spacing: -0.025em; }
+    .rd-cta h2 em { color: var(--rd-amber-bright); }
+    .rd-cta p { max-width: 40ch; margin-top: 14px; color: #bcd1c3; font-size: 13px; line-height: 1.7; }
+    .rd-cta-actions { display: flex; flex-direction: column; gap: 9px; }
+    .rd-cta-actions a { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 46px; padding: 12px 16px; border: 1px solid rgba(255, 255, 255, 0.34); border-radius: 6px; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; text-decoration: none; transition: background 150ms ease, color 150ms ease; }
+    .rd-cta-actions a:first-child { background: var(--rd-amber-bright); border-color: var(--rd-amber-bright); color: #1b1407; }
+    .rd-cta-actions a:hover { background: #fff; border-color: #fff; color: var(--rd-green); }
+    .rd-cta-actions .icon { width: 14px; height: 14px; }
+
+    .rd-foot { padding: 34px 0 26px; background: #10251f; color: #eaf1ec; }
+    .rd-foot-grid { display: grid; grid-template-columns: 1.4fr 0.7fr 0.7fr 1fr; gap: 26px; padding-bottom: 24px; border-bottom: 1px solid rgba(234, 241, 236, 0.18); }
+    .rd-foot-brand { display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; }
+    .rd-foot-brand img { width: 21px; height: 21px; }
+    .rd-foot p { margin-top: 10px; max-width: 30ch; color: #aabdb1; font-size: 10.5px; line-height: 1.6; }
+    .rd-foot h3 { margin-bottom: 8px; color: var(--rd-amber-bright); font-size: 8px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; }
+    .rd-foot li { margin-top: 6px; }
+    .rd-foot a { color: #c7d6cc; font-size: 10.5px; text-decoration: none; }
+    .rd-foot a:hover { color: #fff; text-decoration: underline; }
+    .rd-foot-bottom { display: flex; justify-content: space-between; gap: 14px; padding-top: 14px; color: #82968a; font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+
+    @media (max-width: 1040px) {
+      .rd-hero-grid { grid-template-columns: 1fr; }
+      .rd-intro h1 { max-width: 15ch; }
+      .rd-panel { max-width: 640px; }
+      .rd-section-head { grid-template-columns: 1fr; gap: 14px; }
+      .rd-cta-in { grid-template-columns: 1fr; align-items: start; }
+      .rd-cta-actions { max-width: 340px; }
+    }
+    @media (max-width: 820px) {
+      .rd-nav { display: none; }
+      .rd-head-in { gap: 12px; }
+      .rd-head-actions { margin-left: auto; gap: 10px; }
+      .rd-brand-tag { display: none; }
+      .rd-during { grid-template-columns: 1fr 1fr; }
+      .rd-during-step { border-right: 0; border-bottom: 1px solid var(--rd-rule); padding: 16px 0; }
+      .rd-during-step + .rd-during-step { padding-left: 0; }
+      .rd-during-step:nth-child(2n) { padding-left: 18px; border-left: 1px solid var(--rd-rule); }
+      .rd-foot-grid { grid-template-columns: 1fr 1fr; }
+      .rd-foot-bottom { flex-direction: column; gap: 7px; }
+    }
+    @media (max-width: 640px) {
+      .rd-checks, .rd-recovery, .rd-privacy { grid-template-columns: 1fr; }
+      .rd-privacy-col, .rd-privacy-col + .rd-privacy-col { padding: 18px 0 8px; border-left: 0; }
+      .rd-privacy-col + .rd-privacy-col { border-top: 1px solid var(--rd-rule); margin-top: 14px; }
+      .rd-during { grid-template-columns: 1fr; }
+      .rd-during-step, .rd-during-step + .rd-during-step { padding: 14px 0; border-left: 0; border-bottom: 1px solid var(--rd-rule); }
+      .rd-during-step:nth-child(2n) { padding-left: 0; border-left: 0; }
+    }
+    @media (max-width: 430px) {
+      .rd-head-join { display: none; }
+      .rd-head-host { padding: 9px 11px; font-size: 9px; }
+      .rd-intro h1 { font-size: 40px; }
+      .rd-panel-body { padding: 10px; }
+      .rd-camera-view { min-height: 165px; }
+      .rd-status li { grid-template-columns: 16px 1fr auto; }
+      .rd-cta-actions a { font-size: 9px; }
+      .rd-step { display: none; }
+    }
+
+    /* Legibility floor for the check's microcopy. */
+    .rd-step, .rd-camera-top, .rd-illustration, .rd-status .status, .rd-panel-note, .rd-check-card .not, .rd-mode, .rd-recovery-card p { font-size: 9.5px; }
+  </style>
+</head>
+<body class="d-readiness">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="rd-head" data-header>
+    <div class="wrap rd-head-in">
+      <a class="rd-brand" href="#top" aria-label="Chronos home">
+        <img src="/logo_dark.svg" alt="" width="22" height="22" />
+        <span>Chronos</span>
+        <span class="rd-brand-tag">Readiness</span>
+      </a>
+      <nav class="rd-nav" aria-label="Primary">
+        <a href="#check">The check</a>
+        <a href="#during">During class</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#recovery">If it goes wrong</a>
+        <a href="/signin">Sign in</a>
+      </nav>
+      <div class="rd-head-actions">
+        <a class="rd-head-join" href="/signin?next=/student">Join a class</a>
+        <a class="rd-head-host" href="/signup">
+          Host a class
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="rd-hero" id="top">
+      <div class="wrap rd-hero-grid">
+        <div class="rd-intro">
+          <p class="rd-kicker"><span class="dot" aria-hidden="true"></span> Before class / 20 seconds</p>
+          <h1>The class starts in twenty seconds. <em>This is the honest part.</em></h1>
+          <p class="rd-lede">
+            Before anyone enters, Chronos checks the camera, the light, the face, and — only if
+            you've enrolled — that it's still you. You can see every check. You can stop.
+          </p>
+          <div class="rd-actions">
+            <a class="rd-btn rd-btn-fill" href="/signin?next=/student">
+              Join a class
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+            </a>
+            <a class="rd-btn" href="/signup">Host a class</a>
+          </div>
+          <p class="rd-fine">
+            Interactive illustration — no camera is opened in this demo. Sample states; the checks
+            and the privacy boundary are the real product rules. <a href="#recovery">If something goes wrong, read this.</a>
+          </p>
+        </div>
+
+        <div class="rd-panel" data-rd-panel data-state="first" aria-label="Readiness check illustration">
+          <div class="rd-panel-top">
+            <span><span class="dot" aria-hidden="true"></span> Readiness check · student</span>
+            <span class="rd-step">1 camera · 2 face · 3 identity</span>
+          </div>
+          <div class="rd-panel-toggle" role="group" aria-label="Enrollment state">
+            <button type="button" data-rd-state="first" aria-pressed="true">First class</button>
+            <button type="button" data-rd-state="returning" aria-pressed="false">Returning</button>
+          </div>
+          <div class="rd-panel-body">
+            <div class="rd-camera" data-rd-camera>
+              <div class="rd-camera-top"><span>Camera preview</span><span data-rd-cam-label>Off</span></div>
+              <div class="rd-camera-view">
+                <div class="rd-face-guide" aria-hidden="true"></div>
+                <span class="rd-camera-hint" data-rd-cam-hint>Camera off. Allow access to begin.</span>
+              </div>
+              <button class="rd-allow" type="button" data-rd-allow>Allow camera</button>
+              <p class="rd-illustration">Illustration only — this demo does not open a camera.</p>
+            </div>
+
+            <ul class="rd-status" aria-label="Readiness checks">
+              <li data-rd-row="camera"><span class="mark"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><b>Camera</b><span class="status" data-rd-status="camera">Not allowed</span></li>
+              <li data-rd-row="light"><span class="mark"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><b>Light</b><span class="status" data-rd-status="light">—</span></li>
+              <li data-rd-row="face"><span class="mark"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><b>Face</b><span class="status" data-rd-status="face">—</span></li>
+              <li data-rd-row="identity"><span class="mark"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><b>Identity</b><span class="status" data-rd-status="identity">No enrollment</span></li>
+            </ul>
+
+            <label class="rd-consent">
+              <input type="checkbox" data-rd-consent />
+              <span>I understand what is checked and what is stored. I can stop before entering.</span>
+            </label>
+            <button class="rd-verify" type="button" data-rd-verify disabled>Verify &amp; join</button>
+            <p class="rd-panel-note" data-rd-panel-note>First time: we'll store a face embedding, not a photo.</p>
+            <p class="rd-live sr-only" role="status" aria-live="polite" data-rd-live></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="rd-section white" id="check">
+      <div class="wrap">
+        <div class="rd-section-head">
+          <div><span class="eyebrow">Three checks, no surprises</span><h2>You can see every check.</h2></div>
+          <p>
+            Readiness is not a single opaque “verified” badge. Each check has a plain state, a
+            reason and a way to recover. Nothing is hidden behind a spinner.
+          </p>
+        </div>
+        <div class="rd-checks">
+          <div class="rd-check-card">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6.5" width="12" height="11" rx="2.5"/><path d="M15.5 10.5l5-2.5v8l-5-2.5"/></svg>
+            <h3>Camera</h3>
+            <p>The browser asks for permission. A live preview shows what the model sees; the frame stays on the device.</p>
+            <span class="not"><b>Not:</b> a recording. There is no server-side video archive.</span>
+          </div>
+          <div class="rd-check-card">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg>
+            <h3>Light</h3>
+            <p>A brightness read of the frame. Too dark or too bright gets a plain instruction, not a failure.</p>
+            <span class="not"><b>Not:</b> an image quality score. It only asks for enough light to read a face.</span>
+          </div>
+          <div class="rd-check-card">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5V6a2 2 0 0 1 2-2h2.5M15.5 4H18a2 2 0 0 1 2 2v2.5M20 15.5V18a2 2 0 0 1-2 2h-2.5M8.5 20H6a2 2 0 0 1-2-2v-2.5"/><circle cx="12" cy="11" r="2.4"/><path d="M8.5 16.5c.8-1.6 2-2.4 3.5-2.4s2.7.8 3.5 2.4"/></svg>
+            <h3>Face</h3>
+            <p>FaceMesh finds a face and checks that it is centered. If it cannot, the state is NO_DATA — not “disengaged.”</p>
+            <span class="not"><b>Not:</b> a mood, an emotion or a diagnosis. It reads geometry.</span>
+          </div>
+          <div class="rd-check-card">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l7 3v5.4c0 4-2.9 7.3-7 8.6-4.1-1.3-7-4.6-7-8.6V6.5l7-3Z"/><path d="M9.5 12.2l1.8 1.8 3.4-3.6"/></svg>
+            <h3>Identity</h3>
+            <p>If you have enrolled, a face embedding is compared for consistency. Checks repeat every 2–5 minutes; a mismatch can ask for a liveness action in 3–5 seconds.</p>
+            <span class="not"><b>Not:</b> a cheating verdict. The teacher sees a flag and decides.</span>
+          </div>
+        </div>
+        <div class="rd-nodata">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg>
+          <div><b>No face in frame is NO_DATA.</b><p>A camera miss is a camera miss. It does not add a strike, and it does not call the student disengaged.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="rd-section" id="during">
+      <div class="wrap">
+        <div class="rd-section-head">
+          <div><span class="eyebrow">During class</span><h2>What happens after you enter.</h2></div>
+          <p>
+            The check is not a one-time gate. Identity consistency is checked at a 2–5 minute
+            cadence, and a nudge can arrive if the student drifts. The teacher still decides.
+          </p>
+        </div>
+        <div class="rd-during">
+          <div class="rd-during-step"><span class="num">01</span><h3>Join</h3><p>The student opens the link and completes readiness. The teacher hosts the same room.</p></div>
+          <div class="rd-during-step"><span class="num">02</span><h3>Read the room</h3><p>FaceMesh reads gaze, head pose and eye openness on the device. The state changes.</p></div>
+          <div class="rd-during-step"><span class="num">03</span><h3>Check identity</h3><p>Every 2–5 minutes, a face embedding is compared. A mismatch can ask for a liveness action.</p></div>
+          <div class="rd-during-step"><span class="num">04</span><h3>Nudge first</h3><p>If a student drifts, a private nudge goes to them. They get time to recover before the teacher acts.</p></div>
+          <div class="rd-during-step"><span class="num">05</span><h3>Teacher decides</h3><p>Mark engaged, message, ignore or remove. The session record is written after class.</p></div>
+        </div>
+        <div class="rd-mode-strip">
+          <span class="rd-mode"><b>Normal tab:</b> switching tabs is not a violation.</span>
+          <span class="rd-mode"><b>Strict tab:</b> losing focus is flagged; students are told before class.</span>
+          <span class="rd-mode"><b>Class:</b> a glance away does not sink the score.</span>
+          <span class="rd-mode"><b>Exam:</b> stricter gaze, one-strike disengagement.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="rd-section white" id="privacy">
+      <div class="wrap">
+        <div class="rd-section-head">
+          <div><span class="eyebrow">What is stored</span><h2>Small, specific, and visible.</h2></div>
+          <p>
+            “Nothing is stored” would be false. The honest version: a face embedding and the
+            session's analytics are stored; the video frames and page content are not.
+          </p>
+        </div>
+        <div class="rd-privacy">
+          <div class="rd-privacy-col yes">
+            <h3><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> Stored</h3>
+            <ul>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span>A face embedding — a numerical signature used to check consistency, not a photo.</span></li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span>Session analytics: scores over time, states, strikes, flags and the final report.</span></li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span>Teacher actions: nudges, messages, marks and removals.</span></li>
+            </ul>
+          </div>
+          <div class="rd-privacy-col no">
+            <h3><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Never stored</h3>
+            <ul>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Video frames, with or without a face in them.</span></li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Page content, app content or the student's screen.</span></li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Emotion labels, grades, rankings or an automated decision about a student.</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="rd-section" id="recovery">
+      <div class="wrap">
+        <div class="rd-section-head">
+          <div><span class="eyebrow">If something goes wrong</span><h2>A way out, every time.</h2></div>
+          <p>
+            The check is allowed to fail. What matters is that the failure is named, explained
+            and recoverable — without turning uncertainty into an accusation.
+          </p>
+        </div>
+        <div class="rd-recovery">
+          <div class="rd-recovery-card">
+            <span class="problem"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6.5" width="12" height="11" rx="2.5"/><path d="M15.5 10.5l5-2.5v8l-5-2.5M4 4l16 16"/></svg> Camera denied</span>
+            <h3>“Camera access is blocked.”</h3>
+            <p>You see the browser instruction, not a dead end. The check cannot continue without a camera.</p>
+            <span class="fix">Fix: allow access in the browser, then retry. Or leave and join when you're ready.</span>
+          </div>
+          <div class="rd-recovery-card">
+            <span class="problem"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg> No face found</span>
+            <h3>“We can't see a face yet.”</h3>
+            <p>The state is NO_DATA, not disengaged. No strike is added; the camera simply missed.</p>
+            <span class="fix">Fix: center your face and improve the light. Retry when you're ready.</span>
+          </div>
+          <div class="rd-recovery-card">
+            <span class="problem"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg> Light is wrong</span>
+            <h3>“It's too dark” or “too bright.”</h3>
+            <p>A brightness read, not a judgment. The check tells you which way to adjust.</p>
+            <span class="fix">Fix: face a window or soften a lamp, then retry. The frame is not stored.</span>
+          </div>
+          <div class="rd-recovery-card">
+            <span class="problem"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l7 3v5.4c0 4-2.9 7.3-7 8.6-4.1-1.3-7-4.6-7-8.6V6.5l7-3Z"/><path d="M9.5 12.2l1.8 1.8 3.4-3.6"/></svg> Identity mismatch</span>
+            <h3>“Let's check it's still you.”</h3>
+            <p>Two low-similarity checks can ask for a liveness action — turn your head, smile — in a 3–5 second window.</p>
+            <span class="fix">Fix: complete the action. The teacher sees a flag, not a verdict, and decides what happens next.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="rd-cta" id="start">
+      <div class="wrap rd-cta-in">
+        <div>
+          <h2>Twenty seconds. <em>Then the class.</em></h2>
+          <p>Join a class, or host one. The readiness check is the same honest moment for both roles.</p>
+        </div>
+        <div class="rd-cta-actions">
+          <a href="/signin?next=/student">
+            Join a class
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+          </a>
+          <a href="/signup">Host a class</a>
+          <a href="/signin">Sign in</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="rd-foot">
+    <div class="wrap">
+      <div class="rd-foot-grid">
+        <div>
+          <div class="rd-foot-brand"><img src="/logo_light.svg" alt="" width="21" height="21" /> Chronos</div>
+          <p>Explainable engagement and identity signals for live sessions. Teacher judgment stays central.</p>
+        </div>
+        <div>
+          <h3>Experience</h3>
+          <ul>
+            <li><a href="/signup">Host a class</a></li>
+            <li><a href="/signin?next=/student">Join a class</a></li>
+            <li><a href="/signin">Sign in</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>The check</h3>
+          <ul>
+            <li><a href="#check">Three checks</a></li>
+            <li><a href="#privacy">What is stored</a></li>
+            <li><a href="#recovery">If it goes wrong</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Status</h3>
+          <p style="margin-top:0">No video stored. No page or app content. No automated discipline.</p>
+        </div>
+      </div>
+      <div class="rd-foot-bottom">
+        <span>© 2026 Chronos — Intelligence for Presence</span>
+        <span>Illustrative data · Not a proctoring tool</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/demos/shared.js" defer></script>
+  <script>
+    (() => {
+      const panel = document.querySelector("[data-rd-panel]");
+      const stateButtons = Array.from(document.querySelectorAll("[data-rd-state]"));
+      const allow = document.querySelector("[data-rd-allow]");
+      const consent = document.querySelector("[data-rd-consent]");
+      const verify = document.querySelector("[data-rd-verify]");
+      const camera = document.querySelector("[data-rd-camera]");
+      const camLabel = document.querySelector("[data-rd-cam-label]");
+      const camHint = document.querySelector("[data-rd-cam-hint]");
+      const note = document.querySelector("[data-rd-panel-note]");
+      const live = document.querySelector("[data-rd-live]");
+      if (!panel || !allow || !consent || !verify) return;
+
+      let mode = "first";
+      let allowed = false;
+      let lightOk = false;
+      let faceOk = false;
+      let verified = false;
+      let timers = [];
+
+      const row = (name) => document.querySelector(`[data-rd-row="${name}"]`);
+      const status = (name) => document.querySelector(`[data-rd-status="${name}"]`);
+
+      function setRow(name, ok, text, warn = false) {
+        const li = row(name);
+        if (!li) return;
+        li.classList.toggle("is-ok", ok);
+        li.classList.toggle("is-warn", !ok && warn);
+        const el = status(name);
+        if (el) el.textContent = text;
+      }
+      function clearTimers() {
+        timers.forEach((id) => window.clearTimeout(id));
+        timers = [];
+      }
+      function updateVerify() {
+        verify.disabled = !(allowed && lightOk && faceOk && consent.checked && !verified);
+      }
+      function reset() {
+        clearTimers();
+        allowed = false;
+        lightOk = false;
+        faceOk = false;
+        verified = false;
+        camera.classList.remove("is-on");
+        camLabel.textContent = "Off";
+        camHint.textContent = "Camera off. Allow access to begin.";
+        allow.disabled = false;
+        allow.textContent = "Allow camera";
+        consent.checked = false;
+        setRow("camera", false, "Not allowed");
+        setRow("light", false, "—");
+        setRow("face", false, "—");
+        setRow("identity", false, mode === "returning" ? "Stored embedding found" : "No enrollment");
+        note.classList.remove("ok");
+        note.textContent =
+          mode === "returning"
+            ? "Returning: we'll compare this frame to your stored embedding. Checks repeat every 2–5 minutes."
+            : "First time: we'll store a face embedding, not a photo.";
+        verify.textContent = "Verify & join";
+        updateVerify();
+      }
+      function setMode(next) {
+        mode = next;
+        stateButtons.forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.rdState === next));
+        });
+        reset();
+        if (live) live.textContent = next === "returning" ? "Returning student readiness check." : "First-time student readiness check.";
+      }
+      function startCheck() {
+        if (allowed) return;
+        allowed = true;
+        allow.disabled = true;
+        allow.textContent = "Camera allowed";
+        camera.classList.add("is-on");
+        camLabel.textContent = "Live";
+        camHint.textContent = "Looking for a face…";
+        setRow("camera", true, "Allowed");
+        if (live) live.textContent = "Camera allowed. Checking light and face.";
+        timers.push(window.setTimeout(() => {
+          lightOk = true;
+          setRow("light", true, "Good");
+          if (live) live.textContent = "Light is good. Checking face position.";
+          updateVerify();
+        }, 500));
+        timers.push(window.setTimeout(() => {
+          faceOk = true;
+          setRow("face", true, "Centered");
+          camHint.textContent = "Face centered. You're ready to verify.";
+          setRow("identity", false, mode === "returning" ? "Ready to compare" : "Will enroll on join");
+          if (live) live.textContent = "Face centered. Ready to verify.";
+          updateVerify();
+        }, 1100));
+      }
+      function doVerify() {
+        if (verify.disabled) return;
+        verified = true;
+        verify.disabled = true;
+        verify.textContent = "Ready. Joining…";
+        setRow("identity", true, mode === "returning" ? "Verified" : "Enrolled");
+        note.classList.add("ok");
+        note.textContent = "This is where you'd enter the room. The readiness check is complete.";
+        if (live) live.textContent = "Readiness complete. This is where the student would enter the room.";
+      }
+
+      allow.addEventListener("click", startCheck);
+      consent.addEventListener("change", updateVerify);
+      verify.addEventListener("click", doVerify);
+      stateButtons.forEach((button) => {
+        button.addEventListener("click", () => setMode(button.dataset.rdState));
+      });
+      const initial = new URLSearchParams(window.location.search).get("state");
+      setMode(initial === "returning" ? "returning" : "first");
+    })();
+  </script>
+</body>
+</html>

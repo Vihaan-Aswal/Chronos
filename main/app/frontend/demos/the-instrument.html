@@ -1,0 +1,1134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Instrument — Chronos homepage direction</title>
+  <meta name="description" content="A Chronos homepage direction: a live classroom console you can operate." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Manrope:wght@200..800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/demos/base.css" />
+  <style>
+    .d-instrument {
+      --ins-bg: #07100e;
+      --ins-panel: #0c1916;
+      --ins-panel-2: #10211d;
+      --ins-panel-3: #0a1512;
+      --ins-line: #233d35;
+      --ins-line-soft: #1a2e28;
+      --ins-bone: #e7efe9;
+      --ins-muted: #9ab0a5;
+      --ins-phos: #8fe3b0;
+      --ins-amber: #e6b45c;
+      --ins-red: #ff8a7c;
+      --ins-blue: #8fc1e3;
+      --ins-violet: #c3a6ff;
+      --focus: #8fe3b0;
+      background: var(--ins-bg);
+      color: var(--ins-bone);
+      font-variant-numeric: tabular-nums;
+    }
+    .d-instrument ::selection { background: var(--ins-phos); color: #06100c; }
+
+    .ins-head {
+      background: rgba(7, 16, 14, 0.82);
+      border-bottom: 1px solid transparent;
+    }
+    .ins-head.is-scrolled {
+      background: rgba(7, 16, 14, 0.94);
+      border-bottom-color: var(--ins-line);
+      backdrop-filter: blur(14px);
+    }
+    .ins-head-in { display: flex; align-items: center; gap: 26px; min-height: 66px; }
+    .ins-brand {
+      display: flex; align-items: center; gap: 9px;
+      text-decoration: none; color: var(--ins-bone);
+      font-size: 14px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .ins-brand img { width: 22px; height: 22px; }
+    .ins-brand-tag {
+      padding-left: 9px; border-left: 1px solid var(--ins-line);
+      color: var(--ins-muted); font-size: 9px; letter-spacing: 0.2em;
+    }
+    .ins-nav { display: flex; gap: 22px; margin-left: auto; }
+    .ins-nav a {
+      color: var(--ins-muted); text-decoration: none;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase;
+      padding: 8px 0; border-bottom: 1px solid transparent;
+    }
+    .ins-nav a:hover { color: var(--ins-bone); border-bottom-color: var(--ins-phos); }
+    .ins-head-actions { display: flex; align-items: center; gap: 16px; }
+    .ins-join {
+      color: var(--ins-muted); text-decoration: none;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase;
+      border-bottom: 1px solid var(--ins-line); padding-bottom: 3px; white-space: nowrap;
+    }
+    .ins-join:hover { color: var(--ins-bone); border-color: var(--ins-bone); }
+    .ins-host {
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 12px 17px; background: var(--ins-amber); color: #1b1407;
+      border: 1px solid var(--ins-amber);
+      font-size: 10px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase;
+      text-decoration: none; white-space: nowrap;
+      transition: background 150ms ease, color 150ms ease;
+    }
+    .ins-host:hover { background: var(--ins-bone); border-color: var(--ins-bone); }
+    .ins-host .icon { width: 13px; height: 13px; }
+
+    .ins-hero {
+      position: relative;
+      padding: clamp(36px, 5vw, 66px) 0 clamp(56px, 7vw, 92px);
+      background-image:
+        linear-gradient(rgba(143, 227, 176, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(143, 227, 176, 0.035) 1px, transparent 1px);
+      background-size: 38px 38px;
+    }
+    .ins-hero::after {
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 72% 30%, rgba(143, 227, 176, 0.08), transparent 55%);
+      pointer-events: none;
+    }
+    .ins-hero-grid {
+      position: relative; z-index: 1;
+      display: grid; grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+      gap: clamp(28px, 4.5vw, 64px); align-items: start;
+    }
+    .ins-intro { padding-top: 6px; }
+    .ins-kicker {
+      display: flex; align-items: center; gap: 9px; margin-bottom: 22px;
+      color: var(--ins-phos); font-size: 10px; font-weight: 800;
+      letter-spacing: 0.2em; text-transform: uppercase;
+    }
+    .ins-kicker .dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--ins-phos);
+      box-shadow: 0 0 0 4px rgba(143, 227, 176, 0.12);
+    }
+    .ins-intro h1 {
+      max-width: 11ch;
+      font-size: clamp(42px, 5vw, 68px);
+      font-weight: 800; line-height: 0.96; letter-spacing: -0.045em;
+    }
+    .ins-intro h1 span { color: var(--ins-amber); }
+    .ins-lede {
+      max-width: 39ch; margin-top: 24px; color: var(--ins-muted);
+      font-size: clamp(14px, 1.3vw, 16px); line-height: 1.65;
+    }
+    .ins-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+    .ins-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+      min-height: 44px; padding: 12px 17px;
+      border: 1px solid var(--ins-line); color: var(--ins-bone);
+      font-size: 10px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase;
+      text-decoration: none;
+      transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+    }
+    .ins-btn:hover { border-color: var(--ins-phos); color: var(--ins-phos); }
+    .ins-btn-fill { background: var(--ins-phos); border-color: var(--ins-phos); color: #06100c; }
+    .ins-btn-fill:hover { background: var(--ins-bone); border-color: var(--ins-bone); color: #06100c; }
+    .ins-btn .icon { width: 14px; height: 14px; }
+    .ins-fine { margin-top: 26px; color: #7f978b; font-size: 10.5px; line-height: 1.6; }
+
+    .ins-console {
+      border: 1px solid var(--ins-line);
+      background: var(--ins-panel);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.38);
+      min-width: 0;
+    }
+    .ins-console-top {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 10px 14px; border-bottom: 1px solid var(--ins-line);
+      background: var(--ins-panel-2);
+    }
+    .ins-console-title {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 9.5px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
+    }
+    .ins-console-title .led {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--ins-phos);
+    }
+    .ins-console-meta { display: flex; align-items: center; gap: 12px; }
+    .ins-chip {
+      padding: 4px 7px; border: 1px solid var(--ins-line);
+      color: var(--ins-muted); font-size: 8px; font-weight: 800;
+      letter-spacing: 0.14em; text-transform: uppercase;
+    }
+    .ins-chip.sim { color: var(--ins-violet); border-color: rgba(195, 166, 255, 0.4); }
+    .ins-clock { color: var(--ins-bone); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; }
+
+    .ins-tabs {
+      display: flex; gap: 0; border-bottom: 1px solid var(--ins-line);
+      background: var(--ins-panel-3); overflow-x: auto;
+    }
+    .ins-tabs button {
+      flex: 1; min-width: max-content; padding: 9px 12px;
+      border-right: 1px solid var(--ins-line-soft);
+      color: var(--ins-muted); font-size: 8.5px; font-weight: 800;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      border-bottom: 2px solid transparent;
+    }
+    .ins-tabs button:last-child { border-right: 0; }
+    .ins-tabs button[aria-pressed="true"] { color: var(--ins-bone); border-bottom-color: var(--ins-phos); background: var(--ins-panel); }
+    .ins-tabs button:hover { color: var(--ins-bone); }
+
+    .ins-panel { padding: 12px; }
+    .ins-live-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      margin-bottom: 9px;
+    }
+    .ins-live-head strong { font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+    .ins-live-head span { color: var(--ins-muted); font-size: 8.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .ins-kpis {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+      border: 1px solid var(--ins-line); background: var(--ins-panel-3);
+    }
+    .ins-kpi { padding: 7px 9px; border-right: 1px solid var(--ins-line); }
+    .ins-kpi:last-child { border-right: 0; }
+    .ins-kpi b { display: block; font-size: 18px; font-weight: 800; line-height: 1.1; }
+    .ins-kpi span { display: block; margin-top: 1px; color: var(--ins-muted); font-size: 7.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+    .ins-kpi.green b { color: var(--ins-phos); }
+    .ins-kpi.amber b { color: var(--ins-amber); }
+    .ins-kpi.red b { color: var(--ins-red); }
+
+    .ins-seats {
+      display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 5px; margin-top: 8px;
+    }
+    .ins-seat {
+      min-width: 0; min-height: 51px; padding: 6px 7px;
+      border: 1px solid var(--ins-line-soft); background: var(--ins-panel-3);
+      text-align: left; color: var(--ins-bone);
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+    .ins-seat:hover { border-color: var(--ins-muted); background: var(--ins-panel-2); }
+    .ins-seat[aria-pressed="true"] { border-color: var(--ins-phos); background: #13261f; }
+    .ins-seat .seat-top { display: flex; align-items: center; gap: 5px; min-width: 0; }
+    .ins-seat .seat-dot { width: 5px; height: 5px; border-radius: 50%; flex: none; background: var(--ins-muted); }
+    .ins-seat .seat-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8.5px; font-weight: 700; }
+    .ins-seat .seat-score { display: block; margin-top: 3px; font-size: 14px; font-weight: 800; line-height: 1; }
+    .ins-seat .seat-state { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ins-muted); font-size: 7px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .ins-seat[data-state="attentive"] .seat-dot { background: var(--ins-phos); }
+    .ins-seat[data-state="attentive"] .seat-score { color: var(--ins-phos); }
+    .ins-seat[data-state="distracted"] .seat-dot { background: var(--ins-amber); }
+    .ins-seat[data-state="distracted"] .seat-score { color: var(--ins-amber); }
+    .ins-seat[data-state="away"] .seat-dot { background: var(--ins-red); }
+    .ins-seat[data-state="away"] .seat-score { color: var(--ins-red); }
+    .ins-seat[data-state="identity"] .seat-dot { background: var(--ins-blue); }
+    .ins-seat[data-state="identity"] .seat-score { color: var(--ins-blue); }
+    .ins-seat[data-state="disengaged"] .seat-dot { background: var(--ins-violet); }
+    .ins-seat[data-state="disengaged"] .seat-score { color: var(--ins-violet); }
+    .ins-seat[data-state="removed"] { opacity: 0.45; }
+    .ins-seat[data-state="removed"] .seat-score { color: var(--ins-muted); text-decoration: line-through; }
+
+    .ins-detail {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px;
+      margin-top: 8px; padding: 9px 10px;
+      border: 1px solid var(--ins-line); background: var(--ins-panel-2);
+    }
+    .ins-detail-main { min-width: 0; }
+    .ins-detail-name { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .ins-detail-name strong { font-size: 13px; font-weight: 800; }
+    .ins-detail-name span { color: var(--ins-muted); font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; }
+    .ins-detail-score { margin-left: auto; font-size: 16px; font-weight: 800; }
+    .ins-detail-signals { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+    .ins-pill {
+      padding: 2px 5px; border: 1px solid var(--ins-line);
+      color: var(--ins-muted); font-size: 7.5px; font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .ins-pill.warn { color: var(--ins-amber); border-color: rgba(230, 180, 92, 0.35); }
+    .ins-pill.alert { color: var(--ins-red); border-color: rgba(255, 138, 124, 0.35); }
+    .ins-pill.info { color: var(--ins-blue); border-color: rgba(143, 193, 227, 0.35); }
+    .ins-detail-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; align-content: start; justify-content: end; max-width: 300px; }
+    .ins-act {
+      padding: 7px 9px; border: 1px solid var(--ins-line);
+      color: var(--ins-muted); font-size: 8px; font-weight: 800;
+      letter-spacing: 0.1em; text-transform: uppercase; text-align: center;
+      transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+    }
+    .ins-act:hover { color: var(--ins-bone); border-color: var(--ins-muted); }
+    .ins-act.nudge { color: var(--ins-phos); border-color: rgba(143, 227, 176, 0.35); }
+    .ins-act.nudge:hover { background: var(--ins-phos); color: #06100c; }
+    .ins-act.end { color: var(--ins-amber); border-color: rgba(230, 180, 92, 0.4); }
+    .ins-act.end:hover { background: var(--ins-amber); color: #1b1407; }
+    .ins-act:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .ins-timeline { display: flex; align-items: flex-end; gap: 2px; height: 34px; margin-top: 9px; }
+    .ins-timeline span { flex: 1; min-height: 2px; background: var(--ins-line); }
+    .ins-timeline span.hot { background: var(--ins-amber); }
+    .ins-timeline span.cold { background: var(--ins-red); }
+    .ins-timeline span.mark { background: var(--ins-phos); }
+    .ins-timeline-foot { display: flex; justify-content: space-between; margin-top: 3px; color: var(--ins-muted); font-size: 7px; letter-spacing: 0.1em; text-transform: uppercase; }
+    .ins-live-foot {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--ins-line);
+    }
+    .ins-live-foot span { color: var(--ins-muted); font-size: 8px; letter-spacing: 0.06em; }
+    .ins-live-foot button {
+      padding: 7px 10px; border: 1px solid rgba(230, 180, 92, 0.45);
+      color: var(--ins-amber); font-size: 8px; font-weight: 800;
+      letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap;
+    }
+    .ins-live-foot button:hover { background: var(--ins-amber); color: #1b1407; }
+
+    .ins-empty {
+      min-height: 382px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 30px 20px; text-align: center;
+      border: 1px dashed var(--ins-line);
+      background-image: radial-gradient(rgba(143, 227, 176, 0.11) 1px, transparent 1px);
+      background-size: 22px 22px;
+    }
+    .ins-empty-chip {
+      padding: 5px 9px; border: 1px solid var(--ins-line);
+      color: var(--ins-muted); font-size: 8px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
+    }
+    .ins-empty h2 { margin-top: 16px; font-size: clamp(24px, 3vw, 32px); font-weight: 800; letter-spacing: -0.03em; }
+    .ins-empty p { max-width: 34ch; margin-top: 8px; color: var(--ins-muted); font-size: 11.5px; line-height: 1.6; }
+    .ins-empty .ins-btn { margin-top: 18px; }
+    .ins-empty-note { margin-top: 12px; color: #7f978b; font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; }
+
+    .ins-done { padding: 2px; }
+    .ins-done-top { display: flex; justify-content: space-between; gap: 12px; padding: 6px 2px 10px; border-bottom: 1px solid var(--ins-line); }
+    .ins-done-top strong { font-size: 10px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; }
+    .ins-done-top span { color: var(--ins-muted); font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; }
+    .ins-done-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .ins-done-tpi { padding: 12px; border: 1px solid var(--ins-line); background: var(--ins-panel-3); }
+    .ins-done-tpi span { color: var(--ins-muted); font-size: 8px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; }
+    .ins-done-tpi strong { display: flex; align-items: baseline; gap: 4px; margin-top: 2px; font-size: 54px; line-height: 0.9; letter-spacing: -0.06em; color: var(--ins-amber); }
+    .ins-done-tpi strong small { font-size: 12px; font-weight: 700; letter-spacing: 0; color: var(--ins-muted); }
+    .ins-done-tpi p { margin-top: 8px; color: var(--ins-muted); font-size: 8.5px; line-height: 1.5; }
+    .ins-done-stats { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--ins-line); }
+    .ins-done-stat { padding: 9px; border-right: 1px solid var(--ins-line); border-bottom: 1px solid var(--ins-line); }
+    .ins-done-stat:nth-child(2n) { border-right: 0; }
+    .ins-done-stat:nth-last-child(-n+2) { border-bottom: 0; }
+    .ins-done-stat b { display: block; font-size: 17px; font-weight: 800; }
+    .ins-done-stat span { display: block; margin-top: 1px; color: var(--ins-muted); font-size: 7px; letter-spacing: 0.1em; text-transform: uppercase; }
+    .ins-done-bars { display: flex; align-items: flex-end; gap: 2px; height: 40px; margin-top: 12px; }
+    .ins-done-bars span { flex: 1; background: var(--ins-line); }
+    .ins-done-bars span.g { background: var(--ins-phos); }
+    .ins-done-bars span.a { background: var(--ins-amber); }
+    .ins-done-bars span.r { background: var(--ins-red); }
+    .ins-done-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--ins-line); }
+    .ins-done-foot a { color: var(--ins-phos); font-size: 8.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; }
+    .ins-done-foot a:hover { text-decoration: underline; }
+    .ins-done-foot button { color: var(--ins-muted); font-size: 8.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 1px solid var(--ins-line); padding-bottom: 2px; }
+    .ins-done-foot button:hover { color: var(--ins-bone); border-color: var(--ins-bone); }
+
+    .ins-toast {
+      position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 4;
+      padding: 9px 12px; background: var(--ins-bone); color: #0a1512;
+      font-size: 10px; font-weight: 700; line-height: 1.4;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+      opacity: 0; transform: translateY(8px); pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+    .ins-toast.is-on { opacity: 1; transform: translateY(0); }
+    .ins-console { position: relative; }
+
+    .ins-band { border-top: 1px solid var(--ins-line); }
+    .ins-section { padding: clamp(56px, 7vw, 94px) 0; }
+    .ins-section-head {
+      display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+      gap: 30px; align-items: end; margin-bottom: 32px;
+    }
+    .ins-section-head h2 {
+      font-size: clamp(32px, 4vw, 52px); font-weight: 800;
+      line-height: 0.98; letter-spacing: -0.04em;
+    }
+    .ins-section-head p { max-width: 52ch; color: var(--ins-muted); font-size: 14px; line-height: 1.65; }
+    .ins-section-head .eyebrow {
+      display: block; margin-bottom: 10px; color: var(--ins-phos);
+      font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+    }
+
+    .ins-scale { border: 1px solid var(--ins-line); background: var(--ins-panel); }
+    .ins-scale-bar { display: flex; height: 54px; border-bottom: 1px solid var(--ins-line); }
+    .ins-scale-bar span { display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .ins-scale-bar .s-away { width: 40%; background: rgba(255, 138, 124, 0.18); color: var(--ins-red); }
+    .ins-scale-bar .s-dist { width: 30%; background: rgba(230, 180, 92, 0.16); color: var(--ins-amber); }
+    .ins-scale-bar .s-att { width: 30%; background: rgba(143, 227, 176, 0.14); color: var(--ins-phos); }
+    .ins-scale-labels { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+    .ins-scale-labels div { padding: 11px 13px; border-right: 1px solid var(--ins-line); }
+    .ins-scale-labels div:last-child { border-right: 0; }
+    .ins-scale-labels b { display: block; font-size: 12px; }
+    .ins-scale-labels span { display: block; margin-top: 3px; color: var(--ins-muted); font-size: 9px; line-height: 1.5; }
+    .ins-flags { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--ins-line); border-top: 0; }
+    .ins-flag { padding: 12px 13px; border-right: 1px solid var(--ins-line); border-top: 1px solid var(--ins-line); }
+    .ins-flag:nth-child(2n) { border-right: 0; }
+    .ins-flag b { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .ins-flag b i { width: 5px; height: 5px; border-radius: 50%; background: var(--ins-blue); }
+    .ins-flag p { margin-top: 4px; color: var(--ins-muted); font-size: 10.5px; line-height: 1.5; }
+    .ins-nodata { display: flex; gap: 12px; margin-top: 16px; padding: 14px 16px; border: 1px dashed var(--ins-line); background: var(--ins-panel); }
+    .ins-nodata .icon { width: 18px; height: 18px; color: var(--ins-amber); flex: none; margin-top: 1px; }
+    .ins-nodata b { display: block; font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+    .ins-nodata p { margin-top: 3px; color: var(--ins-muted); font-size: 11.5px; line-height: 1.55; }
+
+    .ins-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .ins-mode { border: 1px solid var(--ins-line); background: var(--ins-panel); padding: 18px; }
+    .ins-mode h3 { font-size: 9px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ins-muted); }
+    .ins-mode-toggles { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+    .ins-toggle {
+      padding: 8px 11px; border: 1px solid var(--ins-line);
+      color: var(--ins-muted); font-size: 8.5px; font-weight: 800;
+      letter-spacing: 0.1em; text-transform: uppercase;
+    }
+    .ins-toggle[aria-pressed="true"] { color: var(--ins-bone); border-color: var(--ins-phos); background: rgba(143, 227, 176, 0.1); }
+    .ins-mode p { margin-top: 12px; color: var(--ins-muted); font-size: 11px; line-height: 1.6; min-height: 52px; }
+    .ins-mode-note { display: block; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--ins-line-soft); color: #7f978b; font-size: 9px; line-height: 1.5; }
+
+    .ins-quote {
+      display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 40px; align-items: end;
+      padding: 40px 0 0; border-top: 1px solid var(--ins-line);
+    }
+    .ins-quote blockquote {
+      max-width: 21ch;
+      font-family: var(--font-display);
+      font-size: clamp(30px, 4vw, 52px); font-weight: 400; font-style: italic;
+      line-height: 1.05; letter-spacing: -0.02em; color: var(--ins-bone);
+    }
+    .ins-quote blockquote span { color: var(--ins-amber); }
+    .ins-quote p { max-width: 38ch; color: var(--ins-muted); font-size: 12px; line-height: 1.65; }
+
+    .ins-after { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 40px; align-items: start; }
+    .ins-after-copy h3 { font-size: clamp(26px, 3vw, 36px); font-weight: 800; line-height: 1.02; letter-spacing: -0.035em; }
+    .ins-after-copy p { margin-top: 14px; color: var(--ins-muted); font-size: 13px; line-height: 1.65; max-width: 42ch; }
+    .ins-after-copy ul { margin-top: 20px; border-top: 1px solid var(--ins-line); }
+    .ins-after-copy li { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--ins-line); font-size: 11.5px; line-height: 1.5; }
+    .ins-after-copy li .icon { width: 13px; height: 13px; color: var(--ins-phos); flex: none; margin-top: 2px; }
+    .ins-receipt { border: 1px solid var(--ins-line); background: var(--ins-panel); padding: 16px; }
+    .ins-receipt-top { display: flex; justify-content: space-between; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--ins-line); color: var(--ins-muted); font-size: 8px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+    .ins-receipt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .ins-receipt-cell { padding: 10px; border: 1px solid var(--ins-line); }
+    .ins-receipt-cell span { display: block; color: var(--ins-muted); font-size: 7.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .ins-receipt-cell b { display: block; margin-top: 3px; font-size: 18px; font-weight: 800; }
+    .ins-receipt-cell.tpi b { color: var(--ins-amber); font-size: 30px; }
+    .ins-receipt-note { margin-top: 10px; color: var(--ins-muted); font-size: 9px; line-height: 1.55; }
+    .ins-receipt-bar { display: flex; height: 9px; margin-top: 12px; border: 1px solid var(--ins-line); }
+    .ins-receipt-bar span { display: block; height: 100%; }
+    .ins-receipt-legend { display: flex; justify-content: space-between; gap: 8px; margin-top: 5px; color: var(--ins-muted); font-size: 7.5px; }
+
+    .ins-cta { padding: clamp(60px, 8vw, 110px) 0; background: var(--ins-panel-3); border-top: 1px solid var(--ins-line); }
+    .ins-cta-in { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 36px; align-items: end; }
+    .ins-cta h2 { max-width: 14ch; font-size: clamp(38px, 5vw, 64px); font-weight: 800; line-height: 0.96; letter-spacing: -0.045em; }
+    .ins-cta h2 span { color: var(--ins-amber); }
+    .ins-cta p { max-width: 38ch; margin-top: 14px; color: var(--ins-muted); font-size: 13px; line-height: 1.65; }
+    .ins-cta-actions { display: flex; flex-direction: column; gap: 8px; }
+    .ins-cta-actions .ins-btn { justify-content: space-between; }
+
+    .ins-foot { padding: 34px 0 26px; background: #050c0a; border-top: 1px solid var(--ins-line); }
+    .ins-foot-grid { display: grid; grid-template-columns: 1.4fr 0.7fr 0.7fr 1fr; gap: 26px; padding-bottom: 24px; border-bottom: 1px solid var(--ins-line); }
+    .ins-foot-brand { display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .ins-foot-brand img { width: 21px; height: 21px; }
+    .ins-foot p { margin-top: 10px; max-width: 30ch; color: #8fa69a; font-size: 10.5px; line-height: 1.6; }
+    .ins-foot h3 { margin-bottom: 8px; color: var(--ins-phos); font-size: 8px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; }
+    .ins-foot li { margin-top: 6px; }
+    .ins-foot a { color: #b7c8be; font-size: 10.5px; text-decoration: none; }
+    .ins-foot a:hover { color: var(--ins-bone); text-decoration: underline; }
+    .ins-foot-bottom { display: flex; justify-content: space-between; gap: 14px; padding-top: 14px; color: #6f877b; font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+
+    @media (max-width: 1080px) {
+      .ins-hero-grid { grid-template-columns: 1fr; }
+      .ins-intro h1 { max-width: 13ch; }
+      .ins-console { max-width: 760px; }
+      .ins-section-head { grid-template-columns: 1fr; gap: 14px; }
+      .ins-after { grid-template-columns: 1fr; }
+      .ins-cta-in { grid-template-columns: 1fr; align-items: start; }
+      .ins-cta-actions { max-width: 340px; }
+    }
+    @media (max-width: 780px) {
+      .ins-nav { display: none; }
+      .ins-head-in { gap: 12px; }
+      .ins-head-actions { margin-left: auto; gap: 10px; }
+      .ins-brand-tag { display: none; }
+      .ins-seats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .ins-detail { grid-template-columns: 1fr; }
+      .ins-detail-actions { justify-content: flex-start; max-width: none; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .ins-modes { grid-template-columns: 1fr; }
+      .ins-quote { grid-template-columns: 1fr; gap: 18px; }
+      .ins-foot-grid { grid-template-columns: 1fr 1fr; }
+      .ins-foot-bottom { flex-direction: column; gap: 7px; }
+    }
+    @media (max-width: 460px) {
+      .ins-join { display: none; }
+      .ins-host { padding: 10px 12px; font-size: 9px; }
+      .ins-intro h1 { font-size: 40px; }
+      .ins-seats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .ins-kpis { grid-template-columns: 1fr 1fr; }
+      .ins-kpi:nth-child(2) { border-right: 0; }
+      .ins-kpi:nth-child(-n+2) { border-bottom: 1px solid var(--ins-line); }
+      .ins-scale-labels { grid-template-columns: 1fr; }
+      .ins-scale-labels div { border-right: 0; border-bottom: 1px solid var(--ins-line); }
+      .ins-scale-labels div:last-child { border-bottom: 0; }
+      .ins-flags { grid-template-columns: 1fr; }
+      .ins-flag, .ins-flag:nth-child(2n) { border-right: 0; }
+      .ins-done-grid { grid-template-columns: 1fr; }
+      .ins-receipt-grid { grid-template-columns: 1fr 1fr; }
+      .ins-console-meta .ins-chip.sim { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ins-toast { transition: none; }
+      .ins-seat, .ins-act, .ins-btn, .ins-host { transition: none; }
+    }
+
+    /* Legibility floor for the console's microcopy. */
+    .ins-seat .seat-name { font-size: 9.5px; }
+    .ins-seat .seat-state { font-size: 8.5px; }
+    .ins-kpi span, .ins-timeline-foot, .ins-done-stat span, .ins-receipt-cell span, .ins-receipt-legend, .ins-empty-note, .ins-done-foot a, .ins-done-foot button { font-size: 8.5px; }
+    .ins-act { font-size: 8.5px; }
+    .ins-live-head span { font-size: 9px; }
+  </style>
+</head>
+<body class="d-instrument">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="ins-head" data-header>
+    <div class="wrap ins-head-in">
+      <a class="ins-brand" href="#top" aria-label="Chronos home">
+        <img src="/logo_light.svg" alt="" width="22" height="22" />
+        <span>Chronos</span>
+        <span class="ins-brand-tag">Instrument</span>
+      </a>
+      <nav class="ins-nav" aria-label="Primary">
+        <a href="#states">States</a>
+        <a href="#modes">Modes</a>
+        <a href="#after">After class</a>
+        <a href="/signin">Sign in</a>
+      </nav>
+      <div class="ins-head-actions">
+        <a class="ins-join" href="/signin?next=/student">Join a class</a>
+        <a class="ins-host" href="/signup">
+          Host a class
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="ins-hero" id="top">
+      <div class="wrap ins-hero-grid">
+        <div class="ins-intro">
+          <p class="ins-kicker"><span class="dot" aria-hidden="true"></span> Live room / simulated</p>
+          <h1>One student drifts. <span>You decide what happens next.</span></h1>
+          <p class="ins-lede">
+            Chronos shows the room as it changes, not as a scoreboard. Nudge the student,
+            give them time, then make the call. The console below runs 20 learners.
+            Every action is yours.
+          </p>
+          <div class="ins-actions">
+            <a class="ins-btn ins-btn-fill" href="/signup">
+              Host a class
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+            </a>
+            <a class="ins-btn" href="/signin?next=/student">Join a class</a>
+          </div>
+          <p class="ins-fine">
+            Interactive illustration. No camera, no backend, no account. The 20 learners are
+            sample data; the state bands, strikes and teacher actions are the real product rules.
+          </p>
+        </div>
+
+        <div class="ins-console" id="console" aria-label="Simulated classroom console">
+          <div class="ins-console-top">
+            <div class="ins-console-title"><span class="led" aria-hidden="true"></span> Live room · PHY-201</div>
+            <div class="ins-console-meta">
+              <span class="ins-chip sim">Simulated</span>
+              <span class="ins-chip" data-ins-status>Live</span>
+              <span class="ins-clock" data-ins-clock>00:12:40</span>
+            </div>
+          </div>
+
+          <div class="ins-tabs" role="group" aria-label="Simulator state">
+            <button type="button" data-ins-mode="empty" aria-pressed="false">Before class</button>
+            <button type="button" data-ins-mode="live" aria-pressed="true">In session</button>
+            <button type="button" data-ins-mode="done" aria-pressed="false">After class</button>
+          </div>
+
+          <div class="ins-panel" data-ins-panel="empty" hidden>
+            <div class="ins-empty">
+              <span class="ins-empty-chip">Room empty · 0 present</span>
+              <h2>No one has joined yet.</h2>
+              <p>The room is ready. Start a class and 20 simulated learners will join so you can try the controls.</p>
+              <button class="ins-btn ins-btn-fill" type="button" data-ins-start>
+                Start a class
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7V5z"/></svg>
+              </button>
+              <span class="ins-empty-note">Nothing is recorded until the class ends</span>
+            </div>
+          </div>
+
+          <div class="ins-panel" data-ins-panel="live">
+            <div class="ins-live-head">
+              <strong>Room overview</strong>
+              <span>State updates every 3s in the real product</span>
+            </div>
+            <div class="ins-kpis">
+              <div class="ins-kpi"><b data-ins-count="present">20</b><span>Present</span></div>
+              <div class="ins-kpi green"><b data-ins-count="attentive">14</b><span>Attentive</span></div>
+              <div class="ins-kpi amber"><b data-ins-count="distracted">4</b><span>Distracted</span></div>
+              <div class="ins-kpi red"><b data-ins-count="critical">2</b><span>Critical</span></div>
+            </div>
+
+            <div class="ins-seats" data-ins-seats aria-label="Students in the room"></div>
+
+            <div class="ins-detail" data-ins-detail aria-live="polite" aria-atomic="true"></div>
+
+            <div class="ins-timeline" data-ins-timeline aria-hidden="true"></div>
+            <div class="ins-timeline-foot"><span>Start</span><span>12:40 · now</span></div>
+            <div class="ins-live-foot">
+              <span>Every action is recorded as a teacher action. Nothing is automated.</span>
+              <button type="button" data-ins-end>End class</button>
+            </div>
+          </div>
+
+          <div class="ins-panel" data-ins-panel="done" hidden>
+            <div class="ins-done">
+              <div class="ins-done-top">
+                <strong>Session ended</strong>
+                <span>14:32 · 42:00</span>
+              </div>
+              <div class="ins-done-grid">
+                <div class="ins-done-tpi">
+                  <span>Teacher Performance Index</span>
+                  <strong>75<small>/100</small></strong>
+                  <p>60% mean engagement + 40% attention retention. Computed after class.</p>
+                </div>
+                <div class="ins-done-stats">
+                  <div class="ins-done-stat"><b>20</b><span>Learners</span></div>
+                  <div class="ins-done-stat"><b>14</b><span>Attentive</span></div>
+                  <div class="ins-done-stat"><b>4</b><span>Distracted</span></div>
+                  <div class="ins-done-stat"><b>2</b><span>Away</span></div>
+                </div>
+              </div>
+              <div class="ins-done-bars" aria-hidden="true">
+                <span class="g" style="height:62%"></span><span class="g" style="height:70%"></span><span class="g" style="height:66%"></span><span class="g" style="height:74%"></span><span class="g" style="height:80%"></span><span class="g" style="height:76%"></span><span class="a" style="height:54%"></span><span class="a" style="height:48%"></span><span class="r" style="height:28%"></span><span class="a" style="height:52%"></span><span class="g" style="height:72%"></span><span class="g" style="height:78%"></span><span class="g" style="height:82%"></span><span class="g" style="height:79%"></span><span class="g" style="height:84%"></span><span class="g" style="height:86%"></span><span class="g" style="height:81%"></span><span class="g" style="height:77%"></span><span class="g" style="height:83%"></span><span class="g" style="height:88%"></span><span class="g" style="height:85%"></span><span class="g" style="height:80%"></span><span class="g" style="height:84%"></span><span class="g" style="height:87%"></span>
+              </div>
+              <div class="ins-done-foot">
+                <a href="/demos/the-record.html">See the full record</a>
+                <button type="button" data-ins-again>Run it again</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ins-toast" data-ins-toast role="status" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ins-section ins-band" id="states">
+      <div class="wrap">
+        <div class="ins-section-head">
+          <div>
+            <span class="eyebrow">The states, exactly</span>
+            <h2>Six labels. No blended score.</h2>
+          </div>
+          <p>
+            A student is in one state at a time. The bands are fixed, the flags are visible, and
+            “no face in frame” has its own label. Nothing here is an emotion.
+          </p>
+        </div>
+
+        <div class="ins-scale">
+          <div class="ins-scale-bar" role="img" aria-label="Score bands from 0 to 1: away below 0.40, distracted from 0.40 to 0.70, attentive above 0.70.">
+            <span class="s-away">Away &lt; 0.40</span>
+            <span class="s-dist">Distracted 0.40–0.70</span>
+            <span class="s-att">Attentive &gt; 0.70</span>
+          </div>
+          <div class="ins-scale-labels">
+            <div><b>Attentive</b><span>Score above 0.70. Still a signal, not a verdict.</span></div>
+            <div><b>Distracted</b><span>0.40–0.70. The student gets time and a nudge first.</span></div>
+            <div><b>Away</b><span>Below 0.40. The teacher sees the flag, never an automatic action.</span></div>
+          </div>
+          <div class="ins-flags">
+            <div class="ins-flag"><b><i style="background:var(--ins-violet)"></i> Disengaged</b><p>Three strikes. The teacher can mark engaged, message, ignore or remove.</p></div>
+            <div class="ins-flag"><b><i style="background:var(--ins-blue)"></i> Identity mismatch</b><p>Two or more consecutive low-similarity checks, at a 2–5 minute cadence.</p></div>
+            <div class="ins-flag"><b><i style="background:var(--ins-amber)"></i> Multi-face</b><p>More than one face in frame. A flag for a human, not a cheating verdict.</p></div>
+            <div class="ins-flag"><b><i style="background:var(--ins-red)"></i> Tab switch</b><p>Noticed only in strict mode. In normal mode, leaving the tab is not a violation.</p></div>
+          </div>
+        </div>
+        <div class="ins-nodata">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg>
+          <div><b>No face in frame is NO_DATA.</b><p>It is not “disengaged.” A camera miss is a camera miss; the student is not punished for it.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ins-section ins-band" id="modes">
+      <div class="wrap">
+        <div class="ins-section-head">
+          <div>
+            <span class="eyebrow">Session controls</span>
+            <h2>Strict or normal. Class or exam.</h2>
+          </div>
+          <p>
+            Two independent settings, both visible before class. Strict mode notices when the tab
+            loses focus. Exam context applies a stricter gaze rule. Neither is a proctoring claim.
+          </p>
+        </div>
+        <div class="ins-modes">
+          <div class="ins-mode">
+            <h3>Tab policy</h3>
+            <div class="ins-mode-toggles" role="group" aria-label="Tab policy">
+              <button class="ins-toggle" type="button" data-ins-tab="normal" aria-pressed="true">Normal tab</button>
+              <button class="ins-toggle" type="button" data-ins-tab="strict" aria-pressed="false">Strict tab</button>
+            </div>
+            <p data-ins-tab-copy>Normal: the student can switch tabs without it becoming a violation. Useful for classes that use other tools.</p>
+            <span class="ins-mode-note">The setting is recorded with the session, so the report says which rule was in force.</span>
+          </div>
+          <div class="ins-mode">
+            <h3>Class context</h3>
+            <div class="ins-mode-toggles" role="group" aria-label="Class context">
+              <button class="ins-toggle" type="button" data-ins-context="class" aria-pressed="true">Class</button>
+              <button class="ins-toggle" type="button" data-ins-context="exam" aria-pressed="false">Exam</button>
+            </div>
+            <p data-ins-context-copy>Class: a glance away does not sink the score. The student has room to think, look at notes, or take a breath.</p>
+            <span class="ins-mode-note">Exam: stricter gaze and one-strike disengagement. The teacher still makes every call.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ins-section ins-band" id="after">
+      <div class="wrap">
+        <div class="ins-section-head">
+          <div>
+            <span class="eyebrow">After you end the class</span>
+            <h2>The room becomes a record.</h2>
+          </div>
+          <p>
+            One integer, one timeline, one distribution. TPI is 60% mean engagement plus 40%
+            attention retention, computed after class. It is a session index for the teacher,
+            not a grade for the student.
+          </p>
+        </div>
+        <div class="ins-after">
+          <div class="ins-after-copy">
+            <h3>You leave with the next class in mind.</h3>
+            <p>
+              The record names the students who need a follow-up and the moments the whole room
+              stumbled. It does not rank anyone, and it does not decide anything.
+            </p>
+            <ul>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> Attention timeline and distribution, including NO_DATA gaps.</li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> Students at risk with the reason: average, strikes or identity flags.</li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> Confusion hotspots when at least 20% of the class was confused at once.</li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> PDF export, including the strict/normal and class/exam settings.</li>
+            </ul>
+          </div>
+          <div class="ins-receipt">
+            <div class="ins-receipt-top"><span>Session receipt</span><span>PHY-201 · 42:00</span></div>
+            <div class="ins-receipt-grid">
+              <div class="ins-receipt-cell tpi"><span>TPI</span><b>75</b></div>
+              <div class="ins-receipt-cell"><span>Mean engagement</span><b>0.71</b></div>
+              <div class="ins-receipt-cell"><span>Attention retention</span><b>0.80</b></div>
+              <div class="ins-receipt-cell"><span>Learners</span><b>20</b></div>
+            </div>
+            <div class="ins-receipt-bar" aria-hidden="true">
+              <span style="width:70%;background:var(--ins-phos)"></span>
+              <span style="width:20%;background:var(--ins-amber)"></span>
+              <span style="width:10%;background:var(--ins-red)"></span>
+            </div>
+            <div class="ins-receipt-legend"><span>14 attentive</span><span>4 distracted</span><span>2 away</span></div>
+            <p class="ins-receipt-note">TPI = (mean engagement × 60%) + (attention retention × 40%). Rounded to an integer, 0–100.</p>
+          </div>
+        </div>
+        <div class="ins-quote">
+          <blockquote>“The signal points. <span>The teacher decides.</span>”</blockquote>
+          <p>No automated discipline. No student score that changes a grade. The student is nudged and gets time to recover; the teacher has the last word.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="ins-cta" id="start">
+      <div class="wrap ins-cta-in">
+        <div>
+          <h2>Open a room. <span>Keep the judgment.</span></h2>
+          <p>Host a class, or join one with the link your teacher shared. The simulator above is yours to try either way.</p>
+        </div>
+        <div class="ins-cta-actions">
+          <a class="ins-btn ins-btn-fill" href="/signup">
+            Host a class
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+          </a>
+          <a class="ins-btn" href="/signin?next=/student">Join a class</a>
+          <a class="ins-btn" href="/signin">Sign in</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="ins-foot">
+    <div class="wrap">
+      <div class="ins-foot-grid">
+        <div>
+          <div class="ins-foot-brand"><img src="/logo_light.svg" alt="" width="21" height="21" /> Chronos</div>
+          <p>Explainable engagement and identity signals for live sessions. Teacher judgment stays central.</p>
+        </div>
+        <div>
+          <h3>Experience</h3>
+          <ul>
+            <li><a href="/signup">Host a class</a></li>
+            <li><a href="/signin?next=/student">Join a class</a></li>
+            <li><a href="/signin">Sign in</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Instrument</h3>
+          <ul>
+            <li><a href="#states">States</a></li>
+            <li><a href="#modes">Modes</a></li>
+            <li><a href="#after">After class</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Status</h3>
+          <p style="margin-top:0">No video stored. No page or app content. No automated discipline.</p>
+        </div>
+      </div>
+      <div class="ins-foot-bottom">
+        <span>© 2026 Chronos — Intelligence for Presence</span>
+        <span>Illustrative data · Not a proctoring tool</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/demos/shared.js" defer></script>
+  <script>
+    (() => {
+      const BASE = [
+        { name: "Maya R.", score: 0.44, strikes: 1, identity: false, tab: false, multi: false },
+        { name: "Dev P.", score: 0.35, strikes: 0, identity: true, tab: false, multi: false },
+        { name: "Ana S.", score: 0.78, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Noah K.", score: 0.62, strikes: 0, identity: false, tab: false, multi: true },
+        { name: "Imani T.", score: 0.91, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Leo M.", score: 0.29, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Priya N.", score: 0.73, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Sam O.", score: 0.55, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Hana Y.", score: 0.88, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Omar F.", score: 0.71, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Ruth B.", score: 0.67, strikes: 0, identity: false, tab: true, multi: false },
+        { name: "Kai L.", score: 0.81, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Zoe W.", score: 0.76, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Ben C.", score: 0.84, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Nia J.", score: 0.71, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Eli D.", score: 0.79, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Ava G.", score: 0.74, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Ravi S.", score: 0.82, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Mina H.", score: 0.77, strikes: 0, identity: false, tab: false, multi: false },
+        { name: "Theo A.", score: 0.72, strikes: 0, identity: false, tab: false, multi: false },
+      ];
+
+      const seats = document.querySelector("[data-ins-seats]");
+      const detail = document.querySelector("[data-ins-detail]");
+      const timeline = document.querySelector("[data-ins-timeline]");
+      const toast = document.querySelector("[data-ins-toast]");
+      const clock = document.querySelector("[data-ins-clock]");
+      const status = document.querySelector("[data-ins-status]");
+      const modeButtons = Array.from(document.querySelectorAll("[data-ins-mode]"));
+      const panels = Array.from(document.querySelectorAll("[data-ins-panel]"));
+      if (!seats || !detail || !modeButtons.length) return;
+
+      let students = [];
+      let selected = "Maya R.";
+      let mode = "live";
+      let seconds = 760;
+      let timer = null;
+      let toastTimer = null;
+      let recoveryTimer = null;
+
+      const find = (name) => students.find((s) => s.name === name);
+
+      function statusOf(s) {
+        if (!s || s.removed) return "removed";
+        if (s.strikes >= 3) return "disengaged";
+        if (s.identity) return "identity";
+        if (s.score < 0.4) return "away";
+        if (s.score < 0.7) return "distracted";
+        return "attentive";
+      }
+      function statusLabel(s) {
+        return {
+          removed: "Removed",
+          disengaged: "Disengaged",
+          identity: "Identity check",
+          away: "Away",
+          distracted: "Distracted",
+          attentive: "Attentive",
+        }[statusOf(s)];
+      }
+      function stateDetail(s) {
+        return {
+          removed: "teacher action",
+          disengaged: "3 strikes",
+          identity: "2 checks",
+          away: "score < 0.40",
+          distracted: "0.40–0.70",
+          attentive: "score > 0.70",
+        }[statusOf(s)];
+      }
+      function formatTime(total) {
+        const h = String(Math.floor(total / 3600)).padStart(2, "0");
+        const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+        const s = String(total % 60).padStart(2, "0");
+        return `${h}:${m}:${s}`;
+      }
+      function showToast(text) {
+        if (!toast) return;
+        window.clearTimeout(toastTimer);
+        toast.textContent = text;
+        toast.classList.add("is-on");
+        toastTimer = window.setTimeout(() => toast.classList.remove("is-on"), 3400);
+      }
+      function buildStudents() {
+        students = BASE.map((s) => ({ ...s, nudged: false, removed: false }));
+        selected = "Maya R.";
+      }
+      function buildSeats() {
+        seats.innerHTML = students
+          .map(
+            (s) => `<button class="ins-seat" type="button" data-name="${s.name}" aria-pressed="false">
+              <span class="seat-top"><span class="seat-dot" aria-hidden="true"></span><span class="seat-name">${s.name}</span></span>
+              <span class="seat-score">${Math.round(s.score * 100)}%</span>
+              <span class="seat-state">${statusLabel(s)}</span>
+            </button>`,
+          )
+          .join("");
+      }
+      function updateSeats() {
+        seats.querySelectorAll(".ins-seat").forEach((button) => {
+          const s = find(button.dataset.name);
+          if (!s) return;
+          const state = statusOf(s);
+          button.dataset.state = state;
+          button.setAttribute("aria-pressed", String(s.name === selected));
+          button.setAttribute("aria-label", `${s.name}, ${statusLabel(s)}, ${Math.round(s.score * 100)} percent`);
+          button.querySelector(".seat-score").textContent = `${Math.round(s.score * 100)}%`;
+          button.querySelector(".seat-state").textContent = statusLabel(s);
+        });
+      }
+      function counts() {
+        const live = students.filter((s) => !s.removed);
+        return {
+          present: live.length,
+          attentive: live.filter((s) => statusOf(s) === "attentive").length,
+          distracted: live.filter((s) => statusOf(s) === "distracted").length,
+          critical: live.filter((s) => ["away", "identity", "disengaged"].includes(statusOf(s))).length,
+        };
+      }
+      function updateCounts() {
+        const c = counts();
+        Object.entries(c).forEach(([key, value]) => {
+          const el = document.querySelector(`[data-ins-count="${key}"]`);
+          if (el) el.textContent = String(value);
+        });
+      }
+      function signalsFor(s) {
+        if (!s) return [];
+        const out = [];
+        if (s.removed) out.push({ text: "Removed by teacher", tone: "alert" });
+        if (s.strikes) out.push({ text: `${s.strikes} strike${s.strikes > 1 ? "s" : ""}`, tone: "alert" });
+        if (s.identity) out.push({ text: "2 identity checks · liveness action sent", tone: "info" });
+        if (s.multi) out.push({ text: "2 faces in frame", tone: "warn" });
+        if (s.tab) out.push({ text: "Tab switched · strict mode", tone: "warn" });
+        if (s.nudged) out.push({ text: "Nudge sent · recovering", tone: "warn" });
+        if (!out.length) out.push({ text: "No flags", tone: "" });
+        return out;
+      }
+      function renderDetail(focusAction) {
+        const s = find(selected);
+        if (!s) {
+          detail.innerHTML = `<div class="ins-detail-main"><div class="ins-detail-name"><strong>No student selected</strong></div><div class="ins-detail-signals"><span class="ins-pill">Choose a seat above</span></div></div>`;
+          return;
+        }
+        const state = statusOf(s);
+        const disabled = s.removed ? "disabled" : "";
+        const pills = signalsFor(s)
+          .map((sig) => `<span class="ins-pill ${sig.tone}">${sig.text}</span>`)
+          .join("");
+        detail.innerHTML = `
+          <div class="ins-detail-main">
+            <div class="ins-detail-name">
+              <strong>${s.name}</strong>
+              <span>${statusLabel(s)} · ${stateDetail(s)}</span>
+              <span class="ins-detail-score" style="color:${state === "attentive" ? "var(--ins-phos)" : state === "distracted" ? "var(--ins-amber)" : state === "identity" ? "var(--ins-blue)" : "var(--ins-red)"}">${Math.round(s.score * 100)}%</span>
+            </div>
+            <div class="ins-detail-signals">${pills}</div>
+          </div>
+          <div class="ins-detail-actions">
+            <button class="ins-act nudge" type="button" data-ins-action="nudge" ${disabled}>Nudge</button>
+            <button class="ins-act" type="button" data-ins-action="mark" ${disabled}>Mark engaged</button>
+            <button class="ins-act" type="button" data-ins-action="message" ${disabled}>Message</button>
+            <button class="ins-act" type="button" data-ins-action="ignore" ${disabled}>Ignore</button>
+            <button class="ins-act" type="button" data-ins-action="remove" ${disabled}>Remove</button>
+          </div>`;
+        if (focusAction) {
+          const next = detail.querySelector(`[data-ins-action="${focusAction}"]`);
+          if (next) next.focus();
+        }
+      }
+      function renderTimeline() {
+        if (!timeline) return;
+        const bars = [68, 72, 70, 66, 74, 78, 76, 70, 58, 46, 40, 44, 52, 60, 72, 76, 74, 78, 80, 76, 74, 78, 82, 84];
+        timeline.innerHTML = bars
+          .map((h, i) => {
+            const cls = h < 45 ? "cold" : h < 65 ? "hot" : i === 14 ? "mark" : "";
+            return `<span class="${cls}" style="height:${h}%"></span>`;
+          })
+          .join("");
+      }
+      function setMode(next) {
+        mode = next;
+        window.clearInterval(timer);
+        window.clearTimeout(recoveryTimer);
+        modeButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.insMode === next)));
+        panels.forEach((p) => { p.hidden = p.dataset.insPanel !== next; });
+        if (next === "empty") {
+          seconds = 0;
+          status.textContent = "Ready";
+          clock.textContent = formatTime(0);
+        } else if (next === "live") {
+          seconds = 760;
+          status.textContent = "Live";
+          clock.textContent = formatTime(seconds);
+          timer = window.setInterval(() => {
+            seconds += 1;
+            clock.textContent = formatTime(seconds);
+          }, 1000);
+        } else {
+          seconds = 2520;
+          status.textContent = "Ended";
+          clock.textContent = formatTime(seconds);
+        }
+      }
+      function act(action) {
+        const s = find(selected);
+        if (!s && action !== "end") return;
+        if (action === "end") {
+          setMode("done");
+          showToast("Class ended. The session record is ready.");
+          return;
+        }
+        if (s.removed) return;
+        if (action === "nudge") {
+          s.nudged = true;
+          renderDetail("nudge");
+          updateSeats();
+          showToast(`Nudge sent to ${s.name} — demo time is compressed: recovery in 2 seconds.`);
+          window.clearTimeout(recoveryTimer);
+          recoveryTimer = window.setTimeout(() => {
+            s.score = Math.max(s.score, 0.72);
+            s.strikes = 0;
+            s.nudged = false;
+            renderDetail("nudge");
+            updateSeats();
+            updateCounts();
+            showToast(`${s.name} returned to attentive. The teacher still has the last word.`);
+          }, 2000);
+        } else if (action === "mark") {
+          s.score = 0.84;
+          s.strikes = 0;
+          s.identity = false;
+          s.nudged = false;
+          renderDetail("mark");
+          updateSeats();
+          updateCounts();
+          showToast(`Marked ${s.name} engaged. This is a teacher decision, recorded in the session.`);
+        } else if (action === "message") {
+          showToast(`Message sent to ${s.name}: “Take a breath — we're on the worked example.”`);
+        } else if (action === "ignore") {
+          showToast(`Flag ignored for ${s.name} — no action is recorded against the student.`);
+        } else if (action === "remove") {
+          s.removed = true;
+          renderDetail("remove");
+          updateSeats();
+          updateCounts();
+          showToast(`${s.name} removed from the room. Recorded as a teacher action.`);
+        }
+      }
+
+      seats.addEventListener("click", (event) => {
+        const button = event.target.closest(".ins-seat");
+        if (!button) return;
+        selected = button.dataset.name;
+        updateSeats();
+        renderDetail();
+      });
+      detail.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-ins-action]");
+        if (!button) return;
+        act(button.dataset.insAction);
+      });
+      modeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const next = button.dataset.insMode;
+          if (next === "live" && (mode === "done" || mode === "empty")) {
+            buildStudents();
+            buildSeats();
+            updateCounts();
+          }
+          setMode(next);
+          if (next === "live") renderDetail();
+        });
+      });
+      document.querySelector("[data-ins-start]")?.addEventListener("click", () => {
+        buildStudents();
+        buildSeats();
+        updateCounts();
+        setMode("live");
+        renderDetail();
+        showToast("Class started. 20 simulated learners joined the room.");
+      });
+      document.querySelector("[data-ins-end]")?.addEventListener("click", () => {
+        act("end");
+      });
+      document.querySelector("[data-ins-again]")?.addEventListener("click", () => {
+        buildStudents();
+        buildSeats();
+        updateCounts();
+        setMode("live");
+        renderDetail();
+        showToast("A fresh simulated class is running.");
+      });
+
+      const tabCopy = document.querySelector("[data-ins-tab-copy]");
+      document.querySelectorAll("[data-ins-tab]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-ins-tab]").forEach((b) => b.setAttribute("aria-pressed", "false"));
+          button.setAttribute("aria-pressed", "true");
+          if (tabCopy) {
+            tabCopy.textContent =
+              button.dataset.insTab === "strict"
+                ? "Strict: losing tab focus is flagged. Say it plainly: the student is told before class that this is watched."
+                : "Normal: the student can switch tabs without it becoming a violation. Useful for classes that use other tools.";
+          }
+        });
+      });
+      const contextCopy = document.querySelector("[data-ins-context-copy]");
+      document.querySelectorAll("[data-ins-context]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-ins-context]").forEach((b) => b.setAttribute("aria-pressed", "false"));
+          button.setAttribute("aria-pressed", "true");
+          if (contextCopy) {
+            contextCopy.textContent =
+              button.dataset.insContext === "exam"
+                ? "Exam: stricter gaze and one-strike disengagement. The teacher still makes every call; this is a classroom setting, not a proctoring product."
+                : "Class: a glance away does not sink the score. The student has room to think, look at notes, or take a breath.";
+          }
+        });
+      });
+
+      buildStudents();
+      buildSeats();
+      updateCounts();
+      renderTimeline();
+      renderDetail();
+      const initial = new URLSearchParams(window.location.search).get("state");
+      setMode(initial === "empty" || initial === "done" ? initial : "live");
+    })();
+  </script>
+</body>
+</html>

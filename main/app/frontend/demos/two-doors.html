@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Two Doors — Chronos homepage direction</title>
+  <meta name="description" content="A Chronos homepage direction: two roles, one room, two doors." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Manrope:wght@200..800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/demos/base.css" />
+  <style>
+    .d-doors {
+      --td-teal: #0d2b2a;
+      --td-teal-2: #123a37;
+      --td-teal-3: #08201f;
+      --td-plaster: #e9dfd0;
+      --td-plaster-2: #f3ebe0;
+      --td-terra: #b45f3f;
+      --td-terra-ink: #8f4429;
+      --td-brass: #c9a25e;
+      --td-brass-soft: #e4c894;
+      --td-ink: #14201f;
+      --td-muted-light: #b9c9c2;
+      --td-muted-dark: #5a625a;
+      --td-rule-light: rgba(233, 223, 208, 0.22);
+      --td-rule-dark: rgba(20, 32, 31, 0.2);
+      --focus: #c9a25e;
+      background: var(--td-plaster);
+      color: var(--td-ink);
+    }
+    .d-doors ::selection { background: var(--td-terra); color: #fff; }
+
+    .td-head {
+      position: sticky; top: 0; z-index: 60;
+      background: rgba(8, 32, 31, 0.94);
+      border-bottom: 1px solid rgba(233, 223, 208, 0.12);
+      color: var(--td-plaster);
+    }
+    .td-head.is-scrolled { background: rgba(8, 32, 31, 0.98); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
+    .td-head-in { display: flex; align-items: center; gap: 26px; min-height: 66px; }
+    .td-brand { display: flex; align-items: center; gap: 9px; text-decoration: none; color: var(--td-plaster); font-size: 14px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+    .td-brand img { width: 22px; height: 22px; }
+    .td-brand-tag { padding-left: 9px; border-left: 1px solid rgba(233, 223, 208, 0.24); color: var(--td-brass-soft); font-size: 9px; letter-spacing: 0.18em; }
+    .td-nav { display: flex; gap: 23px; margin-left: auto; }
+    .td-nav a { color: var(--td-muted-light); text-decoration: none; font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; padding: 8px 0; border-bottom: 1px solid transparent; }
+    .td-nav a:hover { color: var(--td-plaster); border-bottom-color: var(--td-brass); }
+    .td-head-actions { display: flex; align-items: center; gap: 16px; }
+    .td-head-join { color: var(--td-muted-light); text-decoration: none; font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; border-bottom: 1px solid rgba(233, 223, 208, 0.3); padding-bottom: 3px; white-space: nowrap; }
+    .td-head-join:hover { color: var(--td-plaster); border-color: var(--td-brass); }
+    .td-head-host { display: inline-flex; align-items: center; gap: 9px; padding: 11px 16px; background: var(--td-brass); color: #1a1307; border: 1px solid var(--td-brass); font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; text-decoration: none; white-space: nowrap; transition: background 150ms ease, color 150ms ease; }
+    .td-head-host:hover { background: var(--td-plaster); border-color: var(--td-plaster); }
+    .td-head-host .icon { width: 13px; height: 13px; }
+
+    .td-split {
+      position: relative;
+      display: flex;
+      min-height: max(640px, calc(100vh - 66px));
+      overflow: hidden;
+    }
+    .td-door {
+      position: relative; flex: 1 1 50%; min-width: 0;
+      display: flex; align-items: stretch;
+      text-decoration: none;
+      transition: flex-grow 420ms cubic-bezier(0.16, 1, 0.3, 1), background-color 260ms ease;
+      outline-offset: -3px;
+    }
+    .td-door:hover, .td-door:focus-visible { flex-grow: 1.08; }
+    .td-door-teacher { background: var(--td-teal); color: var(--td-plaster); }
+    .td-door-student { background: var(--td-plaster); color: var(--td-ink); }
+    .td-door-teacher::after,
+    .td-door-student::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+    }
+    .td-door-teacher::after { background: radial-gradient(ellipse at 50% 0%, rgba(201, 162, 94, 0.18), transparent 58%); }
+    .td-door-student::after { background: radial-gradient(ellipse at 50% 0%, rgba(180, 95, 63, 0.16), transparent 58%); }
+    .td-arch {
+      position: absolute; top: 34px; bottom: 0; left: clamp(18px, 4vw, 54px); right: clamp(18px, 4vw, 54px);
+      border: 1px solid currentColor; border-bottom: 0;
+      border-radius: 50% 50% 0 0 / 19% 19% 0 0;
+      opacity: 0.22; pointer-events: none;
+    }
+    .td-door-student .td-arch { opacity: 0.28; }
+    .td-door-in {
+      position: relative; z-index: 2;
+      display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
+      width: 100%; max-width: 560px; margin-inline: auto;
+      padding: clamp(58px, 8vh, 100px) clamp(24px, 5vw, 64px) clamp(34px, 5vh, 56px);
+    }
+    .td-kicker {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+    }
+    .td-kicker::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .td-door-teacher .td-kicker { color: var(--td-brass-soft); }
+    .td-door-student .td-kicker { color: var(--td-terra-ink); }
+    .td-h2 {
+      max-width: 9ch; margin-top: 18px;
+      font-family: var(--font-display); font-size: clamp(52px, 6.4vw, 94px);
+      font-weight: 500; line-height: 0.9; letter-spacing: -0.035em;
+    }
+    .td-door-teacher .td-h2 { color: var(--td-plaster); }
+    .td-door-student .td-h2 { color: var(--td-ink); }
+    .td-h2 em { color: var(--td-brass); font-weight: 400; }
+    .td-door-student .td-h2 em { color: var(--td-terra-ink); }
+    .td-copy { max-width: 30ch; margin-top: 20px; font-size: clamp(14px, 1.3vw, 17px); line-height: 1.6; }
+    .td-door-teacher .td-copy { color: var(--td-muted-light); }
+    .td-door-student .td-copy { color: var(--td-muted-dark); }
+    .td-preview {
+      width: 100%; max-width: 360px; margin-top: clamp(26px, 4vh, 44px);
+      padding: 13px 15px; border: 1px solid currentColor;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .td-door-teacher .td-preview { border-color: var(--td-rule-light); background: rgba(8, 32, 31, 0.3); }
+    .td-door-student .td-preview { border-color: var(--td-rule-dark); background: rgba(255, 255, 255, 0.32); }
+    .td-preview-label { font-size: 7.5px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.72; }
+    .td-preview-main { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; }
+    .td-preview-sub { font-size: 9.5px; line-height: 1.45; opacity: 0.78; }
+    .td-cta {
+      display: inline-flex; align-items: center; justify-content: space-between; gap: 18px;
+      min-width: 210px; margin-top: 22px; padding: 13px 16px;
+      border: 1px solid currentColor;
+      font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+      transition: background 160ms ease, color 160ms ease;
+    }
+    .td-door-teacher .td-cta { background: var(--td-brass); border-color: var(--td-brass); color: #1a1307; }
+    .td-door-student .td-cta { background: var(--td-ink); border-color: var(--td-ink); color: var(--td-plaster); }
+    .td-door-teacher:hover .td-cta { background: var(--td-plaster); border-color: var(--td-plaster); }
+    .td-door-student:hover .td-cta { background: var(--td-terra); border-color: var(--td-terra); color: #fff; }
+    .td-cta .icon { width: 14px; height: 14px; }
+    .td-door-note { margin-top: 13px; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 1; }
+    .td-door-teacher .td-door-note { color: #b9c9c2; }
+    .td-door-student .td-door-note { color: #5a625a; }
+
+    .td-seam {
+      position: relative; z-index: 3; flex: 0 0 1px;
+      background: var(--td-brass);
+      display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+      padding: 22px 0;
+    }
+    .td-seam-label {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-90deg);
+      padding: 5px 9px; background: var(--td-teal-3); color: var(--td-brass-soft);
+      font-size: 7.5px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; white-space: nowrap;
+    }
+    .td-toggle {
+      position: absolute; z-index: 6; top: 18px; left: 50%; transform: translateX(-50%);
+      display: flex; border: 1px solid var(--td-brass); background: var(--td-teal-3);
+      box-shadow: 0 8px 26px rgba(0, 0, 0, 0.2);
+    }
+    .td-toggle button {
+      padding: 8px 12px; color: var(--td-muted-light);
+      font-size: 8px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+      border-right: 1px solid rgba(233, 223, 208, 0.16);
+    }
+    .td-toggle button:last-child { border-right: 0; }
+    .td-toggle button[aria-pressed="true"] { background: var(--td-brass); color: #1a1307; }
+    .td-toggle button:hover { color: var(--td-plaster); }
+    .td-toggle button[aria-pressed="true"]:hover { color: #1a1307; }
+
+    .td-section { padding: clamp(56px, 7vw, 94px) 0; border-top: 1px solid var(--td-rule-dark); }
+    .td-section-head { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 30px; align-items: end; margin-bottom: 32px; }
+    .td-section-head h2 { font-family: var(--font-display); font-size: clamp(34px, 4vw, 52px); font-weight: 500; line-height: 1; letter-spacing: -0.02em; }
+    .td-section-head p { max-width: 52ch; color: var(--td-muted-dark); font-size: 14px; line-height: 1.65; }
+    .td-section-head .eyebrow { display: block; margin-bottom: 10px; color: var(--td-terra-ink); font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; }
+
+    .td-room { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; border: 1px solid var(--td-ink); }
+    .td-room-pane { padding: 20px; }
+    .td-room-pane.teacher { background: var(--td-teal); color: var(--td-plaster); }
+    .td-room-pane.student { background: var(--td-plaster-2); color: var(--td-ink); }
+    .td-room-pane h3 { font-family: var(--font-display); font-size: clamp(24px, 2.6vw, 32px); font-weight: 500; line-height: 1.05; }
+    .td-room-pane p { margin-top: 8px; font-size: 11.5px; line-height: 1.6; opacity: 0.8; }
+    .td-room-pane ul { margin-top: 14px; border-top: 1px solid currentColor; }
+    .td-room-pane li { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid currentColor; font-size: 10.5px; line-height: 1.45; opacity: 0.92; }
+    .td-room-pane li .icon { width: 12px; height: 12px; flex: none; margin-top: 2px; }
+    .td-room-pane.teacher li .icon { color: var(--td-brass-soft); }
+    .td-room-pane.student li .icon { color: var(--td-terra-ink); }
+    .td-room-key {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      padding: 14px 16px; border-left: 1px solid var(--td-ink); border-right: 1px solid var(--td-ink);
+      background: var(--td-brass-soft); color: var(--td-ink); text-align: center;
+    }
+    .td-room-key .icon { width: 20px; height: 20px; }
+    .td-room-key b { font-size: 8px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+    .td-room-key span { font-size: 8.5px; line-height: 1.4; }
+
+    .td-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 2px solid var(--td-ink); }
+    .td-role-col { padding: 20px 28px 8px 0; }
+    .td-role-col + .td-role-col { padding-left: 28px; border-left: 1px solid var(--td-rule-dark); }
+    .td-role-col h3 { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 10px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+    .td-role-col h3 .icon { width: 14px; height: 14px; }
+    .td-role-col.teacher h3 { color: var(--td-teal); }
+    .td-role-col.student h3 { color: var(--td-terra-ink); }
+    .td-role-col li { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--td-rule-dark); font-size: 12px; line-height: 1.55; }
+    .td-role-col li .icon { width: 13px; height: 13px; margin-top: 3px; flex: none; }
+    .td-role-col.teacher li .icon { color: var(--td-teal); }
+    .td-role-col.student li .icon { color: var(--td-terra-ink); }
+    .td-role-col li span { color: var(--td-muted-dark); }
+    .td-role-note { margin-top: 14px; padding: 12px 14px; border: 1px dashed var(--td-rule-dark); color: var(--td-muted-dark); font-size: 10.5px; line-height: 1.55; }
+    .td-role-note b { color: var(--td-ink); }
+
+    .td-fair { background: var(--td-teal); color: var(--td-plaster); }
+    .td-fair .td-section-head p { color: var(--td-muted-light); }
+    .td-fair .td-section-head .eyebrow { color: var(--td-brass-soft); }
+    .td-fair-in { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: start; }
+    .td-fair blockquote { max-width: 17ch; font-family: var(--font-display); font-size: clamp(32px, 4.2vw, 56px); font-weight: 400; line-height: 1.02; letter-spacing: -0.02em; }
+    .td-fair blockquote em { color: var(--td-brass); }
+    .td-flow { border-top: 1px solid rgba(233, 223, 208, 0.24); }
+    .td-flow li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 13px 0; border-bottom: 1px solid rgba(233, 223, 208, 0.16); }
+    .td-flow .n { width: 24px; height: 24px; display: grid; place-items: center; border: 1px solid var(--td-brass); border-radius: 50%; color: var(--td-brass); font-size: 8px; font-weight: 800; }
+    .td-flow b { display: block; font-size: 11px; font-weight: 800; }
+    .td-flow p { margin-top: 2px; color: var(--td-muted-light); font-size: 10.5px; line-height: 1.5; }
+    .td-fair-note { margin-top: 18px; color: var(--td-brass-soft); font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+
+    .td-day { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--td-ink); }
+    .td-day-step { padding: 18px 24px 22px 0; border-right: 1px solid var(--td-rule-dark); }
+    .td-day-step + .td-day-step { padding-left: 24px; }
+    .td-day-step:last-child { border-right: 0; padding-right: 0; }
+    .td-day-step .num { color: var(--td-terra-ink); font-size: 9px; font-weight: 800; letter-spacing: 0.18em; }
+    .td-day-step h3 { margin-top: 10px; font-family: var(--font-display); font-size: clamp(23px, 2.4vw, 30px); font-weight: 500; line-height: 1.05; letter-spacing: -0.015em; }
+    .td-day-step p { margin-top: 8px; color: var(--td-muted-dark); font-size: 11.5px; line-height: 1.6; }
+    .td-day-step a { display: inline-block; margin-top: 10px; color: var(--td-terra-ink); font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 2px; }
+    .td-day-step a:hover { color: var(--td-ink); }
+
+    .td-close { padding: clamp(62px, 8vw, 110px) 0; background: var(--td-plaster-2); border-top: 1px solid var(--td-rule-dark); }
+    .td-close-in { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 38px; align-items: end; }
+    .td-close h2 { max-width: 14ch; font-family: var(--font-display); font-size: clamp(40px, 5vw, 64px); font-weight: 500; line-height: 0.98; letter-spacing: -0.025em; }
+    .td-close h2 em { color: var(--td-terra-ink); }
+    .td-close p { max-width: 40ch; margin-top: 14px; color: var(--td-muted-dark); font-size: 13px; line-height: 1.65; }
+    .td-close-actions { display: flex; flex-direction: column; gap: 9px; }
+    .td-close-actions a {
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+      min-height: 46px; padding: 12px 16px; border: 1px solid var(--td-ink);
+      font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+      text-decoration: none; transition: background 150ms ease, color 150ms ease;
+    }
+    .td-close-actions a:first-child { background: var(--td-ink); color: var(--td-plaster); }
+    .td-close-actions a:hover { background: var(--td-terra); border-color: var(--td-terra); color: #fff; }
+    .td-close-actions .icon { width: 14px; height: 14px; }
+
+    .td-foot { padding: 34px 0 26px; background: var(--td-teal-3); color: var(--td-plaster); }
+    .td-foot-grid { display: grid; grid-template-columns: 1.4fr 0.7fr 0.7fr 1fr; gap: 26px; padding-bottom: 24px; border-bottom: 1px solid rgba(233, 223, 208, 0.18); }
+    .td-foot-brand { display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .td-foot-brand img { width: 21px; height: 21px; }
+    .td-foot p { margin-top: 10px; max-width: 30ch; color: #a9bcb5; font-size: 10.5px; line-height: 1.6; }
+    .td-foot h3 { margin-bottom: 8px; color: var(--td-brass-soft); font-size: 8px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; }
+    .td-foot li { margin-top: 6px; }
+    .td-foot a { color: #c5d2cc; font-size: 10.5px; text-decoration: none; }
+    .td-foot a:hover { color: #fff; text-decoration: underline; }
+    .td-foot-bottom { display: flex; justify-content: space-between; gap: 14px; padding-top: 14px; color: #7e938b; font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+
+    @media (max-width: 980px) {
+      .td-split { flex-direction: column; min-height: 0; }
+      .td-seam { flex: 0 0 1px; width: 100%; height: 1px; padding: 0; flex-direction: row; }
+      .td-seam-mark { margin-left: 50%; margin-top: -17px; }
+      .td-seam-label { position: static; transform: none; margin-top: 12px; }
+      .td-door { min-height: 470px; }
+      .td-door-in { max-width: 620px; padding: 64px 32px 38px; }
+      .td-toggle { top: 14px; }
+      .td-h2 { font-size: clamp(52px, 8vw, 76px); }
+      .td-section-head { grid-template-columns: 1fr; gap: 14px; }
+      .td-fair-in { grid-template-columns: 1fr; gap: 24px; }
+      .td-close-in { grid-template-columns: 1fr; align-items: start; }
+      .td-close-actions { max-width: 340px; }
+    }
+    @media (max-width: 860px) {
+      .td-nav { display: none; }
+      .td-head-in { gap: 12px; }
+      .td-head-actions { margin-left: auto; gap: 10px; }
+      .td-brand-tag { display: none; }
+      .td-room { grid-template-columns: 1fr; }
+      .td-room-key { flex-direction: row; border-left: 0; border-right: 0; border-top: 1px solid var(--td-ink); border-bottom: 1px solid var(--td-ink); padding: 10px; }
+      .td-room-key .icon { width: 16px; height: 16px; }
+      .td-roles { grid-template-columns: 1fr; }
+      .td-role-col, .td-role-col + .td-role-col { padding: 18px 0 8px; border-left: 0; }
+      .td-role-col + .td-role-col { border-top: 1px solid var(--td-rule-dark); margin-top: 14px; }
+      .td-day { grid-template-columns: 1fr; }
+      .td-day-step, .td-day-step + .td-day-step { padding: 18px 0 20px; border-right: 0; border-bottom: 1px solid var(--td-rule-dark); }
+      .td-day-step:last-child { border-bottom: 0; }
+      .td-foot-grid { grid-template-columns: 1fr 1fr; }
+      .td-foot-bottom { flex-direction: column; gap: 7px; }
+    }
+    @media (max-width: 480px) {
+      .td-head-join { display: none; }
+      .td-head-host { padding: 9px 11px; font-size: 9px; }
+      .td-door { min-height: 430px; }
+      .td-door-in { padding: 58px 20px 30px; }
+      .td-h2 { font-size: 52px; }
+      .td-copy { font-size: 14px; }
+      .td-toggle button { padding: 7px 8px; font-size: 7px; }
+      .td-preview { max-width: none; }
+      .td-cta { min-width: 0; width: 100%; }
+      .td-arch { left: 12px; right: 12px; top: 28px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .td-door { transition: none; }
+      .td-door:hover, .td-door:focus-visible { flex-grow: 1; }
+    }
+
+    /* Legibility floor for the door's microcopy. */
+    .td-kicker { font-size: 10px; }
+    .td-preview-label, .td-preview-sub, .td-door-note, .td-seam-label, .td-toggle button { font-size: 9px; }
+    .td-foot h3, .td-foot-bottom { font-size: 9px; }
+  </style>
+</head>
+<body class="d-doors">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="td-head" data-header>
+    <div class="wrap td-head-in">
+      <a class="td-brand" href="#top" aria-label="Chronos home">
+        <img src="/logo_light.svg" alt="" width="22" height="22" />
+        <span>Chronos</span>
+        <span class="td-brand-tag">Two doors</span>
+      </a>
+      <nav class="td-nav" aria-label="Primary">
+        <a href="#room">The room</a>
+        <a href="#roles">Two roles</a>
+        <a href="#fair">The rule</a>
+        <a href="#day">Day one</a>
+        <a href="/signin">Sign in</a>
+      </nav>
+      <div class="td-head-actions">
+        <a class="td-head-join" href="/signin?next=/student">Join a class</a>
+        <a class="td-head-host" href="/signup">
+          Host a class
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <h1 class="sr-only">Chronos — two roles, one room</h1>
+    <p class="sr-only" role="status" aria-live="polite" data-td-live></p>
+    <section class="td-split" id="top" aria-label="Choose your role">
+      <div class="td-toggle" role="group" aria-label="Preview state">
+        <button type="button" data-td-state="before" aria-pressed="true">Day one</button>
+        <button type="button" data-td-state="after" aria-pressed="false">After a class</button>
+      </div>
+
+      <a class="td-door td-door-teacher" href="/signup" aria-label="Host a class as a teacher">
+        <span class="td-arch" aria-hidden="true"></span>
+        <span class="td-door-in">
+          <span class="td-kicker">For teachers</span>
+          <span class="td-h2">Host <em>the room.</em></span>
+          <span class="td-copy">See who needs a human. Keep the last word.</span>
+          <span class="td-preview">
+            <span class="td-preview-label">Your room</span>
+            <span class="td-preview-main" data-td-teacher-main>No sessions yet</span>
+            <span class="td-preview-sub" data-td-teacher-sub>Your first class starts here. Nothing is recorded until you host.</span>
+          </span>
+          <span class="td-cta">
+            Host a class
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+          </span>
+          <span class="td-door-note">Teacher · host and review</span>
+        </span>
+      </a>
+
+      <div class="td-seam" aria-hidden="true">
+        <span class="td-seam-label">One room</span>
+      </div>
+
+      <a class="td-door td-door-student" href="/signin?next=/student" aria-label="Join a class as a student">
+        <span class="td-arch" aria-hidden="true"></span>
+        <span class="td-door-in">
+          <span class="td-kicker">For students</span>
+          <span class="td-h2">Join <em>the room.</em></span>
+          <span class="td-copy">You are seen as signals, not a face on file.</span>
+          <span class="td-preview">
+            <span class="td-preview-label">Your class</span>
+            <span class="td-preview-main" data-td-student-main>No class live</span>
+            <span class="td-preview-sub" data-td-student-sub>Paste the invite link your teacher shared. You will complete a readiness check first.</span>
+          </span>
+          <span class="td-cta">
+            Join a class
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+          </span>
+          <span class="td-door-note">Student · join and participate</span>
+        </span>
+      </a>
+    </section>
+
+    <section class="td-section" id="room">
+      <div class="wrap">
+        <div class="td-section-head">
+          <div><span class="eyebrow">One room, two views</span><h2>The same session. Two different jobs.</h2></div>
+          <p>
+            Both roles enter one room, keyed by the session link. The teacher hosts and reviews.
+            The student joins and participates. Neither sees the other's screen.
+          </p>
+        </div>
+        <div class="td-room">
+          <div class="td-room-pane teacher">
+            <h3>Teacher view</h3>
+            <p>The room's state, one student at a time. No video wall.</p>
+            <ul>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> Live states, flags and a quiet priority list.</li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> Nudge, message, mark engaged, ignore or remove.</li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> The session record and PDF after class.</li>
+            </ul>
+          </div>
+          <div class="td-room-key">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12a5 5 0 0 1 10 0v6H7v-6Z"/><path d="M9 9V7a3 3 0 0 1 6 0v2"/></svg>
+            <b>One room</b>
+            <span>?sessionId=default-session</span>
+          </div>
+          <div class="td-room-pane student">
+            <h3>Student view</h3>
+            <p>Your own state and a private nudge. No public score.</p>
+            <ul>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> Join with the link, complete readiness, enter.</li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> See your own state, never the class ranking.</li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> Receive a nudge and time to recover.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="td-section" id="roles">
+      <div class="wrap">
+        <div class="td-section-head">
+          <div><span class="eyebrow">What each side can do</span><h2>Both roles find themselves.</h2></div>
+          <p>
+            The teacher is not an administrator, and the student is not a data point. Each door
+            opens onto a different set of actions, on the same session.
+          </p>
+        </div>
+        <div class="td-roles">
+          <div class="td-role-col teacher">
+            <h3><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5V7.5L12 4l8 3.5v12"/><path d="M4 19.5h16M9 19.5v-6h6v6"/></svg> Teacher</h3>
+            <ul>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span>Host a class and share one session link.</span></li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span>See states, flags, NO_DATA and identity checks.</span></li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span>Nudge, message, mark engaged, ignore or remove.</span></li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span>Review the TPI, timeline and at-risk list after class.</span></li>
+            </ul>
+            <div class="td-role-note"><b>No student score decides anything.</b> TPI is a session-level index for the teacher, computed after class — not a grade, not a ranking.</div>
+          </div>
+          <div class="td-role-col student">
+            <h3><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5V7.5L12 4l8 3.5v12"/><path d="M4 19.5h16M9 19.5v-6h6v6"/></svg> Student</h3>
+            <ul>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span>Join with the link and complete a quick readiness check.</span></li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span>See your own state; never the class's scores.</span></li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span>Receive a private nudge, with time to return.</span></li>
+              <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span>Answer an identity liveness action in 3–5 seconds.</span></li>
+            </ul>
+            <div class="td-role-note"><b>The nudge is not a punishment.</b> It is an invitation back. The teacher sees that it was sent, not what you read.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="td-section td-fair" id="fair">
+      <div class="wrap">
+        <div class="td-section-head">
+          <div><span class="eyebrow">The rule that keeps it fair</span><h2>Student first. Teacher last word.</h2></div>
+          <p>
+            The system points at a person, not a verdict. The student gets the first move and
+            time to recover. The teacher decides what happens next — including nothing.
+          </p>
+        </div>
+        <div class="td-fair-in">
+          <blockquote>“A flag is a reason to look, <em>not a reason to punish.</em>”</blockquote>
+          <ol class="td-flow">
+            <li><span class="n">01</span><div><b>A state changes.</b><p>Attentive, distracted, away, disengaged, identity check or NO_DATA.</p></div></li>
+            <li><span class="n">02</span><div><b>The student is nudged.</b><p>A private message and time to recover. No public callout, no grade.</p></div></li>
+            <li><span class="n">03</span><div><b>A liveness action, if needed.</b><p>Turn your head, smile — a 3–5 second window to answer an identity check.</p></div></li>
+            <li><span class="n">04</span><div><b>The teacher decides.</b><p>Mark engaged, message, ignore or remove. Nothing is automated.</p></div></li>
+          </ol>
+        </div>
+        <p class="td-fair-note">No automated discipline · No emotion recognition · Not proctoring</p>
+      </div>
+    </section>
+
+    <section class="td-section" id="day">
+      <div class="wrap">
+        <div class="td-section-head">
+          <div><span class="eyebrow">Day one</span><h2>What happens after you choose a door.</h2></div>
+          <p>
+            Both paths are short. The readiness check is the same honest twenty seconds for
+            everyone: camera, light, face, and — if you have enrolled — identity.
+          </p>
+        </div>
+        <div class="td-day">
+          <div class="td-day-step">
+            <span class="num">01 / ACCOUNT</span>
+            <h3>Sign up or sign in.</h3>
+            <p>One account, one role. The role choice is a routing decision, not a permission trick.</p>
+            <a href="/signup">Create an account</a>
+          </div>
+          <div class="td-day-step">
+            <span class="num">02 / READINESS</span>
+            <h3>Check the camera and the light.</h3>
+            <p>Face detected, face centered, lighting good. If identity is enrolled, a liveness action follows.</p>
+            <a href="/signin">See the check</a>
+          </div>
+          <div class="td-day-step">
+            <span class="num">03 / ROOM</span>
+            <h3>Enter the same room.</h3>
+            <p>The teacher hosts and shares the link. The student joins. The session key is the link.</p>
+            <a href="/signin?next=/student">Join a class</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="td-close" id="start">
+      <div class="wrap td-close-in">
+        <div>
+          <h2>Choose a door. <em>The room is shared.</em></h2>
+          <p>Host a class, or join one with the link your teacher shared. Both doors lead to the same session.</p>
+        </div>
+        <div class="td-close-actions">
+          <a href="/signup">
+            Host a class
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+          </a>
+          <a href="/signin?next=/student">Join a class</a>
+          <a href="/signin">Sign in</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="td-foot">
+    <div class="wrap">
+      <div class="td-foot-grid">
+        <div>
+          <div class="td-foot-brand"><img src="/logo_light.svg" alt="" width="21" height="21" /> Chronos</div>
+          <p>Explainable engagement and identity signals for live sessions. Teacher judgment stays central.</p>
+        </div>
+        <div>
+          <h3>Experience</h3>
+          <ul>
+            <li><a href="/signup">Host a class</a></li>
+            <li><a href="/signin?next=/student">Join a class</a></li>
+            <li><a href="/signin">Sign in</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>The room</h3>
+          <ul>
+            <li><a href="#room">One room, two views</a></li>
+            <li><a href="#roles">Two roles</a></li>
+            <li><a href="#fair">The rule</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Status</h3>
+          <p style="margin-top:0">No video stored. No page or app content. No automated discipline.</p>
+        </div>
+      </div>
+      <div class="td-foot-bottom">
+        <span>© 2026 Chronos — Intelligence for Presence</span>
+        <span>Illustrative data · Not a proctoring tool</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/demos/shared.js" defer></script>
+  <script>
+    (() => {
+      const buttons = Array.from(document.querySelectorAll("[data-td-state]"));
+      const teacherMain = document.querySelector("[data-td-teacher-main]");
+      const teacherSub = document.querySelector("[data-td-teacher-sub]");
+      const studentMain = document.querySelector("[data-td-student-main]");
+      const studentSub = document.querySelector("[data-td-student-sub]");
+      const live = document.querySelector("[data-td-live]");
+      if (!buttons.length) return;
+
+      const copy = {
+        before: {
+          teacherMain: "No sessions yet",
+          teacherSub: "Your first class starts here. Nothing is recorded until you host.",
+          studentMain: "No class live",
+          studentSub: "Paste the invite link your teacher shared. You will complete a readiness check first.",
+        },
+        after: {
+          teacherMain: "Last class · TPI 75",
+          teacherSub: "24 learners · 42 minutes · 2 flagged for follow-up.",
+          studentMain: "Last class · you returned",
+          studentSub: "A private nudge at 13:10. You came back. No score was shown to the class.",
+        },
+      };
+
+      function setState(state) {
+        buttons.forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.tdState === state));
+        });
+        const next = copy[state] || copy.before;
+        if (teacherMain) teacherMain.textContent = next.teacherMain;
+        if (teacherSub) teacherSub.textContent = next.teacherSub;
+        if (studentMain) studentMain.textContent = next.studentMain;
+        if (studentSub) studentSub.textContent = next.studentSub;
+        if (live) live.textContent = `Teacher preview: ${next.teacherMain}. Student preview: ${next.studentMain}.`;
+      }
+
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => setState(button.dataset.tdState));
+      });
+      const initial = new URLSearchParams(window.location.search).get("state");
+      setState(initial === "after" ? "after" : "before");
+    })();
+  </script>
+</body>
+</html>

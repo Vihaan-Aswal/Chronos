@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Student Mirror — Chronos homepage direction</title>
+  <meta name="description" content="A Chronos homepage direction: the student's own view of what is measured, and what the teacher sees." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Manrope:wght@200..800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/demos/base.css" />
+  <style>
+    .d-mirror {
+      --sm-wall: #dfe8ee;
+      --sm-wall-2: #eef4f6;
+      --sm-glass: #f7fafb;
+      --sm-slate: #122027;
+      --sm-slate-2: #1b2e36;
+      --sm-ink: #18242b;
+      --sm-muted: #4f5f67;
+      --sm-light: #dce8ec;
+      --sm-teal: #2b7f8c;
+      --sm-teal-deep: #226a75;
+      --sm-teal-bright: #77c6ce;
+      --sm-amber: #b07a2a;
+      --sm-amber-bright: #e3b56b;
+      --sm-red: #a33a2e;
+      --sm-red-bright: #ef8b7c;
+      --sm-rule: #b9c9d1;
+      --focus: #2b7f8c;
+      background: var(--sm-wall);
+      color: var(--sm-ink);
+    }
+    .d-mirror ::selection { background: var(--sm-teal); color: #fff; }
+
+    .sm-head { background: rgba(223, 232, 238, 0.9); border-bottom: 1px solid transparent; }
+    .sm-head.is-scrolled { background: rgba(247, 250, 251, 0.96); border-bottom-color: var(--sm-rule); backdrop-filter: blur(12px); }
+    .sm-head-in { display: flex; align-items: center; gap: 26px; min-height: 66px; }
+    .sm-brand { display: flex; align-items: center; gap: 9px; text-decoration: none; color: var(--sm-ink); font-size: 14px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; white-space: nowrap; }
+    .sm-brand img { width: 22px; height: 22px; }
+    .sm-brand-tag { padding-left: 9px; border-left: 1px solid var(--sm-rule); color: var(--sm-muted); font-size: 9px; letter-spacing: 0.17em; }
+    .sm-nav { display: flex; gap: 23px; margin-left: auto; }
+    .sm-nav a { color: var(--sm-muted); text-decoration: none; font-size: 10px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; padding: 8px 0; border-bottom: 1px solid transparent; }
+    .sm-nav a:hover { color: var(--sm-ink); border-bottom-color: var(--sm-teal); }
+    .sm-head-actions { display: flex; align-items: center; gap: 16px; }
+    .sm-join { color: var(--sm-muted); text-decoration: none; font-size: 10px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; border-bottom: 1px solid var(--sm-rule); padding-bottom: 3px; white-space: nowrap; }
+    .sm-join:hover { color: var(--sm-ink); border-color: var(--sm-ink); }
+    .sm-host { display: inline-flex; align-items: center; gap: 9px; padding: 11px 16px; background: var(--sm-slate); color: var(--sm-glass); border: 1px solid var(--sm-slate); font-size: 10px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; text-decoration: none; white-space: nowrap; transition: background 150ms ease; }
+    .sm-host:hover { background: var(--sm-teal-deep); border-color: var(--sm-teal-deep); }
+    .sm-host .icon { width: 13px; height: 13px; }
+
+    .sm-stage { padding: clamp(28px, 4vw, 52px) 0 clamp(44px, 5vw, 68px); }
+    .sm-stage-grid { display: grid; grid-template-columns: minmax(0, 0.56fr) minmax(0, 1.44fr); gap: clamp(28px, 4vw, 56px); align-items: center; }
+    .sm-intro h1 { max-width: 9ch; font-family: var(--font-display); font-size: clamp(38px, 4.4vw, 56px); font-weight: 500; line-height: 0.96; letter-spacing: -0.03em; }
+    .sm-intro h1 em { color: var(--sm-teal); font-weight: 400; }
+    .sm-lede { max-width: 34ch; margin-top: 16px; color: var(--sm-muted); font-size: 13px; line-height: 1.7; }
+    .sm-controls { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+    .sm-control { display: flex; flex-direction: column; gap: 5px; }
+    .sm-control > span { color: var(--sm-muted); font-size: 8px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+    .sm-seg { display: flex; width: fit-content; border: 1px solid var(--sm-ink); background: rgba(247, 250, 251, 0.4); }
+    .sm-seg button { padding: 8px 10px; border-right: 1px solid var(--sm-ink); color: var(--sm-muted); font-size: 8.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+    .sm-seg button:last-child { border-right: 0; }
+    .sm-seg button[aria-pressed="true"] { background: var(--sm-ink); color: var(--sm-glass); }
+    .sm-seg button:hover { color: var(--sm-ink); }
+    .sm-seg button[aria-pressed="true"]:hover { color: var(--sm-glass); }
+    .sm-seg button:disabled { opacity: 0.35; cursor: not-allowed; }
+    .sm-fine { max-width: 38ch; margin-top: 18px; color: var(--sm-muted); font-size: 9.5px; line-height: 1.6; }
+
+    .sm-mirror-wrap { display: flex; justify-content: center; }
+    .sm-mirror {
+      position: relative; width: min(100%, 700px); min-height: 690px;
+      padding: 10px; border-radius: 30px;
+      background: linear-gradient(145deg, #b7c8d1 0%, #f5f9fa 28%, #d3e0e6 62%, #9fb4bf 100%);
+      box-shadow: 0 34px 80px -36px rgba(24, 36, 43, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+    .sm-screen {
+      position: relative; min-height: 670px; border-radius: 22px; overflow: hidden;
+      background: var(--sm-slate); color: var(--sm-glass);
+      display: flex; flex-direction: column;
+    }
+    .sm-screen::before { content: ""; position: absolute; inset: 0; background: linear-gradient(140deg, rgba(255, 255, 255, 0.08), transparent 34%, rgba(255, 255, 255, 0.03) 68%, transparent); pointer-events: none; }
+    .sm-screen-top { position: relative; z-index: 1; display: flex; justify-content: space-between; gap: 12px; padding: 13px 18px; border-bottom: 1px solid rgba(220, 232, 236, 0.18); color: var(--sm-light); font-size: 8px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; }
+    .sm-screen-top span:first-child { display: flex; align-items: center; gap: 8px; }
+    .sm-screen-top .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sm-teal-bright); }
+    .sm-chip { padding: 3px 6px; border: 1px solid rgba(220, 232, 236, 0.3); color: var(--sm-light); font-size: 7px; letter-spacing: 0.12em; }
+
+    .sm-view { position: relative; z-index: 1; flex: 1; padding: 20px 20px 14px; display: flex; flex-direction: column; }
+    .sm-state-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .sm-state { max-width: 12ch; font-family: var(--font-display); font-size: clamp(36px, 4.4vw, 52px); font-weight: 400; font-style: italic; line-height: 1; letter-spacing: -0.02em; }
+    .sm-state em { color: var(--sm-amber-bright); font-style: italic; }
+    .sm-score { flex: none; text-align: right; }
+    .sm-score b { display: block; color: var(--sm-teal-bright); font-size: 38px; font-weight: 800; line-height: 0.9; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
+    .sm-score span { display: block; margin-top: 4px; color: var(--sm-light); font-size: 7.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .sm-subline { margin-top: 8px; color: #9fb5bd; font-size: 10px; line-height: 1.5; }
+    .sm-subline b { color: var(--sm-light); font-weight: 700; }
+
+    .sm-signals { margin-top: 22px; border-top: 1px solid rgba(220, 232, 236, 0.2); }
+    .sm-signal { display: grid; grid-template-columns: 1.1fr 0.9fr 1.2fr; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid rgba(220, 232, 236, 0.12); }
+    .sm-signal span { color: #9fb5bd; font-size: 8px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .sm-signal b { font-size: 11px; font-weight: 700; }
+    .sm-signal small { color: #8ca3ac; font-size: 9px; line-height: 1.4; text-align: right; }
+    .sm-bar { position: relative; height: 3px; background: rgba(220, 232, 236, 0.18); overflow: hidden; }
+    .sm-bar i { display: block; height: 100%; background: var(--sm-teal-bright); }
+    .sm-bar.amber i { background: var(--sm-amber-bright); }
+    .sm-bar.red i { background: var(--sm-red-bright); }
+
+    .sm-nudge { margin-top: 16px; padding: 12px 14px; border: 1px solid rgba(227, 181, 107, 0.5); background: rgba(227, 181, 107, 0.08); }
+    .sm-nudge span { display: block; color: var(--sm-amber-bright); font-size: 7.5px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+    .sm-nudge p { max-width: 44ch; margin-top: 5px; color: var(--sm-light); font-family: var(--font-display); font-size: 18px; font-style: italic; line-height: 1.25; }
+    .sm-nudge-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+    .sm-mini { padding: 7px 9px; border: 1px solid rgba(220, 232, 236, 0.35); color: var(--sm-light); font-size: 8px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; }
+    .sm-mini:hover { border-color: var(--sm-teal-bright); color: var(--sm-teal-bright); }
+    .sm-mini.primary { background: var(--sm-teal-deep); border-color: var(--sm-teal-deep); color: #fff; }
+    .sm-mini.primary:hover { background: var(--sm-teal-bright); border-color: var(--sm-teal-bright); color: var(--sm-slate); }
+    .sm-mini:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .sm-bottom { position: relative; z-index: 1; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 12px 18px; border-top: 1px solid rgba(220, 232, 236, 0.18); }
+    .sm-bottom-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sm-bottom-note { color: #8ca3ac; font-size: 8px; line-height: 1.4; text-align: right; }
+
+    .sm-teacher { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+    .sm-board { border-top: 1px solid rgba(220, 232, 236, 0.24); }
+    .sm-board-row { display: grid; grid-template-columns: 1.1fr 0.6fr 0.9fr 1.2fr; gap: 8px; padding: 9px 0; border-bottom: 1px solid rgba(220, 232, 236, 0.12); font-size: 10px; align-items: center; }
+    .sm-board-row.head { color: #8ca3ac; font-size: 7px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .sm-board-row b { font-weight: 700; }
+    .sm-board-row .state { color: var(--sm-amber-bright); font-size: 8px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+    .sm-board-row .state.att { color: var(--sm-teal-bright); }
+    .sm-teacher-note { margin-top: 4px; padding: 11px 13px; border: 1px solid rgba(220, 232, 236, 0.2); color: #9fb5bd; font-size: 10px; line-height: 1.55; }
+    .sm-teacher-note b { color: var(--sm-light); }
+    .sm-teacher-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .sm-teacher-status { margin-top: 10px; color: var(--sm-teal-bright); font-size: 9px; line-height: 1.5; min-height: 14px; }
+
+    .sm-void { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 120px; margin-top: 14px; border-top: 1px solid rgba(220, 232, 236, 0.12); }
+    .sm-void b { font-family: var(--font-display); font-size: clamp(42px, 5vw, 68px); font-weight: 400; color: rgba(220, 232, 236, 0.55); letter-spacing: 0.02em; line-height: 1; white-space: nowrap; }
+    .sm-void p { max-width: 36ch; margin-top: 8px; color: #8ca3ac; font-size: 9px; line-height: 1.5; text-align: center; }
+
+    .sm-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; min-height: 360px; text-align: center; }
+    .sm-empty .sm-chip { color: var(--sm-light); }
+    .sm-empty h2 { max-width: 12ch; margin-top: 16px; font-family: var(--font-display); font-size: clamp(32px, 4vw, 46px); font-weight: 400; font-style: italic; line-height: 1.02; letter-spacing: -0.02em; }
+    .sm-empty p { max-width: 36ch; margin-top: 10px; color: #9fb5bd; font-size: 11px; line-height: 1.6; }
+
+    .sm-liveness { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(18, 32, 39, 0.94); text-align: center; padding: 24px; }
+    .sm-liveness[hidden] { display: none; }
+    .sm-liveness .ring { position: relative; width: 110px; height: 110px; border-radius: 50%; border: 2px solid rgba(220, 232, 236, 0.2); display: grid; place-items: center; }
+    .sm-liveness .ring::before { content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--sm-teal-bright); border-right-color: transparent; transform: rotate(-45deg); }
+    .sm-liveness .ring b { font-size: 38px; font-weight: 800; color: var(--sm-light); font-variant-numeric: tabular-nums; }
+    .sm-liveness h3 { max-width: 14ch; margin-top: 18px; font-family: var(--font-display); font-size: 28px; font-style: italic; font-weight: 400; line-height: 1.1; }
+    .sm-liveness p { max-width: 34ch; margin-top: 8px; color: #9fb5bd; font-size: 10.5px; line-height: 1.6; }
+
+    .sm-drawer { position: absolute; z-index: 5; left: 0; right: 0; bottom: 0; max-height: 78%; overflow-y: auto; background: var(--sm-glass); color: var(--sm-ink); padding: 16px 18px 18px; border-top: 1px solid var(--sm-ink); box-shadow: 0 -18px 40px rgba(0, 0, 0, 0.22); }
+    .sm-drawer[hidden] { display: none; }
+    .sm-drawer-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--sm-rule); }
+    .sm-drawer-head b { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .sm-drawer-head button { color: var(--sm-muted); font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--sm-rule); padding-bottom: 2px; }
+    .sm-drawer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 12px; }
+    .sm-drawer-col h3 { color: var(--sm-teal-deep); font-size: 8px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .sm-drawer-col.no h3 { color: var(--sm-red); }
+    .sm-drawer-col li { display: flex; gap: 7px; padding: 7px 0; border-bottom: 1px solid var(--sm-rule); font-size: 10px; line-height: 1.5; }
+    .sm-drawer-col li .icon { width: 11px; height: 11px; flex: none; margin-top: 2px; }
+    .sm-drawer-col.yes li .icon { color: var(--sm-teal); }
+    .sm-drawer-col.no li .icon { color: var(--sm-red); }
+    .sm-drawer-note { margin-top: 10px; color: var(--sm-muted); font-size: 9px; line-height: 1.5; }
+
+    .sm-notes { padding: clamp(42px, 6vw, 76px) 0; border-top: 1px solid var(--sm-rule); }
+    .sm-notes-grid { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 34px; align-items: start; }
+    .sm-notes h2 { max-width: 10ch; font-family: var(--font-display); font-size: clamp(32px, 4vw, 48px); font-weight: 500; line-height: 1; letter-spacing: -0.02em; }
+    .sm-note-list { border-top: 1px solid var(--sm-ink); }
+    .sm-note-row { display: grid; grid-template-columns: 0.5fr 1.5fr; gap: 18px; padding: 12px 0; border-bottom: 1px solid var(--sm-rule); }
+    .sm-note-row b { font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .sm-note-row p { color: var(--sm-muted); font-size: 11.5px; line-height: 1.55; }
+
+    .sm-cta { padding: clamp(54px, 7vw, 92px) 0; background: var(--sm-slate); color: var(--sm-glass); }
+    .sm-cta-in { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 34px; align-items: end; }
+    .sm-cta h2 { max-width: 13ch; font-family: var(--font-display); font-size: clamp(38px, 5vw, 62px); font-weight: 400; line-height: 0.98; letter-spacing: -0.025em; }
+    .sm-cta h2 em { color: var(--sm-teal-bright); font-style: italic; }
+    .sm-cta p { max-width: 40ch; margin-top: 12px; color: #9fb5bd; font-size: 12.5px; line-height: 1.65; }
+    .sm-cta-actions { display: flex; flex-direction: column; gap: 8px; }
+    .sm-cta-actions a { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 44px; padding: 11px 15px; border: 1px solid rgba(220, 232, 236, 0.4); color: var(--sm-glass); font-size: 9px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; transition: background 150ms ease, color 150ms ease; }
+    .sm-cta-actions a:first-child { background: var(--sm-glass); color: var(--sm-slate); }
+    .sm-cta-actions a:hover { background: var(--sm-teal-deep); border-color: var(--sm-teal-deep); color: #fff; }
+    .sm-cta-actions .icon { width: 13px; height: 13px; }
+
+    .sm-foot { padding: 30px 0 24px; background: #0c171c; color: var(--sm-glass); }
+    .sm-foot-in { display: flex; justify-content: space-between; gap: 22px; align-items: flex-start; }
+    .sm-foot-brand { display: flex; align-items: center; gap: 9px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .sm-foot-brand img { width: 21px; height: 21px; }
+    .sm-foot p { max-width: 34ch; margin-top: 8px; color: #8ca3ac; font-size: 10px; line-height: 1.6; }
+    .sm-foot-links { display: flex; gap: 20px; }
+    .sm-foot-links a { color: #b9c9d1; font-size: 9px; text-decoration: none; }
+    .sm-foot-links a:hover { color: #fff; text-decoration: underline; }
+    .sm-foot-bottom { display: flex; justify-content: space-between; gap: 14px; margin-top: 22px; padding-top: 12px; border-top: 1px solid rgba(220, 232, 236, 0.16); color: #6e858f; font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+    @media (max-width: 1040px) {
+      .sm-stage-grid { grid-template-columns: 1fr; }
+      .sm-intro { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; align-items: start; }
+      .sm-intro h1 { grid-column: 1; }
+      .sm-lede { grid-column: 1; }
+      .sm-controls { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; }
+      .sm-fine { grid-column: 1 / -1; }
+      .sm-mirror-wrap { margin-top: 22px; }
+      .sm-notes-grid { grid-template-columns: 1fr; gap: 22px; }
+      .sm-cta-in { grid-template-columns: 1fr; align-items: start; }
+      .sm-cta-actions { max-width: 320px; }
+    }
+    @media (max-width: 780px) {
+      .sm-nav { display: none; }
+      .sm-head-in { gap: 12px; }
+      .sm-head-actions { margin-left: auto; gap: 10px; }
+      .sm-brand-tag { display: none; }
+      .sm-intro { grid-template-columns: 1fr; }
+      .sm-controls { grid-column: 1; grid-row: auto; margin-top: 18px; }
+      .sm-mirror { min-height: 620px; }
+      .sm-screen { min-height: 600px; }
+      .sm-signal { grid-template-columns: 1fr 0.8fr; }
+      .sm-signal small { grid-column: 1 / -1; text-align: left; }
+      .sm-board-row { grid-template-columns: 1.2fr 0.6fr 0.9fr; }
+      .sm-board-row .act { grid-column: 1 / -1; }
+      .sm-foot-in { flex-direction: column; }
+      .sm-foot-bottom { flex-direction: column; gap: 7px; }
+    }
+    @media (max-width: 520px) {
+      .sm-join { display: none; }
+      .sm-host { padding: 9px 11px; font-size: 9px; }
+      .sm-intro h1 { font-size: 40px; }
+      .sm-mirror { padding: 7px; border-radius: 22px; min-height: 600px; }
+      .sm-screen { min-height: 586px; border-radius: 16px; }
+      .sm-view { padding: 16px 14px 12px; }
+      .sm-state { font-size: 36px; }
+      .sm-score b { font-size: 30px; }
+      .sm-bottom { padding: 10px 14px; }
+      .sm-bottom-note { text-align: left; }
+      .sm-drawer-grid { grid-template-columns: 1fr; }
+      .sm-note-row { grid-template-columns: 1fr; gap: 3px; }
+      .sm-cta-actions a { font-size: 8.5px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .sm-host, .sm-cta-actions a { transition: none; }
+    }
+  </style>
+</head>
+<body class="d-mirror">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="sm-head" data-header>
+    <div class="wrap sm-head-in">
+      <a class="sm-brand" href="#top" aria-label="Chronos home">
+        <img src="/logo_dark.svg" alt="" width="22" height="22" />
+        <span>Chronos</span>
+        <span class="sm-brand-tag">Student mirror</span>
+      </a>
+      <nav class="sm-nav" aria-label="Primary">
+        <a href="#mirror">The mirror</a>
+        <a href="#notes">What it is not</a>
+        <a href="/signin">Sign in</a>
+      </nav>
+      <div class="sm-head-actions">
+        <a class="sm-join" href="/signin?next=/student">Join a class</a>
+        <a class="sm-host" href="/signup">
+          Host a class
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="sm-stage" id="top">
+      <div class="wrap sm-stage-grid">
+        <div class="sm-intro">
+          <h1>You are not <em>a row.</em></h1>
+          <p class="sm-lede">This is what the mirror measures, what it refuses to infer, and what the teacher actually sees. You can switch sides.</p>
+          <div class="sm-controls">
+            <div class="sm-control">
+              <span>Session</span>
+              <div class="sm-seg" role="group" aria-label="Session state">
+                <button type="button" data-sm-session="before" aria-pressed="false">Before class</button>
+                <button type="button" data-sm-session="after" aria-pressed="true">After class</button>
+              </div>
+            </div>
+            <div class="sm-control">
+              <span>View</span>
+              <div class="sm-seg" role="group" aria-label="Mirror view">
+                <button type="button" data-sm-view="mine" aria-pressed="true">My view</button>
+                <button type="button" data-sm-view="teacher" aria-pressed="false">Teacher's view</button>
+              </div>
+            </div>
+          </div>
+          <p class="sm-fine">Illustrative student data. The mirror is a sample; no camera is opened. The signals and the privacy boundary are the real product rules.</p>
+        </div>
+
+        <div class="sm-mirror-wrap" id="mirror">
+          <div class="sm-mirror">
+            <div class="sm-screen">
+              <div class="sm-screen-top">
+                <span><span class="dot" aria-hidden="true"></span> <span data-sm-screen-label>Self-view / 13:05</span></span>
+                <span class="sm-chip">Illustrative</span>
+              </div>
+
+              <div class="sm-view" data-sm-view-panel="mine">
+                <div class="sm-state-row">
+                  <div>
+                    <div class="sm-state" data-sm-state>A moment <em>away.</em></div>
+                    <p class="sm-subline" data-sm-subline><b>0.44</b> · distracted · 1 strike</p>
+                  </div>
+                  <div class="sm-score"><b data-sm-score>44%</b><span>current state</span></div>
+                </div>
+
+                <div class="sm-signals" data-sm-signals>
+                  <div class="sm-signal"><span>Gaze</span><b data-sm-signal="gaze">left</b><small>where the eyes are pointed</small></div>
+                  <div class="sm-signal"><span>Head pose</span><b data-sm-signal="head">12°</b><small>yaw from the screen</small></div>
+                  <div class="sm-signal"><span>Eye openness</span><b data-sm-signal="eyes">0.29</b><small>not a blink count</small></div>
+                  <div class="sm-signal"><span>Identity</span><b data-sm-signal="identity">verified</b><small>2–5 minute cadence</small></div>
+                </div>
+
+                <div class="sm-nudge" data-sm-nudge>
+                  <span>Private nudge · 13:10</span>
+                  <p>“Take a breath. The worked example is on the board when you're ready.”</p>
+                  <div class="sm-nudge-actions">
+                    <button class="sm-mini primary" type="button" data-sm-back>I'm back</button>
+                    <button class="sm-mini" type="button" data-sm-dismiss>Dismiss</button>
+                  </div>
+                </div>
+
+                <div class="sm-void" aria-hidden="true"><b>NO FRAME</b><p>The mirror reads geometry, not a photograph.</p></div>
+              </div>
+
+              <div class="sm-view" data-sm-view-panel="teacher" hidden>
+                <div class="sm-state-row">
+                  <div>
+                    <div class="sm-state">The <em>teacher's</em> view.</div>
+                    <p class="sm-subline"><b>Maya R.</b> · 0.44 · distracted · 1 strike</p>
+                  </div>
+                  <div class="sm-score"><b>44%</b><span>not a grade</span></div>
+                </div>
+                <div class="sm-teacher">
+                  <div class="sm-board">
+                    <div class="sm-board-row head"><span>Learner</span><span>Score</span><span>State</span><span>Action</span></div>
+                    <div class="sm-board-row"><b>Maya R.</b><span>44%</span><span class="state">Distracted</span><span class="act">waiting</span></div>
+                    <div class="sm-board-row"><b>Dev P.</b><span>78%</span><span class="state att">Attentive</span><span class="act">—</span></div>
+                    <div class="sm-board-row"><b>Ana S.</b><span>86%</span><span class="state att">Attentive</span><span class="act">—</span></div>
+                  </div>
+                  <p class="sm-teacher-note"><b>The teacher sees the state, not the frame.</b> No video wall. The flag is a reason to look, not a verdict.</p>
+                  <div class="sm-teacher-actions">
+                    <button class="sm-mini" type="button" data-sm-teacher="nudge">Nudge</button>
+                    <button class="sm-mini" type="button" data-sm-teacher="mark">Mark engaged</button>
+                    <button class="sm-mini" type="button" data-sm-teacher="message">Message</button>
+                    <button class="sm-mini" type="button" data-sm-teacher="ignore">Ignore</button>
+                    <button class="sm-mini" type="button" data-sm-teacher="remove">Remove</button>
+                  </div>
+                  <p class="sm-teacher-status" data-sm-teacher-status role="status" aria-live="polite">Choose an action. Nothing is automated.</p>
+                </div>
+                <div class="sm-void" aria-hidden="true"><b>NO VIDEO WALL</b><p>The teacher sees states, not a feed.</p></div>
+              </div>
+
+              <div class="sm-view" data-sm-empty hidden>
+                <div class="sm-empty">
+                  <span class="sm-chip">No class yet</span>
+                  <h2>Nothing is measured until you join.</h2>
+                  <p>The mirror stays off. No state, no signals, no embedding. Start or join a class to see what is read.</p>
+                </div>
+              </div>
+
+              <div class="sm-bottom">
+                <div class="sm-bottom-actions">
+                  <button class="sm-mini" type="button" data-sm-liveness-open>Run a liveness check</button>
+                  <button class="sm-mini" type="button" data-sm-drawer-open aria-expanded="false" aria-controls="sm-drawer">What is stored</button>
+                </div>
+                <span class="sm-bottom-note">No frame is stored.</span>
+              </div>
+
+              <div class="sm-liveness" data-sm-liveness hidden>
+                <div class="ring"><b data-sm-count>4</b></div>
+                <h3>Turn your head slowly.</h3>
+                <p>A liveness action, 3–5 seconds. No photo is stored. The check answers a question, not a verdict.</p>
+              </div>
+
+              <div class="sm-drawer" id="sm-drawer" data-sm-drawer hidden>
+                <div class="sm-drawer-head">
+                  <b>What is stored</b>
+                  <button type="button" data-sm-drawer-close>Close</button>
+                </div>
+                <div class="sm-drawer-grid">
+                  <div class="sm-drawer-col yes">
+                    <h3>Stored</h3>
+                    <ul>
+                      <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span>A face embedding — a numerical signature, not a photo.</span></li>
+                      <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span>Session analytics: states over time and the final record.</span></li>
+                    </ul>
+                  </div>
+                  <div class="sm-drawer-col no">
+                    <h3>Never stored</h3>
+                    <ul>
+                      <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Video frames, with or without a face.</span></li>
+                      <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Page content, app content or your screen.</span></li>
+                      <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Emotion labels, grades or an automated decision.</span></li>
+                    </ul>
+                  </div>
+                </div>
+                <p class="sm-drawer-note">The mirror shows geometry. It does not name a feeling, a mood or a diagnosis.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sm-notes" id="notes">
+      <div class="wrap sm-notes-grid">
+        <h2>What the mirror does not show.</h2>
+        <div class="sm-note-list">
+          <div class="sm-note-row"><b>Not a mood</b><p>Gaze, head pose and eye openness are geometry. The mirror does not name a feeling or a diagnosis.</p></div>
+          <div class="sm-note-row"><b>Not a grade</b><p>No student score decides anything. TPI is a session-level index for the teacher, computed after class.</p></div>
+          <div class="sm-note-row"><b>Not a face on file</b><p>One embedding checks consistency. The frames are read in memory and never stored.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sm-cta" id="start">
+      <div class="wrap sm-cta-in">
+        <div>
+          <h2>See your own <em>signals.</em></h2>
+          <p>Join a class, or host one. The mirror is the same instrument from both sides of the room.</p>
+        </div>
+        <div class="sm-cta-actions">
+          <a href="/signin?next=/student">
+            Join a class
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+          </a>
+          <a href="/signup">Host a class</a>
+          <a href="/signin">Sign in</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="sm-foot">
+    <div class="wrap">
+      <div class="sm-foot-in">
+        <div>
+          <div class="sm-foot-brand"><img src="/logo_light.svg" alt="" width="21" height="21" /> Chronos</div>
+          <p>Explainable engagement and identity signals for live sessions. Teacher judgment stays central.</p>
+        </div>
+        <div class="sm-foot-links">
+          <a href="#mirror">The mirror</a>
+          <a href="#notes">What it is not</a>
+          <a href="/">Real home</a>
+        </div>
+      </div>
+      <div class="sm-foot-bottom">
+        <span>© 2026 Chronos — Intelligence for Presence</span>
+        <span>Illustrative data · Not a proctoring tool</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/demos/shared.js" defer></script>
+  <script>
+    (() => {
+      const sessionButtons = Array.from(document.querySelectorAll("[data-sm-session]"));
+      const viewButtons = Array.from(document.querySelectorAll("[data-sm-view]"));
+      const mine = document.querySelector('[data-sm-view-panel="mine"]');
+      const teacher = document.querySelector('[data-sm-view-panel="teacher"]');
+      const empty = document.querySelector("[data-sm-empty]");
+      const state = document.querySelector("[data-sm-state]");
+      const subline = document.querySelector("[data-sm-subline]");
+      const score = document.querySelector("[data-sm-score]");
+      const screenLabel = document.querySelector("[data-sm-screen-label]");
+      const nudge = document.querySelector("[data-sm-nudge]");
+      const liveness = document.querySelector("[data-sm-liveness]");
+      const count = document.querySelector("[data-sm-count]");
+      const drawer = document.querySelector("[data-sm-drawer]");
+      const drawerOpen = document.querySelector("[data-sm-drawer-open]");
+      const drawerClose = document.querySelector("[data-sm-drawer-close]");
+      const livenessOpen = document.querySelector("[data-sm-liveness-open]");
+      const teacherStatus = document.querySelector("[data-sm-teacher-status]");
+      if (!sessionButtons.length || !mine || !teacher) return;
+
+      let session = "after";
+      let view = "mine";
+      let livenessTimer = null;
+
+      function render() {
+        const before = session === "before";
+        sessionButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.smSession === session)));
+        viewButtons.forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.smView === view));
+          button.disabled = before;
+        });
+        mine.hidden = before || view !== "mine";
+        teacher.hidden = before || view !== "teacher";
+        empty.hidden = !before;
+        if (before || view === "teacher") liveness.hidden = true;
+        if (livenessOpen) livenessOpen.disabled = before || view === "teacher";
+        if (before) {
+          screenLabel.textContent = "Mirror off / no session";
+          return;
+        }
+        screenLabel.textContent = view === "teacher" ? "Teacher view / 13:05" : "Self-view / 13:05";
+      }
+      function resetStudent() {
+        state.innerHTML = "A moment <em>away.</em>";
+        subline.innerHTML = "<b>0.44</b> · distracted · 1 strike";
+        score.textContent = "44%";
+        nudge.hidden = false;
+        const signals = {
+          gaze: "left",
+          head: "12°",
+          eyes: "0.29",
+          identity: "verified",
+        };
+        Object.entries(signals).forEach(([key, value]) => {
+          const el = document.querySelector(`[data-sm-signal="${key}"]`);
+          if (el) el.textContent = value;
+        });
+      }
+      function setSession(next) {
+        session = next;
+        render();
+      }
+      function setView(next) {
+        view = next;
+        render();
+      }
+      function startLiveness() {
+        if (session === "before") return;
+        let n = 4;
+        count.textContent = String(n);
+        liveness.hidden = false;
+        window.clearInterval(livenessTimer);
+        livenessTimer = window.setInterval(() => {
+          n -= 1;
+          count.textContent = String(Math.max(n, 0));
+          if (n <= 0) {
+            window.clearInterval(livenessTimer);
+            liveness.hidden = true;
+            if (teacherStatus) teacherStatus.textContent = "Liveness passed. No photo stored.";
+            if (state) state.innerHTML = "Still <em>here.</em>";
+            if (subline) subline.innerHTML = "<b>0.72</b> · attentive · no strike";
+            if (score) score.textContent = "72%";
+          }
+        }, 900);
+      }
+      function openDrawer() {
+        drawer.hidden = false;
+        if (drawerOpen) drawerOpen.setAttribute("aria-expanded", "true");
+      }
+      function closeDrawer() {
+        drawer.hidden = true;
+        if (drawerOpen) drawerOpen.setAttribute("aria-expanded", "false");
+      }
+      function teacherAction(action) {
+        if (!teacherStatus) return;
+        const copy = {
+          nudge: "Nudge sent. The student has time to return.",
+          mark: "Marked engaged. The teacher's decision is recorded.",
+          message: "Message sent: “Take a breath — we're on the worked example.”",
+          ignore: "Flag ignored. No action is recorded against the student.",
+          remove: "Removed from the room. Recorded as a teacher action.",
+        };
+        teacherStatus.textContent = copy[action] || "";
+      }
+
+      sessionButtons.forEach((button) => button.addEventListener("click", () => setSession(button.dataset.smSession)));
+      viewButtons.forEach((button) => button.addEventListener("click", () => setView(button.dataset.smView)));
+      document.querySelector("[data-sm-back]")?.addEventListener("click", () => {
+        resetStudent();
+        state.innerHTML = "Back <em>on the board.</em>";
+        subline.innerHTML = "<b>0.72</b> · attentive · flag cleared";
+        score.textContent = "72%";
+        nudge.hidden = true;
+      });
+      document.querySelector("[data-sm-dismiss]")?.addEventListener("click", () => { nudge.hidden = true; });
+      livenessOpen?.addEventListener("click", startLiveness);
+      drawerOpen?.addEventListener("click", openDrawer);
+      drawerClose?.addEventListener("click", closeDrawer);
+      document.querySelectorAll("[data-sm-teacher]").forEach((button) => {
+        button.addEventListener("click", () => teacherAction(button.dataset.smTeacher));
+      });
+      const params = new URLSearchParams(window.location.search);
+      resetStudent();
+      setSession(params.get("state") === "before" ? "before" : "after");
+      setView(params.get("view") === "teacher" ? "teacher" : "mine");
+    })();
+  </script>
+</body>
+</html>
