@@ -849,6 +849,23 @@
   text-transform: uppercase;
 }
 
+.room-nudge-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+}
+
+.room-nudge-mark i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
 .room-nudge p {
   margin-top: 2px;
   font-size: 14px;

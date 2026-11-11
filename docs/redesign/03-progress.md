@@ -30,17 +30,18 @@
 | `/signin`, `/signup` | done |
 | `/choose-role` | done |
 | `/readiness` + JoinScreen | done |
-| `/student` live | in progress — join + expired states done, live room next |
-| `/records` + report | not started |
-| `/teacher` class desk | not started |
-| `/meeting`, 404, error boundary | not started |
-| Cleanup + final review | not started |
+| `/student` live | done |
+| `/records` + report | done |
+| `/teacher` class desk | done |
+| `/meeting`, 404, error boundary | done |
+| Cleanup + final review | in progress — legacy CSS/components removed, final audit next |
 
 ## Skills used
 - `impeccable context` (setup), `craft-floor` (before UI edits).
 - Pilot critique: craft-floor checks (contrast, spacing, states, browser surfaces) + homepage comparison; findings recorded in `decisions.md`.
+- Page critiques: records/report, student room, auth, readiness; fixes recorded in `decisions.md` D24–D30.
 
 ## Next action
-Rebuild `/student` live: forest room bar, cream "Your signals" rail (state, history strip,
-identity, camera check), restyle `EngagementTracker` render and canvas, ruled nudge note.
+Phase 5: homepage regression proof, full-page overflow/console audit at 375/768/1280/1920,
+Lighthouse + bundle comparison, final critique, then update the report docs and commit.
 

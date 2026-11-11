@@ -71,9 +71,20 @@ export async function mockTeacherSocket(page, { students = STUDENTS } = {}) {
   });
 }
 
-export async function mockStudentSocket(page) {
+export async function mockStudentSocket(page, { nudge = false } = {}) {
   await page.routeWebSocket(/\/ws\/engagement\//, (ws) => {
     ws.onMessage(() => {});
+    if (nudge) {
+      setTimeout(() => {
+        ws.send(
+          JSON.stringify({
+            type: "nudge",
+            nudge_type: "soft",
+            message_text: "Look at the board for step 3.",
+          }),
+        );
+      }, 900);
+    }
   });
 }
 

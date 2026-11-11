@@ -1,7 +1,7 @@
 // src/pages/StudentPage.jsx
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import JoinScreen from "../components/join-screen.jsx";
 import EngagementTracker from "../components/engagement-tracker.jsx";
@@ -14,8 +14,7 @@ import AppHeader from "../components/app/app-header.jsx";
 import AppFooter from "../components/app/app-footer.jsx";
 import "../styles/app-system.css";
 import "../styles/readiness.css";
-import "../styles/dashboard-shared.css";
-import "../styles/student-meeting.css";
+import "../styles/room.css";
 
 export default function StudentPage() {
   const location = useLocation();
@@ -42,7 +41,22 @@ export default function StudentPage() {
   const [nudgeState, setNudgeState] = useState(null);
   const nudgeTimeoutRef = useRef(null);
   const readinessAutoJoinRef = useRef(false);
-  const [showTracker, setShowTracker] = useState(false);
+  const [showTracker, setShowTracker] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 1024px)").matches,
+  );
+  const [signal, setSignal] = useState({ band: "nodata", identity: "checking" });
+  const [history, setHistory] = useState([]);
+  const navigate = useNavigate();
+
+  const handleSignalChange = useCallback((next) => {
+    setSignal(next);
+    setHistory((prev) => {
+      if (prev[prev.length - 1] === next.band) return prev;
+      return [...prev, next.band].slice(-20);
+    });
+  }, []);
 
   const wsUrl =
     sessionId && userId
@@ -134,118 +148,143 @@ export default function StudentPage() {
     );
   }
 
+  const bandCopy = {
+    attentive: {
+      title: "Attentive",
+      copy: "Present and looking at the room.",
+    },
+    distracted: {
+      title: "Distracted",
+      copy: "A dip in focus. A nudge may follow.",
+    },
+    away: {
+      title: "Away",
+      copy: "Not looking at the room right now.",
+    },
+    nodata: {
+      title: "No data",
+      copy: "No face in frame. Check your camera and light.",
+    },
+  };
+  const current = bandCopy[signal.band] || bandCopy.nodata;
+  const identityLabel =
+    {
+      verified: "Verified",
+      mismatch: "Mismatch",
+      checking: "Checking",
+      no_enrollment: "Not enrolled",
+    }[signal.identity] || "Checking";
+  const cells = Array.from(
+    { length: 20 },
+    (_, index) => history[index - (20 - history.length)] || null,
+  );
+
   return (
     <>
       <NudgeNotification message={nudgeState?.text} key={nudgeState?.id} />
 
-      {showDisconnect && (
-        <div
-          style={{
-            backgroundColor: "#ba1a1a",
-            color: "#ffffff",
-            padding: "10px 0",
-            zIndex: 9999,
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "12px",
-            fontSize: "12px",
-            fontWeight: "bold",
-            textTransform: "uppercase",
-            letterSpacing: "0.1em",
-            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-          }}
-        >
-          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-            <circle
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="3"
-              opacity="0.25"
-            />
-            <path
-              fill="currentColor"
-              opacity="0.8"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-            />
-          </svg>
-          Connection lost. Reconnecting...
-        </div>
-      )}
+      <div className="app room">
+        <StudentTopbar
+          wsConnected={wsConnected}
+          sessionId={sessionId}
+          userName={userName}
+          railOpen={showTracker}
+          onToggleRail={() => setShowTracker((value) => !value)}
+          onLeave={() => navigate("/", { replace: true })}
+        />
 
-      <div className="sd-app">
-        <div className="sd-frame">
-          <StudentTopbar
-            wsConnected={wsConnected}
-            sessionId={sessionId}
-            userName={userName}
-          />
-
-          <div className="sd-status-bar" aria-label="Student session strip">
-            <div className="sd-status-left">
-              <span className="sd-session-id">{sessionId.toUpperCase()}</span>
-              <span className="sd-sep-line" />
-              <span className="sd-role-chip">STUDENT VIEW</span>
-            </div>
-
-            <div className="sd-status-right">
-              <button
-                type="button"
-                onClick={() => setShowTracker(!showTracker)}
-                className="sd-tracker-toggle"
-                aria-expanded={showTracker}
-                aria-controls="student-tracker-rail"
-              >
-                <span className="sd-toggle-dot" aria-hidden="true" />
-                {showTracker ? "Hide Panel" : "Tracking Panel"}
-              </button>
-            </div>
+        {showDisconnect && (
+          <div className="room-banner" role="status">
+            Connection lost. Reconnecting…
           </div>
+        )}
 
-          <div className="sd-workspace">
-            <div className="sd-stage-area">
-              <div className="sd-stage-shell">
-                <div className="sd-hms-wrap">
-                  <HMSMeeting
-                    userName={userName}
-                    role="guest"
-                    onLeave={() => (window.location.href = "/")}
+        <div className="room-main">
+          <main className="room-stage">
+            <div className="room-stage-shell">
+              <HMSMeeting
+                userName={userName}
+                role="guest"
+                onLeave={() => navigate("/", { replace: true })}
+              />
+            </div>
+            <div className="room-stage-foot">
+              <span>In class</span>
+              <span className="room-sep" aria-hidden="true" />
+              <span>Only your own signals are shown to you</span>
+            </div>
+          </main>
+
+          <aside
+            id="student-signals"
+            className={`room-rail room-rail--student ${showTracker ? "is-open" : "is-closed"}`}
+            aria-label="Your signals"
+          >
+            <div className="room-rail-head">
+              <h2 className="room-rail-title">
+                Your signals
+                <span>Only you</span>
+              </h2>
+              <p className="room-rail-sub">
+                Your teacher sees repeated concerns, not every glance.
+              </p>
+            </div>
+
+            <div className="signal-state">
+              <p className="label">Right now</p>
+              <p className="signal-state-title">{current.title}</p>
+              <p className="signal-state-copy">{current.copy}</p>
+              <div className="signal-strip" aria-hidden="true">
+                {cells.map((band, index) => (
+                  <span
+                    key={index}
+                    className={`signal-cell ${band ? `is-${band}` : ""}`.trim()}
                   />
-                </div>
+                ))}
+              </div>
+              <div className="signal-strip-caption">
+                <span>
+                  {history.length === 0
+                    ? "Waiting for the first check"
+                    : "Last 20 checks"}
+                </span>
+                <span>Now</span>
               </div>
             </div>
 
-            <aside
-              className={`sd-tracker-rail ${showTracker ? "is-open" : "is-closed"}`}
-              id="student-tracker-rail"
-            >
-              <div className="sd-tracker-rail-inner">
-                <div className="sd-tracker-rail-head">
-                  <div className="sd-rail-title-row">
-                    <h2 className="sd-rail-title">
-                      <span className="sd-rail-title-dot" />
-                      Engagement Monitor
-                    </h2>
-                  </div>
-                  <p className="sd-rail-subtitle">Your session focus signals</p>
-                </div>
-
-                <div className="sd-tracker-content">
-                  <EngagementTracker
-                    sessionId={sessionId}
-                    userId={userId}
-                    onNudge={handleNudge}
-                  />
-                </div>
+            <dl className="signal-facts">
+              <div className="signal-fact">
+                <dt>Identity</dt>
+                <dd>{identityLabel}</dd>
               </div>
-            </aside>
-          </div>
+              <div className="signal-fact">
+                <dt>Session</dt>
+                <dd>{sessionId}</dd>
+              </div>
+              <div className="signal-fact">
+                <dt>Camera</dt>
+                <dd>On this device</dd>
+              </div>
+            </dl>
+
+            <div className="signal-camera">
+              <div className="signal-camera-head">
+                <h3>Camera check</h3>
+                <span className="meta">Local only</span>
+              </div>
+              <EngagementTracker
+                sessionId={sessionId}
+                userId={userId}
+                onNudge={handleNudge}
+                onStateChange={handleSignalChange}
+              />
+            </div>
+
+            <p className="signal-note">
+              A nudge is a quiet message, not a mark. Frames, audio, and page
+              content are never stored.
+            </p>
+          </aside>
         </div>
       </div>
     </>

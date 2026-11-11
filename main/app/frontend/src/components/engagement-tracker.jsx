@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import useWebSocket from "../hooks/use-websocket";
 import { getEmbedding, loadEmbedder } from "../utils/embedder";
 import { fetchIdentity } from "../api/identity";
+import Modal from "./app/modal.jsx";
+import { AlertIcon } from "./app/icons.jsx";
 
 const DEBUG_LOGS =
   import.meta.env.DEV && import.meta.env.VITE_DEBUG_LOGS === "true";
@@ -13,7 +15,7 @@ function debugLog(...args) {
   }
 }
 
-function EngagementTracker({ sessionId, userId, onNudge }) {
+function EngagementTracker({ sessionId, userId, onNudge, onStateChange }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const cropCanvasRef = useRef(null);
@@ -76,6 +78,35 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
   }).current;
 
   const [identityStatus, setIdentityStatus] = useState("checking");
+  const [band, setBand] = useState("nodata");
+  const [now, setNow] = useState(Date.now());
+  const onStateChangeRef = useRef(onStateChange);
+
+  useEffect(() => {
+    onStateChangeRef.current = onStateChange;
+  });
+
+  // A readable band for the student rail; the scoring itself is unchanged.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const presence = presenceState.status;
+      const score = engagementState.smoothScore || 0;
+      const next =
+        presence === "no_face" || presence === "unknown"
+          ? "nodata"
+          : score > 0.7
+            ? "attentive"
+            : score >= 0.4
+              ? "distracted"
+              : "away";
+      setBand((prev) => (prev === next ? prev : next));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [presenceState, engagementState]);
+
+  useEffect(() => {
+    onStateChangeRef.current?.({ band, identity: identityStatus });
+  }, [band, identityStatus]);
   const [sessionMode, setSessionMode] = useState("normal");
   /** class = lenient engagement; exam = strict gaze + one-strike disengage */
   const classContextRef = useRef("class");
@@ -83,6 +114,12 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
   const [tabSwitchPopup, setTabSwitchPopup] = useState(false);
   const [livenessChallenge, setLivenessChallenge] = useState(null);
   const livenessChallengeRef = useRef(null);
+
+  useEffect(() => {
+    if (!livenessChallenge) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [livenessChallenge]);
 
   // Load embedder and stored identity on mount
   useEffect(() => {
@@ -798,6 +835,33 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
       detect();
     }
 
+    function paintFrame(label, detail) {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      if (video && video.readyState >= 2) {
+        ctx.save();
+        ctx.translate(w, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, w, h);
+        ctx.restore();
+      }
+
+      ctx.fillStyle = "rgba(10, 35, 28, 0.82)";
+      ctx.fillRect(0, h - 74, w, 74);
+      ctx.fillStyle = "#f7f2e7";
+      ctx.font = "700 24px Manrope, system-ui, sans-serif";
+      ctx.fillText(label, 24, h - 40);
+      ctx.fillStyle = "#c9d5bf";
+      ctx.font = "800 13px Manrope, system-ui, sans-serif";
+      ctx.fillText(detail, 24, h - 17);
+    }
+
     function detect() {
       if (!isMounted || !videoRef.current || !canvasRef.current) return;
 
@@ -808,8 +872,6 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
 
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (
         !results ||
@@ -827,17 +889,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
           headPose: { yaw: 0, pitch: 0 },
         };
 
-        ctx.fillStyle = "rgba(0,0,0,0.75)";
-        ctx.fillRect(8, 8, 520, 300);
-        ctx.fillStyle = "white";
-        ctx.font = "28px system-ui, -apple-system, sans-serif";
-        ctx.fillText(`Presence: no_face`, 28, 56);
-        ctx.font = "bold 32px system-ui, -apple-system, sans-serif";
-        ctx.fillText(
-          `Score: ${Math.round((engagementState.smoothScore || 0) * 100)}%`,
-          28,
-          110,
-        );
+        paintFrame("No face in frame", "Camera on · nothing is recorded");
 
         if (isMounted) loop = requestAnimationFrame(detect);
         return;
@@ -857,17 +909,7 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
           headPose: { yaw: 0, pitch: 0 },
         };
 
-        ctx.fillStyle = "rgba(0,0,0,0.75)";
-        ctx.fillRect(8, 8, 520, 300);
-        ctx.fillStyle = "white";
-        ctx.font = "28px system-ui, -apple-system, sans-serif";
-        ctx.fillText(`Presence: no_face`, 28, 56);
-        ctx.font = "bold 32px system-ui, -apple-system, sans-serif";
-        ctx.fillText(
-          `Score: ${Math.round((engagementState.smoothScore || 0) * 100)}%`,
-          28,
-          110,
-        );
+        paintFrame("No face in frame", "Camera on · nothing is recorded");
 
         if (isMounted) loop = requestAnimationFrame(detect);
         return;
@@ -1054,33 +1096,22 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
         }
       }
 
-      // OVERLAY
-      ctx.fillStyle = "rgba(0,0,0,0.75)";
-      ctx.fillRect(8, 8, 540, 310);
-      ctx.fillStyle = "white";
-      ctx.font = "28px system-ui, -apple-system, sans-serif";
-
-      ctx.fillText(`Presence: ${pres.status}`, 28, 56);
-      ctx.fillText(
-        `Gaze: ${gaze.direction} (H:${gaze.horizontal.toFixed(2)})`,
-        28,
-        100,
-      );
-      ctx.fillText(`Head: yaw ${pose.yaw.toFixed(2)}`, 28, 144);
-      ctx.fillText(`Eye: ${blinkData.status}`, 28, 188);
-
-      // Score
-      ctx.font = "bold 36px system-ui, -apple-system, sans-serif";
-      ctx.fillStyle =
+      // OVERLAY — the student's own camera, with one readable state.
+      const bandLabel =
         engagementState.smoothScore > 0.7
-          ? "#10b981"
-          : engagementState.smoothScore > 0.4
-            ? "#f59e0b"
-            : "#ef4444";
-      ctx.fillText(
-        `Score: ${Math.round(engagementState.smoothScore * 100)}%`,
-        28,
-        290,
+          ? "Attentive"
+          : engagementState.smoothScore >= 0.4
+            ? "Distracted"
+            : "Away";
+      const presenceLabel =
+        pres.status === "present"
+          ? "Present"
+          : pres.status === "no_face"
+            ? "No face in frame"
+            : pres.status;
+      paintFrame(
+        bandLabel,
+        `${Math.round(engagementState.smoothScore * 100)}% · ${presenceLabel}`,
       );
 
       if (isMounted) loop = requestAnimationFrame(detect);
@@ -1096,29 +1127,8 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
   }, []);
 
   return (
-    <div className="sd-tracker">
-      <div className="sd-tracker-head">
-        <h3 className="sd-tracker-title">Live Tracking</h3>
-      </div>
-
-      {/* Identity Status Alert */}
-      {identityStatus === "mismatch" && identityState.mismatchCount >= 2 && (
-        <div className="sd-alert-danger">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">⚠️</span>
-            <div>
-              <p className="sd-alert-danger-title">
-                Identity Mismatch Detected
-              </p>
-              <p className="sd-alert-danger-copy">
-                The person in frame does not match the enrolled identity.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="sd-tracker-canvas-shell" style={{ aspectRatio: "4/3" }}>
+    <div className="tracker">
+      <div className="tracker-canvas">
         <video ref={videoRef} style={{ display: "none" }} />
         <canvas
           ref={cropCanvasRef}
@@ -1126,71 +1136,80 @@ function EngagementTracker({ sessionId, userId, onNudge }) {
           height={112}
           style={{ display: "none" }}
         />
-        <canvas
-          ref={canvasRef}
-          width={720}
-          height={540}
-          className="w-full h-full object-contain"
-          style={{ position: "absolute", top: 0, left: 0 }}
-        />
+        <canvas ref={canvasRef} width={720} height={540} />
       </div>
 
-      {/* AUTO-NUDGE MODAL */}
-      {autoNudgeVisible && (
-        <div className="sd-modal-backdrop">
-          <div className="sd-modal-card" role="dialog" aria-modal="true">
-            <h3 className="sd-modal-title">You appear disengaged.</h3>
-            <p className="sd-modal-copy">
-              Tap "I'm Here" if you're paying attention.
-            </p>
-            <div className="sd-modal-action">
-              <button onClick={handleAutoNudgeYes} className="sd-btn-positive">
-                YES
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* LIVENESS CHALLENGE */}
-      {livenessChallenge && (
-        <div className="sd-modal-backdrop sd-modal-strong">
-          <div className="sd-modal-card" role="dialog" aria-modal="true">
-            <h3 className="sd-modal-title">Check Engagement</h3>
-            <p
-              className="sd-modal-copy"
-              style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}
-            >
-              {livenessChallenge.action_label}
-            </p>
-            <p className="sd-modal-meta">
-              {Math.max(
-                0,
-                Math.ceil((livenessChallenge.expires_at - Date.now()) / 1000),
-              )}
-              s remaining
+      {identityStatus === "mismatch" && identityState.mismatchCount >= 2 && (
+        <div className="notice notice-flag tracker-identity" role="alert">
+          <AlertIcon />
+          <div>
+            <p className="strong">Identity mismatch</p>
+            <p>
+              The person in frame does not match the enrolled identity. Sit in
+              front of the camera and wait for the next check.
             </p>
           </div>
         </div>
       )}
 
-      {/* TAB SWITCH WARNING (Strict Mode) */}
-      {tabSwitchPopup && (
-        <div className="sd-modal-backdrop">
-          <div className="sd-modal-card" role="dialog" aria-modal="true">
-            <h3 className="sd-modal-title">Return to class (Strict Mode)</h3>
-            <p className="sd-modal-copy">
-              Please keep the class window active and visible.
-            </p>
-            <button
-              onClick={() => setTabSwitchPopup(false)}
-              className="sd-btn-primary"
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={autoNudgeVisible}
+        onClose={handleAutoNudgeYes}
+        dismissible={false}
+        title="Are you still with us?"
+        sub="A quiet check from Chronos."
+        actions={
+          <button
+            type="button"
+            className="btn btn-ink"
+            onClick={handleAutoNudgeYes}
+          >
+            I&rsquo;m here
+          </button>
+        }
+      >
+        <p className="lede">
+          Tap &ldquo;I&rsquo;m here&rdquo; if you are paying attention. This is
+          a nudge, not a mark.
+        </p>
+      </Modal>
+
+      <Modal
+        open={Boolean(livenessChallenge)}
+        onClose={() => {}}
+        dismissible={false}
+        title="Check engagement"
+        sub={livenessChallenge?.action_label}
+        actions={null}
+      >
+        <p className="lede">
+          {Math.max(
+            0,
+            Math.ceil(((livenessChallenge?.expires_at || 0) - now) / 1000),
+          )}{" "}
+          seconds remaining. Do the action above and look at the camera.
+        </p>
+      </Modal>
+
+      <Modal
+        open={tabSwitchPopup}
+        onClose={() => setTabSwitchPopup(false)}
+        title="Return to class"
+        sub="Strict mode is on for this session."
+        actions={
+          <button
+            type="button"
+            className="btn btn-ink"
+            onClick={() => setTabSwitchPopup(false)}
+          >
+            Back to class
+          </button>
+        }
+      >
+        <p className="lede">
+          Please keep the class window active and visible.
+        </p>
+      </Modal>
     </div>
   );
 }

@@ -116,7 +116,7 @@ export default function SignUpPage() {
             </div>
           )}
 
-          {error && !success && (
+          {error && !success && !mismatch && (
             <div
               className="notice notice-flag auth-notice"
               role="alert"

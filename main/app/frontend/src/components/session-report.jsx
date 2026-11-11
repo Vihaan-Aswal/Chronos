@@ -1,12 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { motion } from "motion/react";
+import { useMemo, useState } from "react";
 import { jsPDF } from "jspdf";
 import {
   LineChart,
   Line,
-  PieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -16,92 +12,52 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import { AlertIcon, CheckIcon, DownloadIcon } from "./app/icons.jsx";
 
-const EASE = [0.16, 1, 0.3, 1];
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.06, delayChildren: 0.08 },
-  },
+const CHART = {
+  grid: "rgba(11, 26, 20, 0.09)",
+  axis: "#56685c",
+  ink: "#0b1a14",
+  sage: "#4c6146",
+  gold: "#8a6a2f",
+  red: "#b3261e",
 };
 
-const sectionVariants = {
-  hidden: { opacity: 0, y: 12 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.45, ease: EASE },
-  },
+const tooltipStyle = {
+  backgroundColor: "#fcf9f1",
+  border: "1px solid rgba(11, 26, 20, 0.16)",
+  borderRadius: 4,
+  color: CHART.ink,
+  fontSize: 12,
 };
+const tooltipLabelStyle = { color: CHART.ink, fontWeight: 700 };
+const tooltipItemStyle = { color: "#56685c" };
 
-const MotionDiv = motion.div;
-const MotionSection = motion.section;
-const MotionArticle = motion.article;
-
-function useCountUp(target, { duration = 900, decimals = 0 } = {}) {
-  const [value, setValue] = useState(0);
-
-  useEffect(() => {
-    const safeTarget = Number.isFinite(target) ? target : 0;
-    if (safeTarget === 0) {
-      const resetFrame = requestAnimationFrame(() => setValue(0));
-      return () => cancelAnimationFrame(resetFrame);
-    }
-
-    let frameId = 0;
-    const startTime = performance.now();
-
-    const step = (now) => {
-      const progress = Math.min(1, (now - startTime) / duration);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const next = safeTarget * eased;
-      const precision = 10 ** decimals;
-      setValue(Math.round(next * precision) / precision);
-      if (progress < 1) {
-        frameId = requestAnimationFrame(step);
-      }
-    };
-
-    frameId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frameId);
-  }, [decimals, duration, target]);
-
-  return value;
+function formatTime(minutes) {
+  const safe = Math.max(0, Number(minutes) || 0);
+  const hrs = Math.floor(safe / 60);
+  const mins = Math.floor(safe % 60);
+  if (hrs > 0) return `${hrs}h ${mins}m`;
+  return `${mins}m`;
 }
 
-function renderPiePercentLabel({
-  cx,
-  cy,
-  midAngle,
-  innerRadius,
-  outerRadius,
-  percent,
-}) {
-  if (percent == null || percent <= 0) return null;
-  const radius = (innerRadius + outerRadius) / 2;
-  const rad = (-midAngle * Math.PI) / 180;
-  const x = cx + radius * Math.cos(rad);
-  const y = cy + radius * Math.sin(rad);
-
-  return (
-    <text
-      x={x}
-      y={y}
-      fill="#d8e6f7"
-      textAnchor={x > cx ? "start" : "end"}
-      dominantBaseline="central"
-      fontSize={11}
-      fontWeight={700}
-    >
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
-  );
+function formatDate(value) {
+  if (!value) return "Date not recorded";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date not recorded";
+  return date.toLocaleString([], {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export default function SessionReport({ sessionData, onClose, onSave }) {
   const {
+    sessionId,
+    startTime,
     duration,
     avgScore,
     totalStudents,
@@ -110,7 +66,7 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
     studentMeta = {},
     classContextMode,
     strictModeAtEnd,
-    metricsTimeline,
+    metricsTimeline = [],
     distribution,
     confusionHotspots = [],
     atRiskStudents = [],
@@ -119,6 +75,8 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
   } = sessionData;
 
   const [showPerStudent, setShowPerStudent] = useState(false);
+  const [saveState, setSaveState] = useState("idle");
+  const [saveError, setSaveError] = useState("");
 
   const distributionEffective = useMemo(() => {
     const hasData =
@@ -136,14 +94,14 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
 
     let attentive = 0;
     let distracted = 0;
-    let disengaged = 0;
+    let away = 0;
     avgs.forEach(({ avg }) => {
       if (avg > 0.7) attentive += 1;
       else if (avg >= 0.4) distracted += 1;
-      else disengaged += 1;
+      else away += 1;
     });
 
-    return { attentive, distracted, disengaged };
+    return { attentive, distracted, disengaged: away };
   }, [distribution, perStudentTimelines]);
 
   const classMeanFromStudents = useMemo(() => {
@@ -161,7 +119,7 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
     return avgs.reduce((a, b) => a + b, 0) / avgs.length;
   }, [perStudentTimelines, avgScore]);
 
-  const relativePieData = useMemo(() => {
+  const relativeData = useMemo(() => {
     const mu = classMeanFromStudents || 0.01;
     const hi = Math.min(0.95, mu * 1.15);
     const lo = Math.max(0.05, mu * 0.7);
@@ -185,15 +143,15 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
     return {
       rows: [
         {
-          name: `Strong (>=${(hi * 100).toFixed(0)}%)`,
+          name: `Strong (≥${(hi * 100).toFixed(0)}%)`,
           value: above,
-          color: "#37d39a",
+          dot: "attentive",
         },
-        { name: "Typical band", value: mid, color: "#dcc492" },
+        { name: "Typical band", value: mid, dot: "distracted" },
         {
-          name: `Below (<=${(lo * 100).toFixed(0)}%)`,
+          name: `Below (≤${(lo * 100).toFixed(0)}%)`,
           value: below,
-          color: "#ff6f7d",
+          dot: "away",
         },
       ],
       hi,
@@ -208,854 +166,617 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
     (m) => m.avgScoreReal != null && !Number.isNaN(m.avgScoreReal),
   );
 
+  const distributionTotal =
+    (distributionEffective.attentive || 0) +
+    (distributionEffective.distracted || 0) +
+    (distributionEffective.disengaged || 0);
+
+  const peakConfusion = confusionHotspots.length
+    ? Math.max(...confusionHotspots.map((h) => Number(h.percentage) || 0))
+    : 0;
+
+  const meanPercent = Math.round((classMeanFromStudents || 0) * 100);
+  const simulated = totalStudentsSimulated || 0;
+  const live = totalStudentsReal ?? Math.max(0, (totalStudents || 0) - simulated);
+  const relativeRows = relativeData.rows.filter((r) => r.value > 0);
+
+  async function handleSave() {
+    if (!onSave || saveState === "saving") return;
+    setSaveState("saving");
+    setSaveError("");
+    try {
+      await onSave();
+      setSaveState("saved");
+    } catch (err) {
+      console.error("Save record failed:", err);
+      setSaveError(
+        "The record did not save. Check the connection and try again.",
+      );
+      setSaveState("error");
+    }
+  }
+
   const handleExportPDF = () => {
     const doc = new jsPDF();
     let y = 20;
     doc.setFontSize(18);
-    doc.text("Session Report", 20, y);
-    y += 15;
+    doc.text("Session record", 20, y);
+    y += 12;
+    doc.setFontSize(10);
+    doc.text(`Session: ${sessionId || "—"}`, 20, y);
+    y += 6;
+    doc.text(`Started: ${formatDate(startTime)}`, 20, y);
+    y += 10;
     doc.setFontSize(11);
 
-    const durStr =
-      duration >= 60
-        ? `${Math.floor(duration / 60)}h ${Math.floor(duration % 60)}m`
-        : `${Math.floor(duration)}m`;
-
     doc.text(
-      `Duration: ${durStr} | Avg Engagement: ${(avgScore * 100).toFixed(0)}% | Students: ${totalStudents}`,
+      `Duration: ${formatTime(duration)} | Mean engagement: ${meanPercent}% | Learners: ${totalStudents}`,
       20,
       y,
     );
-    y += 10;
+    y += 8;
 
     if (tpi != null) {
-      doc.text(`Teacher Performance Index (TPI): ${tpi}/100`, 20, y);
-      y += 10;
+      doc.text(`TPI: ${Math.round(tpi)}/100`, 20, y);
+      y += 6;
+      doc.setFontSize(9);
+      doc.text("TPI = 60% mean engagement + 40% attention retention.", 20, y);
+      doc.text("It is a post-class index, not a student grade.", 20, y + 4);
+      y += 12;
+      doc.setFontSize(11);
     }
 
     doc.text(
-      `Attentive: ${distributionEffective.attentive} | Distracted: ${distributionEffective.distracted} | Disengaged: ${distributionEffective.disengaged}`,
+      `Attentive: ${distributionEffective.attentive} | Distracted: ${distributionEffective.distracted} | Away: ${distributionEffective.disengaged}`,
       20,
       y,
     );
-    y += 15;
+    y += 12;
 
     if (atRiskStudents.length > 0) {
       doc.setFontSize(14);
-      doc.text("At-Risk Students", 20, y);
+      doc.text("Follow-up", 20, y);
       y += 8;
       doc.setFontSize(10);
       atRiskStudents.forEach((s) => {
         doc.text(
-          `- ${s.userId?.slice(0, 16)}... | Avg: ${(s.avgScore * 100).toFixed(0)}% | ${s.reason}`,
+          `- ${s.userId?.slice(0, 16) || "Learner"} | Avg: ${(s.avgScore * 100).toFixed(0)}% | ${s.reason}`,
           25,
           y,
         );
         y += 6;
       });
-      y += 5;
     }
 
-    doc.save(`session-report-${sessionData.sessionId || "report"}.pdf`);
+    doc.save(`session-record-${sessionId || "record"}.pdf`);
   };
-
-  const COLORS = {
-    attentive: "#37d39a",
-    distracted: "#dcc492",
-    disengaged: "#ff6f7d",
-  };
-
-  const pieData = [
-    {
-      name: "Attentive",
-      value: distributionEffective.attentive,
-      color: COLORS.attentive,
-    },
-    {
-      name: "Distracted",
-      value: distributionEffective.distracted,
-      color: COLORS.distracted,
-    },
-    {
-      name: "Disengaged",
-      value: distributionEffective.disengaged,
-      color: COLORS.disengaged,
-    },
-  ];
-  const pieDataNonZero = pieData.filter((d) => d.value > 0);
-
-  const formatTime = (minutes) => {
-    const hrs = Math.floor(minutes / 60);
-    const mins = Math.floor(minutes % 60);
-    if (hrs > 0) return `${hrs}h ${mins}m`;
-    return `${mins}m`;
-  };
-
-  const getScoreColor = (score) => {
-    if (score >= 0.7) return "text-[#37d39a]";
-    if (score >= 0.4) return "text-[#f7d8a0]";
-    return "text-[#ff9ea7]";
-  };
-
-  const getScoreLabel = (score) => {
-    if (score >= 0.7) return "Excellent";
-    if (score >= 0.4) return "Balanced";
-    return "Needs Support";
-  };
-
-  const animatedDuration = useCountUp(Math.max(0, Math.round(duration || 0)));
-  const animatedAvgPercent = useCountUp(Math.max(0, (avgScore || 0) * 100));
-  const animatedLearners = useCountUp(
-    Math.max(0, Math.round(totalStudents || 0)),
-  );
-  const animatedTpi = useCountUp(Math.max(0, Math.round(tpi ?? 0)));
-
-  const getStudentColor = (idx) => {
-    const hue = Math.round((idx * 137.5) % 360);
-    return `hsl(${hue} 74% 64%)`;
-  };
-
-  const relativeRows = relativePieData.rows.filter((r) => r.value > 0);
-  const peakConfusion = confusionHotspots.length
-    ? Math.max(...confusionHotspots.map((h) => Number(h.percentage) || 0))
-    : 0;
-  const confusionToneClass =
-    peakConfusion >= 70
-      ? "border-[#ff6f7d]/45 bg-[#ff6f7d]/12 text-[#ffd5da]"
-      : peakConfusion >= 45
-        ? "border-[#dcc492]/45 bg-[#dcc492]/14 text-[#fff0cf]"
-        : "border-[#7eb2ff]/40 bg-[#7eb2ff]/10 text-[#d6e8ff]";
-
-  const surfaceCardClass =
-    "rounded-2xl border border-[rgba(211,228,248,0.14)] bg-[rgba(7,25,40,0.78)] p-4 sm:p-5 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_28px_rgba(0,0,0,0.36)]";
-  const sectionTitleClass =
-    "text-base sm:text-lg font-semibold text-[#e6eef8] tracking-tight";
-  const sectionBodyClass = "text-xs sm:text-sm text-[#9fb3c9]";
-  const chartTooltipStyle = {
-    backgroundColor: "rgba(4, 20, 33, 0.96)",
-    border: "1px solid rgba(211, 228, 248, 0.2)",
-    borderRadius: "12px",
-    boxShadow: "0 16px 28px rgba(0, 0, 0, 0.45)",
-    color: "#d3e4f8",
-    fontSize: "12px",
-  };
-  const chartTooltipLabelStyle = { color: "#fff0cf", fontWeight: 700 };
-  const chartTooltipItemStyle = { color: "#d3e4f8" };
-  const chartGridStroke = "rgba(211, 228, 248, 0.09)";
-  const chartAxisStroke = "#86a0b8";
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-[#020e18]">
-      <MotionDiv
-        role="dialog"
-        aria-modal="true"
-        aria-label="Post-class analytics"
-        initial={{ opacity: 0, y: 24, scale: 0.985 }}
-        animate={{
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          transition: { duration: 0.42, ease: EASE },
-        }}
-        className="relative h-full w-full overflow-hidden bg-[linear-gradient(155deg,rgba(8,26,40,0.985),rgba(3,14,24,0.99))]"
-      >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_0%,rgba(220,196,146,0.12),transparent_34%),radial-gradient(circle_at_90%_8%,rgba(126,178,255,0.14),transparent_30%),radial-gradient(circle_at_60%_100%,rgba(168,146,255,0.1),transparent_28%)]" />
-        <div className="pointer-events-none absolute inset-0 opacity-45 [background-image:linear-gradient(rgba(211,228,248,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(211,228,248,0.02)_1px,transparent_1px)] [background-size:30px_30px]" />
-
-        <div className="relative z-10 flex h-full min-h-0 flex-col">
-          <div className="border-b border-[rgba(211,228,248,0.12)] bg-[linear-gradient(180deg,rgba(6,22,35,0.95),rgba(5,19,30,0.88))] px-5 pb-4 pt-5 sm:px-7 sm:pb-5 sm:pt-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0">
-                <h2 className="text-2xl font-bold tracking-tight text-[#fff6e1] sm:text-[30px]">
-                  Post-class analytics
-                </h2>
-                <p className="mt-2 max-w-3xl text-sm text-[#afc3d9]">
-                  Class mean from learner series is{" "}
-                  {(classMeanFromStudents * 100).toFixed(0)}%. Metrics below
-                  blend live and simulated cohorts when simulation mode is
-                  active.
-                </p>
-              </div>
-              <div className="rounded-full border border-[rgba(220,196,146,0.34)] bg-[rgba(220,196,146,0.15)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#fff0cf]">
-                Teacher Insights
-              </div>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {classContextMode && (
-                <span className="rounded-full border border-[rgba(211,228,248,0.2)] bg-[rgba(255,255,255,0.06)] px-3 py-1 text-[11px] font-semibold text-[#d5e6fa]">
-                  Context: {classContextMode}
-                </span>
-              )}
+    <div className="app rec" role="dialog" aria-modal="true" aria-label="Session record">
+      <header className="rec-bar">
+        <div className="wrap wrap-wide rec-bar-inner">
+          <div>
+            <h1 className="rec-title">Session record</h1>
+            <div className="rec-meta">
+              <span>{sessionId || "Session not named"}</span>
+              <span>{formatDate(startTime)}</span>
+              <span>{formatTime(duration)}</span>
+              {classContextMode && <span>{classContextMode} context</span>}
               {strictModeAtEnd != null && (
-                <span className="rounded-full border border-[rgba(211,228,248,0.2)] bg-[rgba(255,255,255,0.06)] px-3 py-1 text-[11px] font-semibold text-[#d5e6fa]">
-                  Tab Mode: {strictModeAtEnd ? "Strict" : "Normal"}
-                </span>
-              )}
-              {(totalStudentsSimulated ?? 0) > 0 && (
-                <span className="rounded-full border border-[rgba(55,211,154,0.36)] bg-[rgba(55,211,154,0.13)] px-3 py-1 text-[11px] font-semibold text-[#ccf8e9]">
-                  Simulated learners: {totalStudentsSimulated}
-                </span>
+                <span>{strictModeAtEnd ? "Strict" : "Normal"} tab</span>
               )}
             </div>
           </div>
-
-          <MotionDiv
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="flex-1 space-y-6 overflow-y-auto px-5 pb-6 pt-5 sm:px-7"
-          >
-            <MotionSection
-              variants={sectionVariants}
-              className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+          <div className="rec-actions">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={handleExportPDF}
             >
-              <MotionArticle
-                whileHover={{
-                  y: -2,
-                  transition: { duration: 0.18, ease: EASE },
-                }}
-                className={`${surfaceCardClass} flex flex-col justify-center`}
+              <DownloadIcon />
+              Export PDF
+            </button>
+            {onSave && (
+              <button
+                type="button"
+                className="btn btn-cream btn-sm"
+                onClick={handleSave}
+                disabled={saveState === "saving" || saveState === "saved"}
               >
-                <div className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#99adc2]">
-                  Duration
-                </div>
-                <div className="mt-1 text-2xl font-bold text-[#e8f0fa]">
-                  {formatTime(animatedDuration)}
-                </div>
-              </MotionArticle>
-
-              <MotionArticle
-                whileHover={{
-                  y: -2,
-                  transition: { duration: 0.18, ease: EASE },
-                }}
-                className={`${surfaceCardClass} flex flex-col justify-center`}
-              >
-                <div className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#99adc2]">
-                  Avg engagement
-                </div>
-                <div
-                  className={`mt-1 text-2xl font-bold ${getScoreColor(avgScore)}`}
-                >
-                  {Math.max(0, Math.min(100, Math.round(animatedAvgPercent)))}%
-                </div>
-                <div
-                  className={`mt-1 text-xs font-semibold ${getScoreColor(avgScore)}`}
-                >
-                  {getScoreLabel(avgScore)}
-                </div>
-              </MotionArticle>
-
-              <MotionArticle
-                whileHover={{
-                  y: -2,
-                  transition: { duration: 0.18, ease: EASE },
-                }}
-                className={`${surfaceCardClass} flex flex-col justify-center`}
-              >
-                <div className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#99adc2]">
-                  Learners
-                </div>
-                <div className="mt-1 text-2xl font-bold text-[#dce8f6]">
-                  {Math.round(animatedLearners)}
-                </div>
-                <div className="mt-2 space-y-0.5 text-xs text-[#9fb3c9]">
-                  {totalStudentsReal != null && (
-                    <div>Live / enrolled: {totalStudentsReal}</div>
-                  )}
-                  {(totalStudentsSimulated ?? 0) > 0 && (
-                    <div>Simulated (demo): {totalStudentsSimulated}</div>
-                  )}
-                </div>
-              </MotionArticle>
-
-              <MotionArticle
-                whileHover={{
-                  y: -2,
-                  transition: { duration: 0.18, ease: EASE },
-                }}
-                className={`${surfaceCardClass} flex flex-col justify-center`}
-              >
-                <div className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#99adc2]">
-                  TPI
-                </div>
-                {tpi != null ? (
-                  <>
-                    <div className="mt-1 text-2xl font-bold text-[#fff0cf]">
-                      {Math.round(animatedTpi)}
-                      <span className="ml-1 text-base text-[#dcc492]">
-                        /100
-                      </span>
-                    </div>
-                    <div className="mt-2 text-xs text-[#9fb3c9]">
-                      TPI = (Avg engagement x 60%) + (Attention retention x 40%)
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="mt-1 text-xl font-semibold text-[#b7c9dd]">
-                      Unavailable
-                    </div>
-                    <div className="mt-2 text-xs text-[#8ea3ba]">
-                      Needs more timeline snapshots to compute reliably.
-                    </div>
-                  </>
-                )}
-              </MotionArticle>
-            </MotionSection>
-
-            {metricsTimeline && metricsTimeline.length > 0 && (
-              <MotionSection
-                variants={sectionVariants}
-                className={surfaceCardClass}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className={sectionTitleClass}>
-                      Class attention heatmap
-                    </h3>
-                    <p className={`${sectionBodyClass} mt-1`}>
-                      Each bar represents a snapshot over time with intensity
-                      mapped to engagement score.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 overflow-x-auto pb-1">
-                  <div className="inline-flex min-w-full gap-1.5">
-                    {metricsTimeline.map((m, idx) => {
-                      const s = Number(m.avgScore) || 0;
-                      const color =
-                        s >= 0.7 ? "#37d39a" : s >= 0.4 ? "#dcc492" : "#ff6f7d";
-                      const parts = [`All: ${(s * 100).toFixed(0)}%`];
-                      if (m.avgScoreReal != null)
-                        parts.push(
-                          `Live: ${(m.avgScoreReal * 100).toFixed(0)}%`,
-                        );
-                      if (m.avgScoreSimulated != null)
-                        parts.push(
-                          `Sim: ${(m.avgScoreSimulated * 100).toFixed(0)}%`,
-                        );
-                      return (
-                        <div
-                          key={idx}
-                          aria-label={`${m.time} | ${parts.join(" | ")}`}
-                          className="h-12 w-3.5 flex-none rounded-md border border-black/10 transition-transform duration-200 hover:-translate-y-0.5"
-                          style={{
-                            backgroundColor: color,
-                            opacity: 0.25 + s * 0.75,
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="mt-2 flex justify-between text-[11px] text-[#91a8bf]">
-                  <span>Start</span>
-                  <span>End</span>
-                </div>
-              </MotionSection>
+                <CheckIcon />
+                {saveState === "saving"
+                  ? "Saving"
+                  : saveState === "saved"
+                    ? "Saved"
+                    : "Save record"}
+              </button>
             )}
-
-            <MotionSection
-              variants={sectionVariants}
-              className={surfaceCardClass}
+            <button
+              type="button"
+              className="btn btn-quiet-cream btn-sm"
+              onClick={onClose}
             >
-              <h3 className={sectionTitleClass}>Engagement timeline</h3>
-              <p className={`${sectionBodyClass} mt-1`}>
-                Combined average includes simulated learners when simulation was
-                active. Split lines separate live and simulated cohorts.
-              </p>
-
-              {metricsTimeline && metricsTimeline.length > 0 ? (
-                <div className="mt-4">
-                  <ResponsiveContainer width="100%" height={290}>
-                    <LineChart data={metricsTimeline}>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke={chartGridStroke}
-                      />
-                      <XAxis
-                        dataKey="time"
-                        stroke={chartAxisStroke}
-                        tick={{ fontSize: 11, fill: "#91a8bf" }}
-                      />
-                      <YAxis
-                        stroke={chartAxisStroke}
-                        tick={{ fontSize: 11, fill: "#91a8bf" }}
-                        domain={[0, 1]}
-                        ticks={[0, 0.25, 0.5, 0.75, 1]}
-                        tickFormatter={(value) =>
-                          `${(value * 100).toFixed(0)}%`
-                        }
-                      />
-                      <Tooltip
-                        formatter={(value, name) => {
-                          if (value == null || Number.isNaN(value))
-                            return ["-", name];
-                          return [`${(Number(value) * 100).toFixed(0)}%`, name];
-                        }}
-                        contentStyle={chartTooltipStyle}
-                        labelStyle={chartTooltipLabelStyle}
-                        itemStyle={chartTooltipItemStyle}
-                      />
-                      <Legend
-                        wrapperStyle={{
-                          fontSize: 12,
-                          color: "#bdd0e4",
-                          paddingTop: 8,
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="avgScore"
-                        name="All learners"
-                        stroke="#7eb2ff"
-                        strokeWidth={2.6}
-                        dot={{ r: 2.8, fill: "#7eb2ff" }}
-                        activeDot={{ r: 5 }}
-                      />
-                      {hasRealLine && (
-                        <Line
-                          type="monotone"
-                          dataKey="avgScoreReal"
-                          name="Live learners"
-                          stroke="#37d39a"
-                          strokeWidth={2.2}
-                          dot={false}
-                          connectNulls
-                        />
-                      )}
-                      {hasSimLine && (
-                        <Line
-                          type="monotone"
-                          dataKey="avgScoreSimulated"
-                          name="Simulated"
-                          stroke="#d7b97f"
-                          strokeWidth={2.2}
-                          strokeDasharray="7 4"
-                          dot={false}
-                          connectNulls
-                        />
-                      )}
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="mt-4 rounded-xl border border-[rgba(211,228,248,0.14)] bg-[rgba(255,255,255,0.04)] px-4 py-8 text-center text-sm text-[#a6bbd0]">
-                  Timeline data is not available for this session.
-                </div>
-              )}
-            </MotionSection>
-
-            <MotionSection
-              variants={sectionVariants}
-              className="grid grid-cols-1 gap-6 lg:grid-cols-2"
-            >
-              <article className={surfaceCardClass}>
-                <h3 className={sectionTitleClass}>Attention distribution</h3>
-                <p className={`${sectionBodyClass} mt-1`}>
-                  Bands: attentive above 70%, distracted between 40% and 70%,
-                  disengaged below 40%.
-                </p>
-
-                {pieDataNonZero.length === 0 ? (
-                  <div className="mt-4 grid h-[260px] place-items-center rounded-xl border border-[rgba(211,228,248,0.14)] bg-[rgba(255,255,255,0.04)] text-sm text-[#a6bbd0]">
-                    No distribution data yet.
-                  </div>
-                ) : (
-                  <div className="mt-4">
-                    <ResponsiveContainer width="100%" height={260}>
-                      <PieChart>
-                        <Pie
-                          data={pieDataNonZero}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={renderPiePercentLabel}
-                          outerRadius={88}
-                          dataKey="value"
-                        >
-                          {pieDataNonZero.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={chartTooltipStyle}
-                          labelStyle={chartTooltipLabelStyle}
-                          itemStyle={chartTooltipItemStyle}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-
-                <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs text-[#bfd2e4]">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: COLORS.attentive }}
-                    />
-                    <span>Attentive</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: COLORS.distracted }}
-                    />
-                    <span>Distracted</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: COLORS.disengaged }}
-                    />
-                    <span>Disengaged</span>
-                  </div>
-                </div>
-              </article>
-
-              <article className={surfaceCardClass}>
-                <h3 className={sectionTitleClass}>Vs class average</h3>
-                <p className={`${sectionBodyClass} mt-1`}>
-                  Strong is at least {(relativePieData.hi * 100).toFixed(0)}%.
-                  Below is at most {(relativePieData.lo * 100).toFixed(0)}%.
-                </p>
-
-                {relativeRows.length === 0 ? (
-                  <div className="mt-4 grid h-[260px] place-items-center rounded-xl border border-[rgba(211,228,248,0.14)] bg-[rgba(255,255,255,0.04)] text-sm text-[#a6bbd0]">
-                    Relative comparison needs more learner data.
-                  </div>
-                ) : (
-                  <div className="mt-4">
-                    <ResponsiveContainer width="100%" height={260}>
-                      <PieChart>
-                        <Pie
-                          data={relativeRows}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={renderPiePercentLabel}
-                          outerRadius={88}
-                          dataKey="value"
-                        >
-                          {relativeRows.map((entry, index) => (
-                            <Cell key={`rel-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={chartTooltipStyle}
-                          labelStyle={chartTooltipLabelStyle}
-                          itemStyle={chartTooltipItemStyle}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-
-                {relativeRows.length > 0 && (
-                  <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs text-[#bfd2e4]">
-                    {relativeRows.map((row) => (
-                      <div key={row.name} className="flex items-center gap-2">
-                        <div
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: row.color }}
-                        />
-                        <span>{row.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </article>
-            </MotionSection>
-
-            <MotionSection
-              variants={sectionVariants}
-              className={surfaceCardClass}
-            >
-              <h3 className={sectionTitleClass}>
-                Confusion hotspots over time
-              </h3>
-              <p className={`${sectionBodyClass} mt-1`}>
-                Snapshot moments where at least 20% of learners showed confusion
-                signals.
-              </p>
-
-              {confusionHotspots.length === 0 ? (
-                <div className="mt-4 rounded-xl border border-[rgba(55,211,154,0.3)] bg-[rgba(55,211,154,0.12)] px-4 py-8 text-center text-sm text-[#ccf8e9]">
-                  No significant confusion clusters were detected in this class.
-                </div>
-              ) : (
-                <>
-                  <div className="mt-4">
-                    <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={confusionHotspots}>
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          stroke={chartGridStroke}
-                        />
-                        <XAxis
-                          dataKey="time"
-                          stroke={chartAxisStroke}
-                          tick={{ fontSize: 11, fill: "#91a8bf" }}
-                        />
-                        <YAxis
-                          stroke={chartAxisStroke}
-                          tick={{ fontSize: 11, fill: "#91a8bf" }}
-                          domain={[0, 100]}
-                          tickFormatter={(value) => `${value}%`}
-                        />
-                        <Tooltip
-                          formatter={(value) => [`${value}%`, "Confusion"]}
-                          contentStyle={chartTooltipStyle}
-                          labelStyle={chartTooltipLabelStyle}
-                          itemStyle={chartTooltipItemStyle}
-                        />
-                        <Bar
-                          dataKey="percentage"
-                          fill="#d7b97f"
-                          name="Confusion %"
-                          radius={[8, 8, 0, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div
-                    className={`mt-4 rounded-xl border px-4 py-3 text-sm ${confusionToneClass}`}
-                  >
-                    Peak confusion reached {peakConfusion.toFixed(0)}% of
-                    learners at the highest point.
-                  </div>
-                </>
-              )}
-            </MotionSection>
-
-            {Object.keys(perStudentTimelines).length > 0 && (
-              <MotionSection
-                variants={sectionVariants}
-                className={surfaceCardClass}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 className={sectionTitleClass}>
-                      Per-student engagement
-                    </h3>
-                    <p className={`${sectionBodyClass} mt-1`}>
-                      Expanded view is scroll-contained and sorted with live
-                      learners first.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowPerStudent((prev) => !prev)}
-                    className="rounded-full border border-[rgba(211,228,248,0.2)] bg-[rgba(255,255,255,0.06)] px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-[#e1ecf8] transition hover:bg-[rgba(255,255,255,0.12)]"
-                  >
-                    {showPerStudent ? "Hide details" : "Show details"}
-                  </button>
-                </div>
-
-                {showPerStudent && (
-                  <div className="mt-4 max-h-[460px] overflow-y-auto pr-1">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      {Object.entries(perStudentTimelines)
-                        .sort(([a], [b]) => {
-                          const simA = studentMeta[a]?.isSimulated ? 1 : 0;
-                          const simB = studentMeta[b]?.isSimulated ? 1 : 0;
-                          return simA - simB;
-                        })
-                        .map(([userId, data], idx) => {
-                          const sim = studentMeta[userId]?.isSimulated;
-                          const label =
-                            studentMeta[userId]?.displayName ||
-                            userId.slice(0, 12);
-                          return (
-                            <MotionArticle
-                              key={userId}
-                              whileHover={{
-                                y: -2,
-                                transition: { duration: 0.18, ease: EASE },
-                              }}
-                              className="rounded-xl border border-[rgba(211,228,248,0.16)] bg-[rgba(255,255,255,0.04)] p-4"
-                            >
-                              <div className="mb-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-[#deebf9]">
-                                <span className="truncate max-w-[230px]">
-                                  {label}
-                                </span>
-                                {sim && (
-                                  <span className="rounded-full border border-[rgba(168,146,255,0.4)] bg-[rgba(168,146,255,0.16)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#efe8ff]">
-                                    Simulated
-                                  </span>
-                                )}
-                              </div>
-                              <ResponsiveContainer width="100%" height={148}>
-                                <LineChart data={data}>
-                                  <CartesianGrid
-                                    strokeDasharray="3 3"
-                                    stroke={chartGridStroke}
-                                  />
-                                  <XAxis
-                                    dataKey="time"
-                                    stroke={chartAxisStroke}
-                                    tick={{ fontSize: 10, fill: "#8fa6be" }}
-                                  />
-                                  <YAxis
-                                    domain={[0, 1]}
-                                    ticks={[0, 0.5, 1]}
-                                    tickFormatter={(v) =>
-                                      `${(v * 100).toFixed(0)}%`
-                                    }
-                                    tick={{ fontSize: 10, fill: "#8fa6be" }}
-                                    stroke={chartAxisStroke}
-                                    width={36}
-                                  />
-                                  <Tooltip
-                                    formatter={(v) => [
-                                      `${(Number(v) * 100).toFixed(0)}%`,
-                                      "Engagement",
-                                    ]}
-                                    contentStyle={chartTooltipStyle}
-                                    labelStyle={chartTooltipLabelStyle}
-                                    itemStyle={chartTooltipItemStyle}
-                                  />
-                                  <Line
-                                    type="monotone"
-                                    dataKey="score"
-                                    stroke={getStudentColor(idx)}
-                                    strokeWidth={2.2}
-                                    dot={{ r: 2 }}
-                                    activeDot={{ r: 4 }}
-                                  />
-                                </LineChart>
-                              </ResponsiveContainer>
-                            </MotionArticle>
-                          );
-                        })}
-                    </div>
-                  </div>
-                )}
-              </MotionSection>
-            )}
-
-            <MotionSection
-              variants={sectionVariants}
-              className={surfaceCardClass}
-            >
-              <h3 className={sectionTitleClass}>Students at risk</h3>
-              <p className={`${sectionBodyClass} mt-1`}>
-                Criteria: average engagement below 35%, strikes at least 2, or
-                identity issues at least 3.
-              </p>
-
-              {atRiskStudents.length === 0 ? (
-                <div className="mt-4 rounded-xl border border-[rgba(55,211,154,0.3)] bg-[rgba(55,211,154,0.12)] px-4 py-8 text-center text-sm text-[#ccf8e9]">
-                  No at-risk learners identified in this session.
-                </div>
-              ) : (
-                <>
-                  <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    {atRiskStudents.map((student, idx) => {
-                      const severity =
-                        student.strikes >= 3 || student.identityIssues >= 2
-                          ? "high"
-                          : student.avgScore < 0.3
-                            ? "medium"
-                            : "low";
-
-                      const severityLabel =
-                        severity === "high"
-                          ? "HIGH RISK"
-                          : severity === "medium"
-                            ? "MEDIUM RISK"
-                            : "LOW RISK";
-
-                      const severityClass =
-                        severity === "high"
-                          ? "border-[rgba(255,111,125,0.45)] bg-[rgba(255,111,125,0.12)] text-[#ffd4d9]"
-                          : severity === "medium"
-                            ? "border-[rgba(220,196,146,0.45)] bg-[rgba(220,196,146,0.14)] text-[#fff0cf]"
-                            : "border-[rgba(126,178,255,0.45)] bg-[rgba(126,178,255,0.12)] text-[#d6e8ff]";
-
-                      return (
-                        <article
-                          key={`${student.userId || "learner"}-${idx}`}
-                          className="rounded-xl border border-[rgba(255,111,125,0.28)] bg-[rgba(255,255,255,0.04)] p-4"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-semibold text-[#eff5fc]">
-                                {student.userId?.slice(0, 12) ||
-                                  "Unknown learner"}
-                              </div>
-                              <div className="mt-2 space-y-1 text-xs text-[#a6bbd0]">
-                                <div>
-                                  Avg engagement:{" "}
-                                  <span className="font-semibold text-[#ffd0d6]">
-                                    {(student.avgScore * 100).toFixed(0)}%
-                                  </span>
-                                </div>
-                                <div>
-                                  Strikes:{" "}
-                                  <span className="font-semibold text-[#deebf9]">
-                                    {student.strikes || 0}
-                                  </span>
-                                </div>
-                                <div>
-                                  Identity issues:{" "}
-                                  <span className="font-semibold text-[#deebf9]">
-                                    {student.identityIssues || 0}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <span
-                              className={`rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-[0.08em] ${severityClass}`}
-                            >
-                              {severityLabel}
-                            </span>
-                          </div>
-                          <div className="mt-3 rounded-lg border border-[rgba(211,228,248,0.14)] bg-[rgba(4,20,33,0.55)] px-2.5 py-1.5 text-xs text-[#b9ccdf]">
-                            {student.reason}
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-
-                  <div className="mt-4 rounded-xl border border-[rgba(126,178,255,0.35)] bg-[rgba(126,178,255,0.12)] px-4 py-3 text-sm text-[#d5e7ff]">
-                    Recommendation: follow up individually with flagged learners
-                    and verify support actions in the next class.
-                  </div>
-                </>
-              )}
-            </MotionSection>
-          </MotionDiv>
-
-          <div className="border-t border-[rgba(211,228,248,0.14)] bg-[linear-gradient(180deg,rgba(6,22,35,0.9),rgba(4,16,27,0.9))] px-5 py-4 sm:px-7">
-            <div className="flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:justify-end">
-              <button
-                onClick={handleExportPDF}
-                className="w-full rounded-xl border border-[rgba(211,228,248,0.22)] bg-[rgba(255,255,255,0.05)] px-5 py-2.5 text-sm font-semibold text-[#d7e7f8] transition hover:bg-[rgba(255,255,255,0.1)] sm:w-auto"
-              >
-                Export PDF
-              </button>
-              <button
-                onClick={onClose}
-                className="w-full rounded-xl border border-[rgba(211,228,248,0.22)] bg-[rgba(255,255,255,0.04)] px-5 py-2.5 text-sm font-semibold text-[#c0d4e9] transition hover:bg-[rgba(255,255,255,0.1)] sm:w-auto"
-              >
-                Close
-              </button>
-              <button
-                onClick={onSave}
-                className="w-full rounded-xl border border-[rgba(220,196,146,0.36)] bg-[linear-gradient(160deg,rgba(220,196,146,0.28),rgba(220,196,146,0.12))] px-5 py-2.5 text-sm font-semibold text-[#fff4db] shadow-[0_8px_20px_rgba(220,196,146,0.18)] transition hover:bg-[linear-gradient(160deg,rgba(220,196,146,0.34),rgba(220,196,146,0.16))] sm:w-auto"
-              >
-                Save report
-              </button>
-            </div>
+              Close
+            </button>
           </div>
         </div>
-      </MotionDiv>
+      </header>
+
+      <div className="wrap wrap-wide rec-body">
+        <p className="rec-lede">
+          A <strong>{formatTime(duration)}</strong> class with{" "}
+          <strong>{totalStudents}</strong>{" "}
+          {totalStudents === 1 ? "learner" : "learners"}. The mean engagement
+          was <strong>{meanPercent}%</strong>.
+          {simulated > 0 && (
+            <>
+              {" "}
+              {simulated} simulated {simulated === 1 ? "learner is" : "learners are"}{" "}
+              labelled as demo data.
+            </>
+          )}
+        </p>
+
+        <dl className="rec-facts">
+          <div className="rec-fact">
+            <dt>TPI</dt>
+            <dd>
+              {tpi != null ? (
+                <>
+                  {Math.round(tpi)}
+                  <small>/100</small>
+                </>
+              ) : (
+                "—"
+              )}
+            </dd>
+          </div>
+          <div className="rec-fact">
+            <dt>Mean engagement</dt>
+            <dd>{meanPercent}%</dd>
+          </div>
+          <div className="rec-fact">
+            <dt>Learners</dt>
+            <dd>
+              {totalStudents}
+              <small>
+                {live} live
+                {simulated > 0 ? ` · ${simulated} simulated` : ""}
+              </small>
+            </dd>
+          </div>
+          <div className="rec-fact">
+            <dt>Duration</dt>
+            <dd>{formatTime(duration)}</dd>
+          </div>
+        </dl>
+
+        <p className="meta rec-note">
+          TPI is a post-class index: 60% mean engagement + 40% attention
+          retention. It is not a student grade.
+          {tpi == null &&
+            " This session did not have enough timeline snapshots to compute it."}
+        </p>
+
+        {saveState === "saved" && (
+          <p className="notice notice-ok rec-save-note" role="status">
+            <CheckIcon />
+            <span>Record saved. It is available under Session records.</span>
+          </p>
+        )}
+        {saveState === "error" && (
+          <p className="notice notice-flag rec-save-note" role="alert">
+            <AlertIcon />
+            <span>{saveError}</span>
+          </p>
+        )}
+
+        <section className="rec-section" aria-labelledby="rec-timeline">
+          <div className="rec-section-head">
+            <h2 id="rec-timeline">Attention over time</h2>
+            <p>
+              The combined line includes simulated learners when the simulator
+              was on. Live and simulated cohorts are split when both exist.
+            </p>
+          </div>
+
+          {metricsTimeline.length > 0 ? (
+            <div className="rec-figure">
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={metricsTimeline}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                  <XAxis
+                    dataKey="time"
+                    stroke={CHART.axis}
+                    tick={{ fontSize: 11, fill: CHART.axis }}
+                  />
+                  <YAxis
+                    stroke={CHART.axis}
+                    tick={{ fontSize: 11, fill: CHART.axis }}
+                    domain={[0, 1]}
+                    ticks={[0, 0.25, 0.5, 0.75, 1]}
+                    tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
+                  />
+                  <Tooltip
+                    formatter={(value, name) => {
+                      if (value == null || Number.isNaN(value))
+                        return ["—", name];
+                      return [`${(Number(value) * 100).toFixed(0)}%`, name];
+                    }}
+                    contentStyle={tooltipStyle}
+                    labelStyle={tooltipLabelStyle}
+                    itemStyle={tooltipItemStyle}
+                  />
+                  <Legend
+                    wrapperStyle={{
+                      fontSize: 11,
+                      color: CHART.axis,
+                      paddingTop: 8,
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="avgScore"
+                    name="All learners"
+                    stroke={CHART.ink}
+                    strokeWidth={2.4}
+                    dot={{ r: 2.4, fill: CHART.ink }}
+                    activeDot={{ r: 4 }}
+                  />
+                  {hasRealLine && (
+                    <Line
+                      type="monotone"
+                      dataKey="avgScoreReal"
+                      name="Live learners"
+                      stroke={CHART.sage}
+                      strokeWidth={2}
+                      dot={false}
+                      connectNulls
+                    />
+                  )}
+                  {hasSimLine && (
+                    <Line
+                      type="monotone"
+                      dataKey="avgScoreSimulated"
+                      name="Simulated"
+                      stroke={CHART.gold}
+                      strokeWidth={2}
+                      strokeDasharray="7 4"
+                      dot={false}
+                      connectNulls
+                    />
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <p className="notice notice-quiet">
+              <AlertIcon />
+              <span>Timeline data is not available for this session.</span>
+            </p>
+          )}
+        </section>
+
+        <div className="rec-grid2">
+          <section className="rec-section" aria-labelledby="rec-distribution">
+            <div className="rec-section-head">
+              <h2 id="rec-distribution">Attention distribution</h2>
+              <p>
+                Attentive above 70%, distracted between 40% and 70%, away below
+                40%.
+              </p>
+            </div>
+
+            {distributionTotal > 0 ? (
+              <>
+                <div
+                  className="rec-band"
+                  role="img"
+                  aria-label={`Attentive ${distributionEffective.attentive}, distracted ${distributionEffective.distracted}, away ${distributionEffective.disengaged}`}
+                >
+                  {distributionEffective.attentive > 0 && (
+                    <span
+                      className="rec-band-seg is-attentive"
+                      style={{
+                        width: `${(distributionEffective.attentive / distributionTotal) * 100}%`,
+                      }}
+                    />
+                  )}
+                  {distributionEffective.distracted > 0 && (
+                    <span
+                      className="rec-band-seg is-distracted"
+                      style={{
+                        width: `${(distributionEffective.distracted / distributionTotal) * 100}%`,
+                      }}
+                    />
+                  )}
+                  {distributionEffective.disengaged > 0 && (
+                    <span
+                      className="rec-band-seg is-away"
+                      style={{
+                        width: `${(distributionEffective.disengaged / distributionTotal) * 100}%`,
+                      }}
+                    />
+                  )}
+                </div>
+                <div className="rec-band-legend">
+                  <span className="rec-band-item">
+                    <i className="dot dot-attentive" /> Attentive{" "}
+                    <b>{distributionEffective.attentive}</b>
+                  </span>
+                  <span className="rec-band-item">
+                    <i className="dot dot-distracted" /> Distracted{" "}
+                    <b>{distributionEffective.distracted}</b>
+                  </span>
+                  <span className="rec-band-item">
+                    <i className="dot dot-away" /> Away{" "}
+                    <b>{distributionEffective.disengaged}</b>
+                  </span>
+                </div>
+              </>
+            ) : (
+              <p className="notice notice-quiet">
+                <AlertIcon />
+                <span>No distribution data for this session.</span>
+              </p>
+            )}
+          </section>
+
+          <section className="rec-section" aria-labelledby="rec-compare">
+            <div className="rec-section-head">
+              <h2 id="rec-compare">Compared with the class mean</h2>
+              <p>
+                Strong is at least {(relativeData.hi * 100).toFixed(0)}%; below
+                is at most {(relativeData.lo * 100).toFixed(0)}%.
+              </p>
+            </div>
+
+            {relativeRows.length > 0 ? (
+              <div className="rec-compare">
+                {relativeRows.map((row) => (
+                  <div className="rec-compare-row" key={row.name}>
+                    <i className={`dot dot-${row.dot}`} aria-hidden="true" />
+                    <span>{row.name}</span>
+                    <b>{row.value}</b>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="notice notice-quiet">
+                <AlertIcon />
+                <span>
+                  Relative comparison needs more learner data.
+                </span>
+              </p>
+            )}
+          </section>
+        </div>
+
+        <section className="rec-section" aria-labelledby="rec-confusion">
+          <div className="rec-section-head">
+            <h2 id="rec-confusion">Confusion moments</h2>
+            <p>
+              Snapshots where at least 20% of learners showed confusion signals.
+            </p>
+          </div>
+
+          {confusionHotspots.length === 0 ? (
+            <p className="notice notice-ok">
+              <CheckIcon />
+              <span>No significant confusion clusters in this class.</span>
+            </p>
+          ) : (
+            <>
+              <div className="rec-figure">
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={confusionHotspots}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                    <XAxis
+                      dataKey="time"
+                      stroke={CHART.axis}
+                      tick={{ fontSize: 11, fill: CHART.axis }}
+                    />
+                    <YAxis
+                      stroke={CHART.axis}
+                      tick={{ fontSize: 11, fill: CHART.axis }}
+                      domain={[0, 100]}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Tooltip
+                      formatter={(value) => [`${value}%`, "Confusion"]}
+                      contentStyle={tooltipStyle}
+                      labelStyle={tooltipLabelStyle}
+                      itemStyle={tooltipItemStyle}
+                    />
+                    <Bar
+                      dataKey="percentage"
+                      fill={CHART.gold}
+                      name="Confusion"
+                      radius={[2, 2, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="notice notice-quiet rec-note">
+                <AlertIcon />
+                <span>
+                  Peak confusion reached {peakConfusion.toFixed(0)}% of learners.
+                </span>
+              </p>
+            </>
+          )}
+        </section>
+
+        {Object.keys(perStudentTimelines).length > 0 && (
+          <section className="rec-section" aria-labelledby="rec-students">
+            <div className="rec-section-head">
+              <h2 id="rec-students">Per-student attention</h2>
+              <p>
+                The expanded view is scroll-contained and lists live learners
+                first. Simulated learners are labelled.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="rec-detail-toggle"
+              onClick={() => setShowPerStudent((prev) => !prev)}
+              aria-expanded={showPerStudent}
+              aria-controls="rec-student-grid"
+            >
+              {showPerStudent ? "Hide details" : "Show details"}
+              <span aria-hidden="true">{showPerStudent ? "−" : "+"}</span>
+            </button>
+
+            {showPerStudent && (
+              <div id="rec-student-grid" className="rec-students">
+                {Object.entries(perStudentTimelines)
+                  .sort(([a], [b]) => {
+                    const simA = studentMeta[a]?.isSimulated ? 1 : 0;
+                    const simB = studentMeta[b]?.isSimulated ? 1 : 0;
+                    return simA - simB;
+                  })
+                  .map(([userId, data]) => {
+                    const sim = studentMeta[userId]?.isSimulated;
+                    const label =
+                      studentMeta[userId]?.displayName || userId.slice(0, 12);
+                    return (
+                      <article key={userId} className="rec-student">
+                        <div className="rec-student-head">
+                          <span className="rec-student-name" title={label}>
+                            {label}
+                          </span>
+                          {sim && <span className="badge">Simulated</span>}
+                        </div>
+                        <ResponsiveContainer width="100%" height={140}>
+                          <LineChart data={data}>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke={CHART.grid}
+                            />
+                            <XAxis
+                              dataKey="time"
+                              stroke={CHART.axis}
+                              tick={{ fontSize: 10, fill: CHART.axis }}
+                            />
+                            <YAxis
+                              domain={[0, 1]}
+                              ticks={[0, 0.5, 1]}
+                              tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
+                              tick={{ fontSize: 10, fill: CHART.axis }}
+                              stroke={CHART.axis}
+                              width={34}
+                            />
+                            <Tooltip
+                              formatter={(v) => [
+                                `${(Number(v) * 100).toFixed(0)}%`,
+                                "Engagement",
+                              ]}
+                              contentStyle={tooltipStyle}
+                              labelStyle={tooltipLabelStyle}
+                              itemStyle={tooltipItemStyle}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="score"
+                              stroke={CHART.sage}
+                              strokeWidth={2}
+                              dot={{ r: 1.8 }}
+                              activeDot={{ r: 3.5 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </article>
+                    );
+                  })}
+              </div>
+            )}
+          </section>
+        )}
+
+        <section className="rec-section" aria-labelledby="rec-followup">
+          <div className="rec-section-head">
+            <h2 id="rec-followup">Follow-up</h2>
+            <p>
+              Learners with a mean below 35%, at least 2 strikes, or at least 3
+              identity issues.
+            </p>
+          </div>
+
+          {atRiskStudents.length === 0 ? (
+            <p className="notice notice-ok">
+              <CheckIcon />
+              <span>No learner crossed the follow-up thresholds.</span>
+            </p>
+          ) : (
+            <>
+              <div className="rec-followup">
+                {atRiskStudents.map((student, index) => {
+                  const severity =
+                    student.strikes >= 3 || student.identityIssues >= 2
+                      ? "High"
+                      : student.avgScore < 0.3
+                        ? "Medium"
+                        : "Low";
+                  return (
+                    <article
+                      className="rec-followup-row"
+                      key={`${student.userId || "learner"}-${index}`}
+                    >
+                      <div>
+                        <p className="rec-followup-name">
+                          {student.userId?.slice(0, 16) || "Unknown learner"}
+                        </p>
+                        <p className="rec-followup-reason">
+                          {student.reason || "Crossed a follow-up threshold."}
+                        </p>
+                      </div>
+                      <div className="rec-followup-facts">
+                        <span>
+                          Avg{" "}
+                          <b>{(student.avgScore * 100).toFixed(0)}%</b>
+                        </span>
+                        <span>
+                          Strikes <b>{student.strikes || 0}</b>
+                        </span>
+                        <span>
+                          Identity <b>{student.identityIssues || 0}</b>
+                        </span>
+                        <span
+                          className={`badge ${severity === "High" ? "badge-flag" : severity === "Medium" ? "badge-distracted" : ""}`.trim()}
+                        >
+                          {severity}
+                        </span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              <p className="notice notice-quiet rec-note">
+                <AlertIcon />
+                <span>
+                  Follow up individually with these learners and check support
+                  actions in the next class.
+                </span>
+              </p>
+            </>
+          )}
+        </section>
+
+        <footer className="rec-footer">
+          <p className="rec-footer-note">
+            A record, not a recording. No video frames, audio, page content, or
+            grades are kept. TPI is a post-class index, not a student grade.
+          </p>
+          <button
+            type="button"
+            className="btn btn-line btn-sm"
+            onClick={onClose}
+          >
+            Close record
+          </button>
+        </footer>
+      </div>
     </div>
   );
 }

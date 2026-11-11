@@ -13,7 +13,10 @@ import SignInPage      from "./pages/sign-in-page.jsx";
 import SignUpPage      from "./pages/sign-up-page.jsx";
 import ChooseRolePage  from "./pages/choose-role-page.jsx";
 import ReadinessPage   from "./pages/readiness-page.jsx";
+import RecordsPage     from "./pages/records-page.jsx";
+import NotFoundPage    from "./pages/not-found-page.jsx";
 import AuthGuard       from "./components/auth-guard.jsx";
+import AppErrorBoundary from "./components/app/error-boundary.jsx";
 
 // ── Core app pages (Phase 8/9 protected routes) ──────────────────────────
 import StudentPage from "./pages/student-page.jsx";
@@ -44,8 +47,9 @@ if (missingEnv.length > 0) {
   ReactDOM.createRoot(document.getElementById("root")).render(
   <HMSRoomProvider>
     <BrowserRouter>
-      <AnimatePresence mode="wait">
-        <Routes>
+      <AppErrorBoundary>
+        <AnimatePresence mode="wait">
+          <Routes>
           {/* ── Phase 3: landing page ── */}
         <Route path="/" element={<HomePage />} />
 
@@ -57,13 +61,19 @@ if (missingEnv.length > 0) {
         <Route path="/choose-role" element={<AuthGuard><ChooseRolePage /></AuthGuard>} />
         <Route path="/readiness"   element={<AuthGuard><ReadinessPage /></AuthGuard>} />
 
+        {/* ── Teacher records ── */}
+        <Route path="/records" element={<AuthGuard><RecordsPage /></AuthGuard>} />
+
         {/* ── Phase 8/9: core app routes (AuthGuard protected) ── */}
         <Route path="/student" element={<AuthGuard><StudentPage /></AuthGuard>} />
         <Route path="/teacher" element={<AuthGuard><TeacherPage /></AuthGuard>} />
 
         <Route path="/meeting" element={<MeetingRoom />} />
-        </Routes>
-      </AnimatePresence>
+
+        <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </AnimatePresence>
+      </AppErrorBoundary>
     </BrowserRouter>
   </HMSRoomProvider>
   );

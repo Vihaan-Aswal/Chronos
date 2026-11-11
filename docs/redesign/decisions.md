@@ -113,3 +113,24 @@ Compared side by side with the frozen homepage at 1280 and 375:
 ## D25 — Readiness outcomes are in-product panels
 - **Alternatives:** keep `alert` / `confirm` for identity outcomes.
 - **Reason:** same decisions (try again / re-register / stop), readable and keyboard reachable, consistent with the record. The thresholds (0.55 / 0.65) and API calls are untouched.
+
+## D26 — `/records` is a real page, and the teacher desk links to it
+- **Alternatives:** keep the past-sessions modal on the pre-class screen.
+- **Reason:** records were unreachable without passing the camera gate and auto-joining a class. A ruled list with one "Open record" action per row is the right shape for reading, and the shared `api/records.js` loader keeps the teacher page and records page from diverging.
+
+## D27 — The report's below-40% band is labelled "Away"
+- **Alternatives:** keep the old "Disengaged" label for the distribution slice.
+- **Reason:** PRODUCT.md defines Away as the below-0.40 band and Disengaged as three strikes. The stored field is `distribution.disengaged`, but the count is the band, so the UI uses the truthful label while keeping the data key.
+
+## D28 — The report reads as a record, not a dashboard
+- **Alternatives:** keep the four KPI cards, two pies, and judgement labels.
+- **Reason:** the record head is a serif sentence plus a ruled fact table (no hero-metric cards); distribution is a ruled band bar; "Excellent / Balanced / Needs Support" is replaced by the product's bands; TPI is stated once with its formula and the "not a student grade" line. Charts use the state palette, not mint/blue/violet.
+
+## D29 — Legacy dashboard UI removed
+- **Alternatives:** leave the old components and CSS in place.
+- **Reason:** `teacher-dashboard.css`, `student-meeting.css`, `dashboard-shared.css`, `summary-cards`, `dashboard-topbar`, `student-card`, `login.jsx`, `app.css`, and `react.svg` had no remaining references after the rebuild. Removing them prevents a second design world from lingering and cut ~150 kB from the JS bundle.
+
+## D30 — Timeline labels show half-minute precision
+- **Alternatives:** keep `Math.floor(idx * 0.5)` labels, which repeated "0m, 0m, 1m, 1m".
+- **Reason:** snapshots are collected every 30 seconds; 0.5-minute labels make the chart honest and readable.
+

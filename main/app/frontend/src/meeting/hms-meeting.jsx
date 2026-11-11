@@ -519,8 +519,9 @@ export default function HMSMeeting({
           <h3>The video room did not open</h3>
           <p>{error}</p>
           <p className="stage-detail">
-            Class signals keep arriving. Retry the video when you can, or end
-            the session and keep the record.
+            {role === "host"
+              ? "Class signals keep arriving. Retry the video when you can, or end the session and keep the record."
+              : "Your signals keep arriving. Retry the video when you can."}
           </p>
           <button
             type="button"

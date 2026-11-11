@@ -59,6 +59,16 @@ async function run() {
   await page.routeWebSocket(/\/ws\/engagement\//, (ws) => {
     ws.onMessage(() => {});
   });
+  await page.route(/\/identity\//, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        exists: true,
+        embedding: Array.from({ length: 128 }, () => 0.02),
+      }),
+    }),
+  );
   if (!isStudent) {
     await page.routeWebSocket(/\/ws\/teacher\//, (ws) => {
       ws.onMessage(() => {});
@@ -91,10 +101,18 @@ async function run() {
   }
 
   await page.goto(baseUrl + route, { waitUntil: "domcontentloaded", timeout: 30000 });
-  await page.waitForTimeout(2200);
+  await page.waitForTimeout(3400);
+
+  const nudgeButton = page.getByRole("button", { name: /I.m here/i });
+  if (await nudgeButton.count()) {
+    await nudgeButton.first().click().catch(() => {});
+    await page.waitForTimeout(300);
+  }
 
   if (withRail) {
-    const toggle = page.getByRole("button", { name: /students|hide students/i }).first();
+    const toggle = page
+      .getByRole("button", { name: /students|hide students|signals|hide signals/i })
+      .first();
     if (await toggle.count()) {
       const expanded = await toggle.getAttribute("aria-expanded");
       if (expanded !== "true") await toggle.click().catch(() => {});

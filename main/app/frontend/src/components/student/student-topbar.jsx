@@ -1,29 +1,57 @@
 import ChronosMark from "../chronos-mark.jsx";
 
-export default function StudentTopbar({ wsConnected, sessionId, userName }) {
+export default function StudentTopbar({
+  wsConnected,
+  sessionId,
+  userName,
+  railOpen,
+  onToggleRail,
+  onLeave,
+  railId = "student-signals",
+}) {
   return (
-    <header className="sd-topbar" aria-label="Student meeting header">
-      <div className="sd-brand-group">
-        <div className="sd-brand-mark" aria-hidden="true">
-          <ChronosMark size={20} variant="gold" />
-        </div>
-        <div className="sd-brand-copy">
-          <span className="sd-brand-name">Chronos</span>
-          <span className="sd-brand-meta" title={`${sessionId} ${userName}`}>
-            Student Meeting
-            <span className="sd-brand-sep">.</span>
-            {userName}
-            <span className="sd-brand-sep">.</span>
-            {sessionId}
+    <header className="room-bar">
+      <div className="room-bar-inner">
+        <span className="room-brand">
+          <span aria-hidden="true">
+            <ChronosMark size={20} variant="gold" />
           </span>
-        </div>
-      </div>
-
-      <div className="sd-topbar-right">
-        <span className={`sd-ws-badge ${wsConnected ? "" : "disconnected"}`}>
-          <span className="sd-ws-dot" aria-hidden="true" />
-          {wsConnected ? "Connected" : "Offline"}
+          <span>Chronos</span>
         </span>
+
+        <div className="room-session" title={`${sessionId} · ${userName}`}>
+          <b>{sessionId}</b>
+          <span className="room-sep" aria-hidden="true" />
+          <span className="room-session-label">Student room</span>
+        </div>
+
+        <span
+          className={`room-connection ${wsConnected ? "" : "is-offline"}`.trim()}
+          title="Connection to the classroom signal stream"
+        >
+          <i aria-hidden="true" />
+          {wsConnected ? "Live" : "Offline"}
+        </span>
+
+        <div className="room-bar-actions">
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={onToggleRail}
+            aria-expanded={railOpen}
+            aria-controls={railId}
+          >
+            {railOpen ? "Hide signals" : "Your signals"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-cream"
+            onClick={onLeave}
+            title="Leave the room and return home"
+          >
+            Leave
+          </button>
+        </div>
       </div>
     </header>
   );

@@ -4,11 +4,14 @@ function NudgeNotification({ message }) {
   if (!message) return null;
 
   return createPortal(
-    <div className="sd-nudge-toast animate-nudge-slide-in">
-      <span className="sd-nudge-icon" aria-hidden="true">
-        🔔
+    <div className="app room-nudge" role="status" aria-live="polite">
+      <span className="room-nudge-mark" aria-hidden="true">
+        <i />
       </span>
-      <span className="sd-nudge-message">{message}</span>
+      <div>
+        <p className="room-nudge-label">A quiet nudge</p>
+        <p>{message}</p>
+      </div>
     </div>,
     document.body,
   );

@@ -14,6 +14,7 @@ export default function Modal({
   children,
   actions,
   labelledBy = "app-dialog-title",
+  dismissible = true,
 }) {
   const ref = useRef(null);
 
@@ -32,11 +33,11 @@ export default function Modal({
     if (!dialog) return;
     const onCancel = (event) => {
       event.preventDefault();
-      onClose?.();
+      if (dismissible) onClose?.();
     };
     dialog.addEventListener("cancel", onCancel);
     return () => dialog.removeEventListener("cancel", onCancel);
-  }, [onClose]);
+  }, [onClose, dismissible]);
 
   if (!open) return null;
 
@@ -50,14 +51,16 @@ export default function Modal({
             </h2>
             {sub && <p className="app-dialog-sub">{sub}</p>}
           </div>
-          <button
-            type="button"
-            className="icon-btn icon-btn-sm"
-            onClick={onClose}
-            aria-label="Close dialog"
-          >
-            <CloseIcon />
-          </button>
+          {dismissible && (
+            <button
+              type="button"
+              className="icon-btn icon-btn-sm"
+              onClick={onClose}
+              aria-label="Close dialog"
+            >
+              <CloseIcon />
+            </button>
+          )}
         </div>
       </div>
       <div className="app-dialog-body">{children}</div>

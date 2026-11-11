@@ -1,6 +1,6 @@
 // src/pages/TeacherPage.jsx
 
-import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
+import { Link, useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect, useCallback } from "react";
 
 import useTeacherWebSocket from "../hooks/use-teacher-websocket";
@@ -15,11 +15,13 @@ import StudentRow from "../components/teacher/student-row.jsx";
 import { kindFor } from "../components/app/student-kind.js";
 import Modal from "../components/app/modal.jsx";
 import EmptyState from "../components/app/empty-state.jsx";
+import ReadyLayout from "../components/app/ready-layout.jsx";
 
 import SessionReport from "../components/session-report.jsx";
 import { sendTeacherAction } from "../api/teacher-actions.js";
 import { triggerLiveness } from "../api/liveness.js";
 import "../styles/app-system.css";
+import "../styles/readiness.css";
 import "../styles/room.css";
 
 export default function TeacherPage() {
@@ -76,8 +78,6 @@ export default function TeacherPage() {
   const railToggleButtonRef = useRef(null);
   const isMountedRef = useRef(true);
   const livenessRequestIdRef = useRef(0);
-  const pastReportAbortRef = useRef(null);
-  const pastReportRequestIdRef = useRef(0);
 
   const { connected, students } = useTeacherWebSocket(sessionId);
 
@@ -94,7 +94,6 @@ export default function TeacherPage() {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      pastReportAbortRef.current?.abort();
     };
   }, []);
 
@@ -638,7 +637,7 @@ export default function TeacherPage() {
         }
       });
       return {
-        time: `${Math.floor(idx * 0.5)}m`,
+        time: `${(idx * 0.5).toFixed(1)}m`,
         avgScore: Number(m.avgScore) || 0,
         students: m.studentCount || 0,
         avgScoreReal: rN ? rSum / rN : null,
@@ -648,7 +647,7 @@ export default function TeacherPage() {
 
     const perStudentTimelines = {};
     metricsHistoryRef.current.forEach((snapshot, idx) => {
-      const t = `${Math.floor(idx * 0.5)}m`;
+      const t = `${(idx * 0.5).toFixed(1)}m`;
       const studentData = snapshot.students || {};
       Object.entries(studentData).forEach(([uid, metrics]) => {
         if (!perStudentTimelines[uid]) perStudentTimelines[uid] = [];
@@ -707,40 +706,29 @@ export default function TeacherPage() {
   };
 
   const handleSaveReport = async () => {
-    if (!sessionData) return;
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/session/save-analytics`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            session_id: sessionData.sessionId,
-            teacher_id: sessionData.teacherId,
-            start_time: sessionData.startTime,
-            end_time: sessionData.endTime,
-            duration_minutes: sessionData.duration,
-            avg_engagement_score: sessionData.avgScore,
-            total_students: sessionData.totalStudents,
-            tpi: sessionData.tpi,
-            metrics_timeline: metricsHistoryRef.current,
-            confusion_hotspots: sessionData.confusionHotspots,
-            at_risk_students: sessionData.atRiskStudents,
-          }),
-        },
-      );
-
-      if (response.ok) {
-        alert("Session report saved successfully! ✅");
-        setShowReport(false);
-        window.location.href = "/";
-      } else {
-        alert("Failed to save report. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error saving report:", error);
-      alert("Error saving report. Check console.");
+    if (!sessionData) throw new Error("No session record to save.");
+    const response = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/session/save-analytics`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: sessionData.sessionId,
+          teacher_id: sessionData.teacherId,
+          start_time: sessionData.startTime,
+          end_time: sessionData.endTime,
+          duration_minutes: sessionData.duration,
+          avg_engagement_score: sessionData.avgScore,
+          total_students: sessionData.totalStudents,
+          tpi: sessionData.tpi,
+          metrics_timeline: metricsHistoryRef.current,
+          confusion_hotspots: sessionData.confusionHotspots,
+          at_risk_students: sessionData.atRiskStudents,
+        }),
+      },
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to save record: ${response.status}`);
     }
   };
 
@@ -749,139 +737,6 @@ export default function TeacherPage() {
     navigate("/", { replace: true });
   };
 
-  const [pastSessions, setPastSessions] = useState([]);
-  const [showPastSessions, setShowPastSessions] = useState(false);
-  const [loadingPast, setLoadingPast] = useState(false);
-  const [selectedPastSession, setSelectedPastSession] = useState(null);
-
-  const loadPastSessions = async () => {
-    setLoadingPast(true);
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL || "http://localhost:8000"}/session/analytics/list?teacher_id=${teacherId}`,
-      );
-      const data = await res.json();
-      setPastSessions(data.sessions || []);
-      setShowPastSessions(true);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingPast(false);
-    }
-  };
-
-  const loadPastSessionReport = async (session) => {
-    pastReportAbortRef.current?.abort();
-    const abortController = new AbortController();
-    pastReportAbortRef.current = abortController;
-    const requestId = pastReportRequestIdRef.current + 1;
-    pastReportRequestIdRef.current = requestId;
-
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL || "http://localhost:8000"}/session/${session.session_id}/analytics`,
-        { signal: abortController.signal },
-      );
-
-      if (requestId !== pastReportRequestIdRef.current) return;
-
-      const { exists, analytics } = await res.json();
-      if (!exists || !analytics?.length) return;
-      const a = analytics[0];
-      const rawTimeline = a.metrics_timeline || [];
-      const metricsTimeline = rawTimeline.map((m, idx) => {
-        const stud = m.students || {};
-        let rSum = 0,
-          rN = 0,
-          sSum = 0,
-          sN = 0;
-        Object.values(stud).forEach((met) => {
-          const sc = Number(met?.score || 0);
-          if (met?.isSimulated) {
-            sSum += sc;
-            sN += 1;
-          } else {
-            rSum += sc;
-            rN += 1;
-          }
-        });
-        return {
-          time: `${Math.floor(idx * 0.5)}m`,
-          avgScore: Number(m.avgScore) || 0,
-          students: m.studentCount || 0,
-          avgScoreReal: rN ? rSum / rN : null,
-          avgScoreSimulated: sN ? sSum / sN : null,
-        };
-      });
-      const perStudentTimelines = {};
-      const studentMeta = {};
-      rawTimeline.forEach((snapshot, idx) => {
-        const t = `${Math.floor(idx * 0.5)}m`;
-        const studentData = snapshot.students || {};
-        Object.entries(studentData).forEach(([uid, metrics]) => {
-          if (!perStudentTimelines[uid]) perStudentTimelines[uid] = [];
-          perStudentTimelines[uid].push({
-            time: t,
-            score: Number(metrics?.score || 0),
-          });
-          if (metrics?.isSimulated != null) {
-            studentMeta[uid] = {
-              isSimulated: Boolean(metrics.isSimulated),
-              displayName: metrics.isSimulated
-                ? `Simulated · ${uid}`
-                : uid.slice(0, 12),
-            };
-          }
-        });
-      });
-      const lastSnap = rawTimeline[rawTimeline.length - 1];
-      const lastStudents = lastSnap?.students || {};
-      Object.keys(lastStudents).forEach((uid) => {
-        const met = lastStudents[uid];
-        if (!studentMeta[uid]) {
-          studentMeta[uid] = {
-            isSimulated: Boolean(met?.isSimulated),
-            displayName: met?.isSimulated
-              ? `Simulated · ${uid}`
-              : uid.slice(0, 12),
-          };
-        }
-      });
-      const simCount = Object.values(lastStudents).filter(
-        (m) => m?.isSimulated,
-      ).length;
-      setSelectedPastSession({
-        sessionId: a.session_id,
-        teacherId: a.teacher_id,
-        duration: a.duration_minutes || 0,
-        avgScore: a.avg_engagement_score || 0,
-        totalStudents: a.total_students || 0,
-        totalStudentsSimulated: simCount,
-        totalStudentsReal: Math.max(0, (a.total_students || 0) - simCount),
-        studentMeta,
-        tpi: a.tpi,
-        metricsTimeline,
-        perStudentTimelines,
-        distribution: { attentive: 0, distracted: 0, disengaged: 0 },
-        confusionHotspots: a.confusion_hotspots || [],
-        atRiskStudents: (a.at_risk_students || []).map((s) => ({
-          userId: s.userId || s.user_id,
-          avgScore: s.avgScore ?? s.avg_score ?? 0,
-          strikes: s.strikes || 0,
-          identityIssues: s.identityIssues ?? s.identity_issues ?? 0,
-          reason: s.reason || "",
-        })),
-      });
-      setShowPastSessions(false);
-    } catch (err) {
-      if (err?.name === "AbortError") return;
-      console.error(err);
-    } finally {
-      if (pastReportAbortRef.current === abortController) {
-        pastReportAbortRef.current = null;
-      }
-    }
-  };
 
   const presentCount = allStudents.length;
   const attentiveCount = allStudents.filter(
@@ -949,80 +804,30 @@ export default function TeacherPage() {
 
   if (!inMeeting && !sessionEnded) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-slate-100 p-6">
-        <div className="max-w-md mx-auto">
-          <div className="mb-4 flex justify-end">
-            <button
-              onClick={loadPastSessions}
-              disabled={loadingPast}
-              className="px-4 py-2 rounded-xl bg-white/80 hover:bg-white border border-slate-200 text-slate-700 text-sm font-medium shadow-sm disabled:opacity-50 transition"
-            >
-              {loadingPast ? "Loading..." : "Past Sessions"}
-            </button>
+      <ReadyLayout
+        user={user}
+        title={
+          <>
+            Before you <em>join.</em>
+          </>
+        }
+        lede="You are joining as a teacher. Three checks, then class. Past classes live under Session records."
+      >
+        <JoinScreen user={user} role="teacher" onJoin={handleJoinMeeting} />
+
+        <div className="desk-records">
+          <div>
+            <h2 className="section-title">Session records</h2>
+            <p className="lede">
+              Read a past class, export the record, or check the follow-up
+              list. No camera check needed.
+            </p>
           </div>
-          <JoinScreen user={user} onJoin={handleJoinMeeting} />
+          <Link className="btn btn-line" to="/records">
+            Open records
+          </Link>
         </div>
-
-        {showPastSessions && (
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto border border-slate-200">
-              <div className="p-5 border-b border-slate-200 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-slate-900">
-                  Past Sessions
-                </h2>
-                <button
-                  onClick={() => setShowPastSessions(false)}
-                  className="text-slate-500 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition"
-                >
-                  Close
-                </button>
-              </div>
-              <div className="p-4 space-y-2">
-                {pastSessions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                      <span className="material-symbols-outlined text-3xl text-slate-400">
-                        history
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-800 mb-1">
-                      No Past Sessions
-                    </h3>
-                    <p className="text-sm text-slate-500 max-w-sm">
-                      You haven't hosted any recorded sessions yet. Start a
-                      session and it will appear here.
-                    </p>
-                  </div>
-                ) : (
-                  pastSessions.map((s) => (
-                    <div
-                      key={s.id}
-                      onClick={() => loadPastSessionReport(s)}
-                      className="p-4 border border-slate-200 rounded-xl hover:bg-indigo-50/50 hover:border-indigo-200 cursor-pointer transition"
-                    >
-                      <div className="font-medium text-slate-900">
-                        {s.session_id}
-                      </div>
-                      <div className="text-sm text-slate-600 mt-1">
-                        {new Date(s.start_time).toLocaleString()} -{" "}
-                        {(s.avg_engagement_score * 100 || 0).toFixed(0)}% avg
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {selectedPastSession && (
-          <SessionReport
-            sessionData={selectedPastSession}
-            onClose={() => setSelectedPastSession(null)}
-            onSave={() => {}}
-          />
-        )}
-      </div>
+      </ReadyLayout>
     );
   }
 
