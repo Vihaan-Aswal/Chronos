@@ -1,28 +1,3 @@
-export function ActionIconButton({
-  title,
-  ariaLabel,
-  onClick,
-  disabled = false,
-  variant = "neutral",
-  className = "",
-  children,
-  type = "button",
-}) {
-  const variantClass = `td-btn-${variant}`;
-  return (
-    <button
-      type={type}
-      title={title}
-      aria-label={ariaLabel || title}
-      onClick={onClick}
-      disabled={disabled}
-      className={`td-btn td-btn-icon ${variantClass} ${className}`.trim()}
-    >
-      {children}
-    </button>
-  );
-}
-
 export function MediaControlButton({
   title,
   ariaLabel,
@@ -32,8 +7,13 @@ export function MediaControlButton({
   danger = false,
   children,
 }) {
-  const stateClass = state === "off" ? "is-off" : "is-on";
-  const dangerClass = danger ? "td-btn-danger" : "";
+  const classes = [
+    "icon-btn",
+    state === "off" ? "is-off" : "is-on",
+    danger ? "is-danger" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <button
@@ -42,7 +22,7 @@ export function MediaControlButton({
       aria-label={ariaLabel || title}
       onClick={onClick}
       disabled={disabled}
-      className={`td-btn td-btn-media ${stateClass} ${dangerClass}`.trim()}
+      className={classes}
     >
       {children}
     </button>

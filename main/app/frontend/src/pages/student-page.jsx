@@ -29,7 +29,11 @@ export default function StudentPage() {
   const userName = user?.email || userId || "Student";
   const readinessCompleted = location.state?.readinessCompleted === true;
 
-  const [inMeeting, setInMeeting] = useState(false);
+  // Dev-only design fixture: ?preview=live opens the live shell without a camera.
+  const previewLive =
+    import.meta.env.DEV &&
+    new URLSearchParams(location.search).get("preview") === "live";
+  const [inMeeting, setInMeeting] = useState(previewLive);
   const [nudgeState, setNudgeState] = useState(null);
   const nudgeTimeoutRef = useRef(null);
   const readinessAutoJoinRef = useRef(false);

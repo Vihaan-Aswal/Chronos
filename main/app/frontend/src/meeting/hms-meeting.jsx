@@ -7,6 +7,8 @@ import {
   useHMSStore,
 } from "@100mslive/react-sdk";
 import { MediaControlButton } from "../components/teacher/teacher-buttons.jsx";
+import { StateDot } from "../components/app/state.jsx";
+import { AlertIcon } from "../components/app/icons.jsx";
 
 function MicIcon() {
   return (
@@ -134,47 +136,6 @@ function LeaveIcon() {
         strokeWidth="1.8"
         strokeLinecap="round"
       />
-    </svg>
-  );
-}
-
-function SpinnerIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle
-        cx="12"
-        cy="12"
-        r="8"
-        stroke="currentColor"
-        strokeWidth="2"
-        opacity="0.22"
-      />
-      <path
-        d="M20 12C20 7.58 16.42 4 12 4"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function WarningIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 4.75L20 18.5H4L12 4.75Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M12 9V13"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <circle cx="12" cy="16.4" r="0.9" fill="currentColor" />
     </svg>
   );
 }
@@ -373,6 +334,7 @@ export default function HMSMeeting({
   role = "guest",
   onLeave,
   cameraStudents,
+  leaveSignal = 0,
 }) {
   const hmsActions = useHMSActions();
   const isConnected = useHMSStore(selectIsConnectedToRoom);
@@ -495,6 +457,19 @@ export default function HMSMeeting({
     setAudioOn(!audioOn);
   }
 
+  // Declarative leave signal from the page's own "End session" control, so the
+  // room can be left even when the video connection failed.
+  useEffect(() => {
+    if (!leaveSignal) return;
+    try {
+      hmsActions.leave();
+    } catch {
+      // Already disconnected; the page still needs to end the session.
+    }
+    onLeave?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaveSignal]);
+
   function handleLeave() {
     hmsActions.leave();
     onLeave?.();
@@ -520,12 +495,15 @@ export default function HMSMeeting({
 
   if (loading) {
     return (
-      <div className="w-full h-full bg-[#111] text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="td-hms-state-icon td-spin mb-2">
-            <SpinnerIcon />
-          </div>
-          <div>Connecting to meeting...</div>
+      <div className="stage-state" role="status">
+        <div className="stage-state-inner">
+          <span className="stage-icon" aria-hidden="true">
+            <svg className="icon" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="8" strokeDasharray="3 3" />
+            </svg>
+          </span>
+          <h3>Opening the video room</h3>
+          <p>Waiting for the room token. This usually takes a moment.</p>
         </div>
       </div>
     );
@@ -533,18 +511,23 @@ export default function HMSMeeting({
 
   if (error) {
     return (
-      <div className="w-full h-full bg-[#111] text-white flex items-center justify-center">
-        <div className="text-center max-w-md p-6">
-          <div className="td-hms-state-icon td-error mb-4">
-            <WarningIcon />
-          </div>
-          <div className="text-xl font-bold mb-2">Connection Failed</div>
-          <div className="text-sm text-gray-400 mb-4">{error}</div>
+      <div className="stage-state" role="alert">
+        <div className="stage-state-inner">
+          <span className="stage-icon">
+            <AlertIcon />
+          </span>
+          <h3>The video room did not open</h3>
+          <p>{error}</p>
+          <p className="stage-detail">
+            Class signals keep arriving. Retry the video when you can, or end
+            the session and keep the record.
+          </p>
           <button
+            type="button"
+            className="btn btn-cream"
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
           >
-            Retry
+            Retry video
           </button>
         </div>
       </div>
@@ -552,45 +535,43 @@ export default function HMSMeeting({
   }
 
   return (
-    <div className="td-hms-root w-full h-full bg-[#111] text-white flex flex-col relative overflow-hidden">
-      <div className="td-hms-grid-wrap flex-1 overflow-hidden p-4 flex items-center justify-center">
-        <div
-          className="td-hms-grid grid gap-3 w-full h-full"
-          style={{
-            gridTemplateColumns: `repeat(${layout.cols}, 1fr)`,
-            gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
-          }}
-        >
-          {stageTiles.map((tile) => {
-            if (tile.type === "simulated") {
-              return (
-                <SimulatedTile
-                  key={tile.id}
-                  student={tile.student}
-                  status={tile.status}
-                  statusLabel={tile.statusLabel}
-                />
-              );
-            }
-
-            if (tile.type === "overflow") {
-              return <OverflowTile key={tile.id} count={tile.count} />;
-            }
-
+    <div className="room-video-root">
+      <div
+        className="room-grid"
+        style={{
+          gridTemplateColumns: `repeat(${layout.cols}, 1fr)`,
+          gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
+        }}
+      >
+        {stageTiles.map((tile) => {
+          if (tile.type === "simulated") {
             return (
-              <PeerTile
+              <SimulatedTile
                 key={tile.id}
-                peer={tile.peer}
+                student={tile.student}
                 status={tile.status}
                 statusLabel={tile.statusLabel}
-                isTeacher={tile.type === "teacher"}
               />
             );
-          })}
-        </div>
+          }
+
+          if (tile.type === "overflow") {
+            return <OverflowTile key={tile.id} count={tile.count} />;
+          }
+
+          return (
+            <PeerTile
+              key={tile.id}
+              peer={tile.peer}
+              status={tile.status}
+              statusLabel={tile.statusLabel}
+              isTeacher={tile.type === "teacher"}
+            />
+          );
+        })}
       </div>
 
-      <div className="td-media-controls absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-xl p-3 rounded-full shadow-lg flex items-center gap-4 border border-gray-700">
+      <div className="room-media" role="group" aria-label="Room controls">
         <MediaControlButton
           onClick={toggleAudio}
           state={audioOn ? "on" : "off"}
@@ -607,12 +588,19 @@ export default function HMSMeeting({
           {videoOn ? <CamIcon /> : <CamOffIcon />}
         </MediaControlButton>
 
-        <MediaControlButton onClick={handleLeave} title="Leave meeting" danger>
+        <MediaControlButton onClick={handleLeave} title="Leave the room" danger>
           <LeaveIcon />
         </MediaControlButton>
       </div>
     </div>
   );
+}
+
+function kindFromStatus(status) {
+  if (status === "flagged") return "identity";
+  if (status === "away") return "away";
+  if (status === "distracted") return "distracted";
+  return "attentive";
 }
 
 function PeerTile({
@@ -625,45 +613,35 @@ function PeerTile({
   const hmsActions = useHMSActions();
 
   useEffect(() => {
-    if (peer.videoTrack && videoRef.current) {
-      hmsActions.attachVideo(peer.videoTrack, videoRef.current);
+    const node = videoRef.current;
+    if (peer.videoTrack && node) {
+      hmsActions.attachVideo(peer.videoTrack, node);
     }
     return () => {
-      if (peer.videoTrack && videoRef.current) {
-        hmsActions.detachVideo(peer.videoTrack, videoRef.current);
+      if (peer.videoTrack && node) {
+        hmsActions.detachVideo(peer.videoTrack, node);
       }
     };
   }, [peer.videoTrack, hmsActions]);
 
-  const statusClass = isTeacher
-    ? "td-peer-status-neutral"
-    : `td-peer-status-${status}`;
-
   return (
-    <div
-      className={`td-peer-tile ${statusClass} bg-black border border-gray-700 rounded-xl overflow-hidden relative w-full h-full group flex items-center justify-center`}
-    >
+    <div className="room-tile">
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted={peer.isLocal}
-        className="td-peer-video w-full h-full object-cover"
+        className="room-video"
       />
-
-      <div className="td-peer-aura" aria-hidden="true" />
-
-      <div className="td-peer-label absolute bottom-2 left-2 px-2 py-1 text-xs bg-black/50 rounded opacity-90">
-        {peer.name} {peer.isLocal ? "(You)" : ""}
-      </div>
-
+      <span className="room-tile-label">
+        {peer.name}
+        {peer.isLocal ? " (you)" : ""}
+      </span>
       {!isTeacher && (
-        <div
-          className="td-peer-status-chip"
-          aria-label={`Status ${statusLabel}`}
-        >
+        <span className="room-tile-state">
+          <StateDot kind={kindFromStatus(status)} />
           {statusLabel}
-        </div>
+        </span>
       )}
     </div>
   );
@@ -677,25 +655,27 @@ function SimulatedTile({
   const score = Math.round((student?.score || 0) * 100);
 
   return (
-    <div
-      className={`td-peer-tile td-simulated-tile td-peer-status-${status} bg-black border border-gray-700 rounded-xl overflow-hidden relative w-full h-full flex flex-col items-center justify-center`}
-    >
-      <div className="td-peer-aura" aria-hidden="true" />
-
-      <div className="td-sim-avatar">SIM</div>
-      <div className="td-sim-name" title={student?.userId}>
+    <div className="room-tile room-tile--sim">
+      <span className="room-tile-state">
+        <StateDot kind={kindFromStatus(status)} />
+        {statusLabel}
+      </span>
+      <span className="room-sim-mark" aria-hidden="true">
+        SIM
+      </span>
+      <span className="room-sim-name" title={student?.userId}>
         {student?.userId}
-      </div>
-      <div className="td-sim-score">{score}%</div>
-      <div className="td-peer-status-chip">{statusLabel}</div>
+      </span>
+      <span className="room-sim-score">{score}%</span>
     </div>
   );
 }
 
 function OverflowTile({ count }) {
   return (
-    <div className="td-peer-tile td-overflow-tile bg-black border border-gray-700 rounded-xl overflow-hidden relative w-full h-full flex items-center justify-center">
-      <div className="td-overflow-text">+{count} more students</div>
+    <div className="room-tile room-tile--more">
+      <span>+{count} more in the room</span>
     </div>
   );
 }
+

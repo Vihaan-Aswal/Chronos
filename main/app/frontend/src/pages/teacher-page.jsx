@@ -1,6 +1,6 @@
 // src/pages/TeacherPage.jsx
 
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect, useCallback } from "react";
 
 import useTeacherWebSocket from "../hooks/use-teacher-websocket";
@@ -9,16 +9,18 @@ import useClassroomSimulator, {
 } from "../hooks/use-classroom-simulator.js";
 import HMSMeeting from "../meeting/hms-meeting.jsx";
 import JoinScreen from "../components/join-screen.jsx";
-import DashboardTopbar from "../components/teacher/dashboard-topbar.jsx";
+import RoomBar from "../components/teacher/room-bar.jsx";
 import StatusStrip from "../components/teacher/status-strip.jsx";
-import SummaryCards from "../components/teacher/summary-cards.jsx";
-import StudentCard from "../components/teacher/student-card.jsx";
+import StudentRow from "../components/teacher/student-row.jsx";
+import { kindFor } from "../components/app/student-kind.js";
+import Modal from "../components/app/modal.jsx";
+import EmptyState from "../components/app/empty-state.jsx";
 
 import SessionReport from "../components/session-report.jsx";
 import { sendTeacherAction } from "../api/teacher-actions.js";
 import { triggerLiveness } from "../api/liveness.js";
-import "../styles/dashboard-shared.css";
-import "../styles/teacher-dashboard.css";
+import "../styles/app-system.css";
+import "../styles/room.css";
 
 export default function TeacherPage() {
   const location = useLocation();
@@ -39,7 +41,10 @@ export default function TeacherPage() {
   const teacherId = user?.id || "";
   const readinessCompleted = location.state?.readinessCompleted === true;
 
-  const [inMeeting, setInMeeting] = useState(false);
+  // Dev-only design fixture: ?preview=live opens the live shell without a camera.
+  // Production builds fold import.meta.env.DEV to false, so this never ships.
+  const previewLive = import.meta.env.DEV && params.get("preview") === "live";
+  const [inMeeting, setInMeeting] = useState(previewLive);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [sessionData, setSessionData] = useState(null);
@@ -50,9 +55,22 @@ export default function TeacherPage() {
   const [showFlaggedOnly, setShowFlaggedOnly] = useState(true);
   const [ignoredUserIds, setIgnoredUserIds] = useState(new Set());
   const [removedUserIds, setRemovedUserIds] = useState(new Set());
-  const [railOpen, setRailOpen] = useState(false);
+  const [railOpen, setRailOpen] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 1200px)").matches,
+  );
+  const [messageFor, setMessageFor] = useState(null);
+  const [messageText, setMessageText] = useState("");
+  const [messageError, setMessageError] = useState("");
+  const [messageSending, setMessageSending] = useState(false);
+  const [removeFor, setRemoveFor] = useState(null);
+  const [endConfirmOpen, setEndConfirmOpen] = useState(false);
+  const [leaveSignal, setLeaveSignal] = useState(0);
+  const [actionNotes, setActionNotes] = useState({});
+  const navigate = useNavigate();
 
-  const sessionStartRef = useRef(null);
+  const sessionStartRef = useRef(previewLive ? new Date() : null);
   const metricsHistoryRef = useRef([]);
   const readinessAutoJoinRef = useRef(false);
   const railToggleButtonRef = useRef(null);
@@ -121,32 +139,73 @@ export default function TeacherPage() {
     (a, b) => severityScore(b) - severityScore(a),
   );
 
+  const noteFor = useCallback((userId, text) => {
+    setActionNotes((prev) => ({ ...prev, [userId]: text }));
+    window.setTimeout(() => {
+      setActionNotes((prev) => {
+        if (!prev[userId]) return prev;
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
+    }, 5000);
+  }, []);
+
   const handleMarkEngaged = async (userId) => {
     try {
       await sendTeacherAction(sessionId, userId, "mark_engaged");
+      noteFor(userId, "Marked engaged.");
     } catch (err) {
       console.error(err);
+      noteFor(userId, "Could not mark engaged. Check the connection.");
     }
   };
 
   const handleIgnore = (userId) => {
     setIgnoredUserIds((prev) => new Set([...prev, userId]));
+    noteFor(userId, "Ignored for now. The signal stays in the record.");
   };
 
-  const handleRemove = (userId) => {
+  const handleRemove = (userId) => setRemoveFor(userId);
+
+  const confirmRemove = () => {
+    const userId = removeFor;
+    if (!userId) return;
     setRemovedUserIds((prev) => new Set([...prev, userId]));
     sendTeacherAction(sessionId, userId, "remove").catch(() => {});
+    setRemoveFor(null);
   };
 
-  const handleMessage = async (userId) => {
-    const text = window.prompt("Enter message to send:");
-    if (text) {
-      try {
-        await sendTeacherAction(sessionId, userId, "message", text);
-      } catch (err) {
-        console.error(err);
-      }
+  const handleMessage = (userId) => {
+    setMessageFor(userId);
+    setMessageText("");
+    setMessageError("");
+  };
+
+  const sendMessage = async () => {
+    const text = messageText.trim();
+    if (!text || !messageFor) return;
+    setMessageSending(true);
+    setMessageError("");
+    try {
+      await sendTeacherAction(sessionId, messageFor, "message", text);
+      noteFor(messageFor, "Message sent.");
+      setMessageFor(null);
+    } catch (err) {
+      console.error(err);
+      setMessageError(
+        "The message did not send. Check the connection and try again.",
+      );
+    } finally {
+      setMessageSending(false);
     }
+  };
+
+  const requestEndSession = () => setEndConfirmOpen(true);
+
+  const confirmEndSession = () => {
+    setEndConfirmOpen(false);
+    setLeaveSignal((value) => value + 1);
   };
 
   const [livenessLoading, setLivenessLoading] = useState(false);
@@ -222,31 +281,6 @@ export default function TeacherPage() {
     if (score > 0.7) return "Attentive";
     if (score >= 0.4) return "Distracted";
     return "Away";
-  };
-
-  const getStatusKey = (student) => {
-    const hasIdentityIssue =
-      student.identityStatus === "mismatch" &&
-      (student.identityMismatchCount || 0) >= 2;
-    const hasTabSwitch =
-      (student.antiCheatViolations || 0) > 0 &&
-      student.lastViolationType === "tab_switch";
-
-    if (hasIdentityIssue) return "identity";
-    if (student.multiFaceDetected || hasTabSwitch) return "risk";
-    if (student.livenessFailed || student.strikes >= 3 || student.disengaged)
-      return "away";
-    if ((student.score || 0) >= 0.4 && (student.score || 0) <= 0.7)
-      return "distracted";
-    if ((student.score || 0) < 0.4) return "away";
-    return "attentive";
-  };
-
-  const getPriority = (student) => {
-    const score = severityScore(student);
-    if (score >= 3) return "critical";
-    if (score >= 2) return "high";
-    return "moderate";
   };
 
   const getStageStatus = (student) => {
@@ -712,7 +746,7 @@ export default function TeacherPage() {
 
   const handleCloseReport = () => {
     setShowReport(false);
-    window.location.href = "/";
+    navigate("/", { replace: true });
   };
 
   const [pastSessions, setPastSessions] = useState([]);
@@ -868,20 +902,11 @@ export default function TeacherPage() {
     );
     return label === "Distracted";
   }).length;
-  const criticalCount = allStudents.filter((s) => severityScore(s) >= 2).length;
   const flaggedCount = allStudents.filter((s) => isFlagged(s)).length;
   const identityIssueCount = allStudents.filter(
     (s) =>
       s.identityStatus === "mismatch" && (s.identityMismatchCount || 0) >= 2,
   ).length;
-  const avgScore =
-    allStudents.length > 0
-      ? Math.round(
-          (allStudents.reduce((sum, s) => sum + (s.score || 0), 0) /
-            allStudents.length) *
-            100,
-        )
-      : 0;
 
   const cameraStudents = allStudents.map((s) => {
     const isSim = s.isSimulated === true || isSimulatedStudentId(s.userId);
@@ -1003,209 +1028,272 @@ export default function TeacherPage() {
 
   return (
     <>
-      {showDisconnect && (
-        <div
-          style={{
-            backgroundColor: "#ba1a1a",
-            color: "#ffffff",
-            padding: "10px 0",
-            zIndex: 9999,
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "12px",
-            fontSize: "12px",
-            fontWeight: "bold",
-            textTransform: "uppercase",
-            letterSpacing: "0.1em",
-            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-          }}
-        >
-          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-            <circle
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="3"
-              opacity="0.25"
-            />
-            <path
-              fill="currentColor"
-              opacity="0.8"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-            />
-          </svg>
-          Connection lost. Reconnecting...
-        </div>
-      )}
-
       {inMeeting && !showReport && (
-        <div className="td-app dark">
-          <div className="td-frame">
-            <DashboardTopbar
-              sessionId={sessionId}
-              user={user}
-              connected={connected}
-              classContextMode={classContextMode}
-              onToggleClassContext={handleToggleClassContext}
-              strictMode={strictMode}
-              onToggleStrictMode={handleToggleStrictMode}
-              simulateClassroom={simulateClassroom}
-              onToggleSimulate={() => setSimulateClassroom((v) => !v)}
-              livenessLoading={livenessLoading}
-              onCheckEngagement={handleCheckEngagement}
-            />
+        <div className="app room">
+          <RoomBar
+            sessionId={sessionId}
+            connected={connected}
+            classContextMode={classContextMode}
+            onToggleClassContext={handleToggleClassContext}
+            strictMode={strictMode}
+            onToggleStrictMode={handleToggleStrictMode}
+            simulateClassroom={simulateClassroom}
+            onToggleSimulate={() => setSimulateClassroom((v) => !v)}
+            livenessLoading={livenessLoading}
+            onCheckEngagement={handleCheckEngagement}
+            onEndSession={requestEndSession}
+          />
 
-            {/* The previous td-disconnect-banner has been replaced by the global overlay via showDisconnect */}
-
-            <div className="td-workspace">
-              <main className="td-stage-area">
-                <StatusStrip
-                  sessionId={sessionId}
-                  sessionStartRef={sessionStartRef}
-                  presentCount={presentCount}
-                  attentiveCount={attentiveCount}
-                  distractedCount={distractedCount}
-                  criticalCount={criticalCount}
-                  railOpen={railOpen}
-                  onToggleRail={() => setRailOpen((value) => !value)}
-                  railId="teacher-live-dashboard-rail"
-                  toggleButtonRef={railToggleButtonRef}
-                />
-
-                <div className="td-stage-shell">
-                  <div className="td-hms-wrap">
-                    <HMSMeeting
-                      userName={userName}
-                      role="host"
-                      onLeave={handleLeaveMeeting}
-                      cameraStudents={cameraStudents}
-                    />
-                  </div>
-                </div>
-              </main>
-
-              <aside
-                id="teacher-live-dashboard-rail"
-                className={`td-rail ${railOpen ? "is-open" : ""}`}
-                aria-label="Live student monitoring dashboard"
-              >
-                <div className="td-rail-inner">
-                  <div className="td-rail-head">
-                    <div className="td-rail-title-row">
-                      <div className="td-rail-title">
-                        <span className="td-rail-title-dot" />
-                        Live Dashboard
-                      </div>
-
-                      <button
-                        type="button"
-                        className="td-rail-close"
-                        onClick={closeRail}
-                        title="Close dashboard"
-                      >
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          aria-hidden="true"
-                        >
-                          <path
-                            d="M7 7L17 17M17 7L7 17"
-                            stroke="currentColor"
-                            strokeWidth="1.7"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-
-                    <SummaryCards
-                      flaggedCount={flaggedCount}
-                      identityIssueCount={identityIssueCount}
-                      avgScore={avgScore}
-                    />
-
-                    <div className="td-filter-tabs">
-                      <button
-                        type="button"
-                        className={`td-filter-tab ${showFlaggedOnly ? "active" : ""}`}
-                        onClick={() => setShowFlaggedOnly(true)}
-                      >
-                        Priority only
-                      </button>
-                      <button
-                        type="button"
-                        className={`td-filter-tab ${showFlaggedOnly ? "" : "active"}`}
-                        onClick={() => setShowFlaggedOnly(false)}
-                      >
-                        All students
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="td-student-list">
-                    {sortedStudents.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center p-8 text-center opacity-60 mt-10">
-                        <span
-                          className="material-symbols-outlined text-4xl mb-3"
-                          style={{ color: "var(--color-on-surface-variant)" }}
-                        >
-                          {showFlaggedOnly ? "check_circle" : "group"}
-                        </span>
-                        <p
-                          className="text-sm italic"
-                          style={{ color: "var(--color-on-surface-variant)" }}
-                        >
-                          {showFlaggedOnly
-                            ? "All clear. No priority flags right now."
-                            : "Waiting for students to join..."}
-                        </p>
-                      </div>
-                    ) : (
-                      sortedStudents.map((s) => {
-                        const isSim =
-                          s.isSimulated === true ||
-                          isSimulatedStudentId(s.userId);
-                        const label = statusLabel(
-                          s.score,
-                          s.strikes,
-                          s.identityStatus,
-                          s.identityMismatchCount,
-                        );
-
-                        return (
-                          <StudentCard
-                            key={s.userId}
-                            student={s}
-                            statusLabel={label}
-                            statusKey={getStatusKey(s)}
-                            priority={getPriority(s)}
-                            isFlagged={isFlagged(s)}
-                            isSimulated={isSim}
-                            livenessLoading={livenessLoading}
-                            signals={getSignals(s)}
-                            sessionId={sessionId}
-                            onMarkEngaged={handleMarkEngaged}
-                            onMessage={handleMessage}
-                            onIgnore={handleIgnore}
-                            onRemove={handleRemove}
-                            onVerify={handleCheckEngagement}
-                          />
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              </aside>
+          {showDisconnect && (
+            <div className="room-banner" role="status">
+              Connection lost. Reconnecting…
             </div>
+          )}
+
+          <StatusStrip
+            sessionStartRef={sessionStartRef}
+            presentCount={presentCount}
+            attentiveCount={attentiveCount}
+            distractedCount={distractedCount}
+            flaggedCount={flaggedCount}
+            railOpen={railOpen}
+            onToggleRail={() => setRailOpen((value) => !value)}
+            railId="teacher-live-dashboard-rail"
+            toggleButtonRef={railToggleButtonRef}
+          />
+
+          <div className="room-main">
+            <main className="room-stage">
+              <div className="room-stage-shell">
+                <HMSMeeting
+                  userName={userName}
+                  role="host"
+                  onLeave={handleLeaveMeeting}
+                  cameraStudents={cameraStudents}
+                  leaveSignal={leaveSignal}
+                />
+              </div>
+              <div className="room-stage-foot">
+                <span>
+                  {classContextMode === "exam" ? "Exam context" : "Class context"}
+                </span>
+                <span className="room-sep" aria-hidden="true" />
+                <span>
+                  {strictMode ? "Strict tab policy" : "Normal tab policy"}
+                </span>
+                <span className="room-sep" aria-hidden="true" />
+                <span>{simulateClassroom ? "Simulator on" : "Live signals"}</span>
+              </div>
+            </main>
+
+            <aside
+              id="teacher-live-dashboard-rail"
+              className={`room-rail ${railOpen ? "is-open" : "is-closed"}`}
+              aria-label="Live student dashboard"
+            >
+              <div className="room-rail-head">
+                <h2 className="room-rail-title">
+                  In the room
+                  <span>
+                    {allStudents.length}{" "}
+                    {allStudents.length === 1 ? "student" : "students"}
+                  </span>
+                </h2>
+                <p className="room-rail-sub">
+                  {flaggedCount} need attention · {identityIssueCount} identity{" "}
+                  {identityIssueCount === 1 ? "check" : "checks"}
+                </p>
+              </div>
+
+              <div
+                className="room-filters"
+                role="group"
+                aria-label="Student filter"
+              >
+                <button
+                  type="button"
+                  className="room-filter"
+                  aria-pressed={showFlaggedOnly}
+                  onClick={() => setShowFlaggedOnly(true)}
+                >
+                  Needs attention ({flaggedCount})
+                </button>
+                <button
+                  type="button"
+                  className="room-filter"
+                  aria-pressed={!showFlaggedOnly}
+                  onClick={() => setShowFlaggedOnly(false)}
+                >
+                  All students ({allStudents.length})
+                </button>
+              </div>
+
+              <div className="room-list">
+                {sortedStudents.length === 0 ? (
+                  allStudents.length === 0 ? (
+                    <EmptyState title="No students yet">
+                      Students appear here as they join the room. If someone is
+                      waiting, check that their readiness check passed.
+                    </EmptyState>
+                  ) : (
+                    <EmptyState title="All clear">
+                      No one needs attention right now. Switch to all students
+                      to see the whole room.
+                    </EmptyState>
+                  )
+                ) : (
+                  <ul>
+                    {sortedStudents.map((s) => {
+                      const isSim =
+                        s.isSimulated === true ||
+                        isSimulatedStudentId(s.userId);
+                      const riskFlag =
+                        s.multiFaceDetected === true ||
+                        ((s.antiCheatViolations || 0) > 0 &&
+                          s.lastViolationType === "tab_switch");
+                      const label =
+                        s.presence === "no_face"
+                          ? "No data"
+                          : statusLabel(
+                              s.score,
+                              s.strikes,
+                              s.identityStatus,
+                              s.identityMismatchCount,
+                            );
+
+                      return (
+                        <StudentRow
+                          key={s.userId}
+                          student={s}
+                          sessionId={sessionId}
+                          statusLabel={label}
+                          kind={kindFor(label, riskFlag)}
+                          isFlagged={isFlagged(s)}
+                          isSimulated={isSim}
+                          livenessLoading={livenessLoading}
+                          signals={getSignals(s)}
+                          actionNote={actionNotes[s.userId]}
+                          onMarkEngaged={handleMarkEngaged}
+                          onMessage={handleMessage}
+                          onIgnore={handleIgnore}
+                          onRemove={handleRemove}
+                          onVerify={handleCheckEngagement}
+                          onNudgeError={(text) => noteFor(s.userId, text)}
+                        />
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </aside>
           </div>
+
+          <Modal
+            open={Boolean(messageFor)}
+            onClose={() => setMessageFor(null)}
+            title="Send a private message"
+            sub={`${messageFor || "The student"} sees a quiet note. It is not a mark.`}
+            actions={
+              <>
+                <button
+                  type="button"
+                  className="btn btn-line"
+                  onClick={() => setMessageFor(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ink"
+                  onClick={sendMessage}
+                  disabled={!messageText.trim() || messageSending}
+                >
+                  {messageSending ? "Sending…" : "Send message"}
+                </button>
+              </>
+            }
+          >
+            <div className="field">
+              <label htmlFor="teacher-message">Message</label>
+              <textarea
+                id="teacher-message"
+                value={messageText}
+                onChange={(event) => setMessageText(event.target.value)}
+                placeholder="A short, specific note."
+                aria-invalid={Boolean(messageError)}
+                aria-describedby={messageError ? "teacher-message-error" : undefined}
+              />
+              <p className="field-hint">
+                Write to the person, not the score. The student can read it
+                during class.
+              </p>
+              {messageError && (
+                <p className="field-error" id="teacher-message-error" role="alert">
+                  {messageError}
+                </p>
+              )}
+            </div>
+          </Modal>
+
+          <Modal
+            open={Boolean(removeFor)}
+            onClose={() => setRemoveFor(null)}
+            title="Remove from the room?"
+            sub="The student leaves this room's roster. The action is kept in the session record."
+            actions={
+              <>
+                <button
+                  type="button"
+                  className="btn btn-line"
+                  onClick={() => setRemoveFor(null)}
+                >
+                  Keep in room
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ink"
+                  onClick={confirmRemove}
+                >
+                  Remove
+                </button>
+              </>
+            }
+          >
+            <p className="lede">
+              Removing is not a grade and does not delete the signals already
+              collected. It takes the student off this screen.
+            </p>
+          </Modal>
+
+          <Modal
+            open={endConfirmOpen}
+            onClose={() => setEndConfirmOpen(false)}
+            title="End the session?"
+            sub="The room closes and a session record is prepared from the signals collected so far."
+            actions={
+              <>
+                <button
+                  type="button"
+                  className="btn btn-line"
+                  onClick={() => setEndConfirmOpen(false)}
+                >
+                  Keep teaching
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ink"
+                  onClick={confirmEndSession}
+                >
+                  End session
+                </button>
+              </>
+            }
+          >
+            <p className="lede">
+              You can save the record, export it as a PDF, or close it. Nothing
+              is deleted by ending the room.
+            </p>
+          </Modal>
         </div>
       )}
 

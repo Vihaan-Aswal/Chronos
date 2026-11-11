@@ -1,0 +1,989 @@
+/* Chronos app system — extends the homepage's material world to working pages.
+   Scoped under .app so the frozen homepage (.home) is untouched. */
+
+.app {
+  --cream: #f7f2e7;
+  --cream-bright: #fcf9f1;
+  --cream-deep: #efe8d8;
+  --forest: #0f2e25;
+  --forest-deep: #0a231c;
+  --forest-soft: #173a2f;
+  --ink: #0b1a14;
+  --slate: #56685c;
+  --sage: #c9d5bf;
+  --sage-soft: #e3e9d9;
+  --sage-ink: #4c6146;
+  --gold: #d8be8a;
+  --red: #b3261e;
+  --line: rgba(11, 26, 20, 0.16);
+  --line-soft: rgba(11, 26, 20, 0.09);
+  --line-cream: rgba(247, 242, 231, 0.18);
+  --serif: "Newsreader", Georgia, serif;
+  --sans: "Manrope", system-ui, sans-serif;
+
+  min-height: 100vh;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app *,
+.app *::before,
+.app *::after {
+  box-sizing: border-box;
+}
+
+.app :where(h1, h2, h3, h4, h5, p, figure, dl, dd) {
+  margin: 0;
+}
+
+.app :where(h1, h2, h3, h4) {
+  font-weight: 400;
+  text-wrap: balance;
+}
+
+.app :where(ul, ol) {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app :where(button) {
+  font-family: inherit;
+}
+
+.app :where(svg) {
+  display: block;
+}
+
+.app ::selection {
+  background: var(--sage);
+  color: var(--ink);
+}
+
+.app :focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.app .on-dark :focus-visible,
+.app .room :focus-visible,
+.app .auth-aside :focus-visible {
+  outline-color: var(--gold);
+}
+
+.app .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.app .skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 100;
+  padding: 10px 14px;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transform: translateY(-180%);
+}
+
+.app .skip-link:focus {
+  transform: none;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+
+.app .wrap {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-inline: 32px;
+}
+
+.app .wrap-wide {
+  max-width: 1480px;
+}
+
+.app .page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app .page-main {
+  flex: 1;
+}
+
+.app .page-band {
+  padding-block: clamp(40px, 5vw, 64px);
+}
+
+.app .page-head {
+  max-width: 760px;
+}
+
+.app .page-title {
+  font-family: var(--serif);
+  font-size: clamp(34px, 4.4vw, 56px);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+}
+
+.app .page-title em,
+.app .section-title em,
+.app .panel-title em {
+  font-style: italic;
+  color: var(--sage-ink);
+}
+
+.app .page-lede {
+  margin-top: 14px;
+  max-width: 52ch;
+  color: var(--slate);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.app .section-title {
+  font-family: var(--serif);
+  font-size: clamp(26px, 3vw, 36px);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+}
+
+.app .panel-title {
+  font-family: var(--serif);
+  font-size: 24px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.app .label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.app .meta {
+  color: var(--slate);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.app .lede {
+  color: var(--slate);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.app .num {
+  font-variant-numeric: tabular-nums;
+}
+
+.app .rule {
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.app .rule-soft {
+  border: 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.app .stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--stack-gap, 16px);
+}
+
+.app .row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.app .push {
+  margin-left: auto;
+}
+
+.app .icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+.app .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 12px 20px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: none;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.app .btn:disabled,
+.app .btn[aria-disabled="true"] {
+  border-color: var(--sage-soft);
+  background: var(--sage-soft);
+  color: var(--slate);
+  cursor: not-allowed;
+}
+
+.app .btn-sm {
+  min-height: 38px;
+  padding: 9px 14px;
+  font-size: 10px;
+}
+
+.app .btn-lg {
+  min-height: 52px;
+  padding: 15px 26px;
+}
+
+.app .btn-block {
+  width: 100%;
+}
+
+.app .btn-ink {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.app .btn-ink:hover:not(:disabled) {
+  border-color: var(--forest-soft);
+  background: var(--forest-soft);
+}
+
+.app .btn-cream {
+  border-color: var(--cream);
+  background: var(--cream);
+  color: var(--ink);
+}
+
+.app .btn-cream:hover:not(:disabled) {
+  border-color: var(--sage);
+  background: var(--sage);
+}
+
+.app .btn-ghost {
+  border-color: rgba(247, 242, 231, 0.4);
+  background: transparent;
+  color: var(--cream);
+}
+
+.app .btn-ghost:hover:not(:disabled) {
+  border-color: var(--cream);
+  background: rgba(247, 242, 231, 0.08);
+}
+
+.app .btn-line {
+  border-color: rgba(11, 26, 20, 0.3);
+  background: transparent;
+  color: var(--ink);
+}
+
+.app .btn-line:hover:not(:disabled) {
+  border-color: var(--ink);
+  background: rgba(11, 26, 20, 0.04);
+}
+
+.app .btn-quiet {
+  border-color: transparent;
+  color: var(--slate);
+}
+
+.app .btn-quiet:hover:not(:disabled) {
+  background: rgba(11, 26, 20, 0.05);
+  color: var(--ink);
+}
+
+.app .btn-quiet-cream {
+  border-color: transparent;
+  color: var(--sage);
+}
+
+.app .btn-quiet-cream:hover:not(:disabled) {
+  background: rgba(247, 242, 231, 0.08);
+  color: var(--cream);
+}
+
+.app .text-btn {
+  align-self: flex-start;
+  padding: 2px 0;
+  border: 0;
+  border-bottom: 1px solid rgba(11, 26, 20, 0.35);
+  background: none;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.app .text-btn:hover {
+  border-bottom-color: var(--ink);
+}
+
+.app .icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.app .icon-btn:hover:not(:disabled) {
+  background: var(--cream-deep);
+}
+
+.app .icon-btn:disabled {
+  color: rgba(11, 26, 20, 0.32);
+  cursor: not-allowed;
+}
+
+.app .icon-btn[aria-pressed="true"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.app .icon-btn-sm {
+  width: 32px;
+  height: 32px;
+}
+
+/* ── Fields ─────────────────────────────────────────────────────────────── */
+
+.app .field {
+  display: grid;
+  gap: 6px;
+}
+
+.app .field > label {
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.app .field :where(input, select, textarea) {
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 13px;
+  border: 1px solid rgba(11, 26, 20, 0.3);
+  border-radius: 3px;
+  background: var(--cream-bright);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.app .field textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.app .field :where(input, select, textarea)::placeholder {
+  color: var(--slate);
+  opacity: 1;
+}
+
+.app .field :where(input, select, textarea):focus {
+  border-color: var(--ink);
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.app .field :where(input, select, textarea)[aria-invalid="true"] {
+  border-color: var(--red);
+}
+
+.app .field-hint {
+  color: var(--slate);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.app .field-error {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  color: #8f1d17;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.app .field-password {
+  position: relative;
+}
+
+.app .field-password input {
+  padding-right: 48px;
+}
+
+.app .field-eye {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: none;
+  color: var(--slate);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.app .field-eye:hover {
+  color: var(--ink);
+}
+
+/* ── Segmented control ──────────────────────────────────────────────────── */
+
+.app .seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.app .seg > button {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  color: var(--slate);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.app .seg > button:last-child {
+  border-right: 0;
+}
+
+.app .seg > button:hover {
+  color: var(--ink);
+  background: rgba(11, 26, 20, 0.04);
+}
+
+.app .seg > button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+/* ── Badges and state dots ──────────────────────────────────────────────── */
+
+.app .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 7px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--cream-bright);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.app .badge-attentive {
+  border-color: #cfdcc4;
+  background: #e6edda;
+  color: #35452f;
+}
+
+.app .badge-distracted {
+  border-color: #e2d3ad;
+  background: #f1e6c9;
+  color: #6b5223;
+}
+
+.app .badge-away {
+  border-color: #d6d2c4;
+  background: #e6e3d8;
+  color: #4f5a50;
+}
+
+.app .badge-flag {
+  border-color: rgba(179, 38, 30, 0.35);
+  background: #f4ded9;
+  color: #8f1d17;
+}
+
+.app .badge-ink {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.app .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.app .dot-attentive {
+  background: var(--sage-ink);
+}
+
+.app .dot-distracted {
+  background: #8a6a2f;
+}
+
+.app .dot-away {
+  border: 1px solid var(--slate);
+  background: transparent;
+}
+
+.app .dot-disengaged {
+  background: var(--red);
+}
+
+.app .dot-identity {
+  border: 2px solid var(--red);
+  background: transparent;
+}
+
+.app .dot-nodata {
+  border: 1px dashed var(--slate);
+  background: transparent;
+}
+
+.app .dot-live {
+  background: var(--sage-ink);
+}
+
+.app .dot-wait {
+  background: var(--gold);
+}
+
+/* ── Panels, notices, empty states ──────────────────────────────────────── */
+
+.app .panel {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--cream-bright);
+}
+
+.app .panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.app .panel-body {
+  padding: 22px;
+}
+
+.app .notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--cream-deep);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.app .notice .icon {
+  margin-top: 2px;
+}
+
+.app .notice-flag {
+  border-color: rgba(179, 38, 30, 0.35);
+  background: #f7e4e0;
+  color: #7d1a14;
+}
+
+.app .notice-ok {
+  border-color: #cfdcc4;
+  background: #e9efe0;
+  color: #35452f;
+}
+
+.app .notice-quiet {
+  background: transparent;
+}
+
+.app .empty {
+  padding: 26px 22px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.app .empty h3 {
+  font-family: var(--serif);
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+
+.app .empty p {
+  margin-top: 6px;
+  max-width: 46ch;
+  color: var(--slate);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.app .empty .btn {
+  margin-top: 14px;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────────── */
+
+.app .table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.app .table th {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--slate);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.app .table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+}
+
+.app .table tbody tr:hover td {
+  background: rgba(11, 26, 20, 0.025);
+}
+
+.app .table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Dialogs ────────────────────────────────────────────────────────────── */
+
+dialog.app-dialog {
+  width: min(520px, calc(100vw - 32px));
+  height: fit-content;
+  max-height: min(84vh, 720px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--cream-bright);
+  color: var(--ink);
+  box-shadow: 0 30px 60px -30px rgba(10, 35, 28, 0.55);
+}
+
+/* The dialog carries .app for tokens; it must not inherit the page height. */
+dialog.app-dialog.app {
+  min-height: 0;
+  background: var(--cream-bright);
+}
+
+dialog.app-dialog::backdrop {
+  background: rgba(10, 35, 28, 0.55);
+}
+
+.app-dialog-head {
+  padding: 20px 24px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.app-dialog-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.app-dialog-head-row > div {
+  min-width: 0;
+}
+
+.app-dialog-title {
+  font-family: var(--serif);
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.app-dialog-sub {
+  margin-top: 4px;
+  color: var(--slate);
+  font-size: 13px;
+}
+
+.app-dialog-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+}
+
+.app-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--line);
+}
+
+/* ── Header and footer ──────────────────────────────────────────────────── */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  border-bottom: 1px solid var(--line);
+  background: rgba(247, 242, 231, 0.96);
+}
+
+.app-header-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 24px;
+  min-height: 64px;
+  padding-block: 10px;
+}
+
+.app-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.app-brand:hover {
+  color: var(--sage-ink);
+}
+
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-left: auto;
+}
+
+.app-nav a {
+  padding-bottom: 3px;
+  border-bottom: 1px solid transparent;
+  color: var(--slate);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.app-nav a:hover {
+  border-bottom-color: var(--ink);
+  color: var(--ink);
+}
+
+.app-nav a[aria-current="page"] {
+  border-bottom-color: var(--ink);
+  color: var(--ink);
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-user {
+  max-width: 190px;
+  overflow: hidden;
+  color: var(--slate);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-header--forest {
+  background: var(--forest-deep);
+  border-bottom-color: var(--line-cream);
+}
+
+.app-header--forest .app-brand {
+  color: var(--cream);
+}
+
+.app-header--forest .app-nav a {
+  color: var(--sage);
+}
+
+.app-header--forest .app-nav a:hover,
+.app-header--forest .app-nav a[aria-current="page"] {
+  border-bottom-color: var(--gold);
+  color: var(--cream);
+}
+
+.app-header--forest .app-user {
+  color: var(--sage);
+}
+
+.app-footer {
+  border-top: 1px solid var(--line);
+  background: transparent;
+}
+
+.app-footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 24px;
+  padding-block: 18px;
+  color: var(--slate);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app-footer a {
+  color: var(--slate);
+  text-decoration: none;
+}
+
+.app-footer a:hover {
+  color: var(--ink);
+}
+
+.app-footer .app-footer-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-footer .app-footer-note i {
+  width: 18px;
+  height: 1px;
+  background: var(--gold);
+}
+
+/* ── Utility ────────────────────────────────────────────────────────────── */
+
+.app .muted {
+  color: var(--slate);
+}
+
+.app .strong {
+  font-weight: 700;
+}
+
+.app .truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .app .wrap {
+    padding-inline: 20px;
+  }
+
+  .app-header-inner {
+    gap: 8px 16px;
+  }
+
+  .app-nav {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--line-soft);
+    gap: 18px;
+  }
+
+  .app-user {
+    display: none;
+  }
+
+  .app .page-title {
+    font-size: clamp(32px, 9vw, 44px);
+  }
+
+  .app .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
