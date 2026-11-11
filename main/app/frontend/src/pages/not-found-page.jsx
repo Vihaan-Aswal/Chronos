@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import AppHeader from "../components/app/app-header.jsx";
 import AppFooter from "../components/app/app-footer.jsx";
 import "../styles/app-system.css";
+import "../styles/readiness.css";
 
 export default function NotFoundPage() {
   let user = null;

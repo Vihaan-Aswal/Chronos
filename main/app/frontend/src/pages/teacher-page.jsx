@@ -16,6 +16,8 @@ import { kindFor } from "../components/app/student-kind.js";
 import Modal from "../components/app/modal.jsx";
 import EmptyState from "../components/app/empty-state.jsx";
 import ReadyLayout from "../components/app/ready-layout.jsx";
+import AppHeader from "../components/app/app-header.jsx";
+import AppFooter from "../components/app/app-footer.jsx";
 
 import SessionReport from "../components/session-report.jsx";
 import { sendTeacherAction } from "../api/teacher-actions.js";
@@ -782,22 +784,30 @@ export default function TeacherPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6">
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 max-w-md text-center">
-          <div className="text-red-500 text-5xl mb-4">!</div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">
-            Session Expired
-          </h2>
-          <p className="text-slate-600 mb-4">
-            No user found. Please login again.
-          </p>
-          <a
-            href="/"
-            className="inline-block px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-500 transition"
-          >
-            Back to Login
-          </a>
-        </div>
+      <div className="app page">
+        <AppHeader links={[{ label: "Home", to: "/" }]} />
+        <main className="page-main" id="main">
+          <div className="wrap ready-page">
+            <header className="ready-head">
+              <h1 className="page-title">
+                This session has <em>ended.</em>
+              </h1>
+              <p className="page-lede">
+                No signed-in teacher was found on this device. Sign in again to
+                open the room.
+              </p>
+            </header>
+            <div className="row">
+              <Link className="btn btn-ink" to="/signin">
+                Sign in
+              </Link>
+              <Link className="btn btn-line" to="/">
+                Back to the homepage
+              </Link>
+            </div>
+          </div>
+        </main>
+        <AppFooter />
       </div>
     );
   }
@@ -806,6 +816,10 @@ export default function TeacherPage() {
     return (
       <ReadyLayout
         user={user}
+        links={[
+          { label: "Home", to: "/" },
+          { label: "Records", to: "/records" },
+        ]}
         title={
           <>
             Before you <em>join.</em>
@@ -835,6 +849,7 @@ export default function TeacherPage() {
     <>
       {inMeeting && !showReport && (
         <div className="app room">
+          <h1 className="sr-only">Teacher room, session {sessionId}</h1>
           <RoomBar
             sessionId={sessionId}
             connected={connected}

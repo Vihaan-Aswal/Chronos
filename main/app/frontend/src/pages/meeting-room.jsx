@@ -10,6 +10,7 @@ export default function MeetingRoom() {
 
   return (
     <div className="app room">
+      <h1 className="sr-only">Meeting room</h1>
       <header className="room-bar">
         <div className="room-bar-inner">
           <span className="room-brand">

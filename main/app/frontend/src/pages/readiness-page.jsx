@@ -34,6 +34,14 @@ export default function ReadinessPage() {
   return (
     <ReadyLayout
       user={user}
+      links={
+        role === "teacher"
+          ? [
+              { label: "Home", to: "/" },
+              { label: "Records", to: "/records" },
+            ]
+          : [{ label: "Home", to: "/" }]
+      }
       title={
         <>
           Before you <em>join.</em>

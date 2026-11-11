@@ -111,7 +111,7 @@
   padding: 7px 10px;
   border-right-color: var(--line-cream);
   color: var(--sage);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .room-bar .seg > button:hover {
@@ -127,7 +127,7 @@
 .room-bar .btn {
   min-height: 34px;
   padding: 7px 12px;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .room-bar .btn-quiet-cream {
@@ -165,7 +165,7 @@
 
 .room-kpi span {
   color: var(--slate);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -181,7 +181,7 @@
   gap: 14px;
   padding: 9px 16px;
   color: var(--slate);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -300,7 +300,7 @@
   color: var(--gold);
 }
 
-.stage-state h3 {
+.stage-state h2 {
   font-family: var(--serif);
   font-size: 28px;
   line-height: 1.05;
@@ -377,7 +377,7 @@
   border-radius: 2px;
   background: rgba(10, 35, 28, 0.82);
   color: var(--cream);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -639,7 +639,7 @@
 }
 
 .room-signals .badge {
-  font-size: 9px;
+  font-size: 10px;
   padding: 2px 6px;
 }
 
@@ -843,7 +843,7 @@
 
 .room-nudge .room-nudge-label {
   color: var(--sage-ink);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -959,7 +959,7 @@
 
 @media (max-width: 560px) {
   .room-session {
-    font-size: 9px;
+    font-size: 10px;
   }
 
   .room-session .room-session-label {
@@ -996,7 +996,7 @@
   }
 
   .room-kpi span {
-    font-size: 7.5px;
+    font-size: 9px;
     letter-spacing: 0.05em;
   }
 

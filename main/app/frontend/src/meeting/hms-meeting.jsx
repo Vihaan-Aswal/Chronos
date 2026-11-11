@@ -502,7 +502,7 @@ export default function HMSMeeting({
               <circle cx="12" cy="12" r="8" strokeDasharray="3 3" />
             </svg>
           </span>
-          <h3>Opening the video room</h3>
+          <h2>Opening the video room</h2>
           <p>Waiting for the room token. This usually takes a moment.</p>
         </div>
       </div>
@@ -516,7 +516,7 @@ export default function HMSMeeting({
           <span className="stage-icon">
             <AlertIcon />
           </span>
-          <h3>The video room did not open</h3>
+          <h2>The video room did not open</h2>
           <p>{error}</p>
           <p className="stage-detail">
             {role === "host"

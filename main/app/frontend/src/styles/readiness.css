@@ -57,7 +57,7 @@
   padding: 9px 12px;
   background: rgba(10, 35, 28, 0.78);
   color: var(--sage);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -196,7 +196,7 @@
 
 .ready-check-state {
   color: var(--slate);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-align: right;

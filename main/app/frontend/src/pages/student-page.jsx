@@ -184,6 +184,7 @@ export default function StudentPage() {
       <NudgeNotification message={nudgeState?.text} key={nudgeState?.id} />
 
       <div className="app room">
+        <h1 className="sr-only">Student room, session {sessionId}</h1>
         <StudentTopbar
           wsConnected={wsConnected}
           sessionId={sessionId}

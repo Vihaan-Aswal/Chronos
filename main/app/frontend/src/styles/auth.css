@@ -132,6 +132,18 @@
   text-underline-offset: 3px;
 }
 
+.auth-success-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.auth-success-note {
+  color: var(--slate);
+  font-size: 12px;
+  text-align: center;
+}
+
 .auth-foot {
   display: flex;
   flex-wrap: wrap;

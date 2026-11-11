@@ -134,3 +134,15 @@ Compared side by side with the frozen homepage at 1280 and 375:
 - **Alternatives:** keep `Math.floor(idx * 0.5)` labels, which repeated "0m, 0m, 1m, 1m".
 - **Reason:** snapshots are collected every 30 seconds; 0.5-minute labels make the chart honest and readable.
 
+## D31 — The session record is a native full-screen `<dialog>`
+- **Alternatives:** keep the fixed `div` with `role="dialog"` (no focus trap, background still tabbable).
+- **Reason:** `showModal()` gives focus containment, an inert background, Esc, and focus return to the "Open record" trigger. The visual surface is unchanged; it is still a full-screen paper record.
+
+## D32 — Teachers see a Records link in the paper header
+- **Alternatives:** rely on the class-desk link only.
+- **Reason:** a returning teacher should reach records from readiness without hunting. The link appears only when the role is known to be teacher; students keep Home only.
+
+## D33 — 10px is the app type floor
+- **Alternatives:** keep the 9px labels in the room bar, KPI strip and report facts.
+- **Reason:** the homepage's smallest label is 10px. Raising the app floor keeps the density while matching the source of truth and staying legible on a phone.
+

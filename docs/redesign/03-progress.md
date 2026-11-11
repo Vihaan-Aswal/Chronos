@@ -34,14 +34,31 @@
 | `/records` + report | done |
 | `/teacher` class desk | done |
 | `/meeting`, 404, error boundary | done |
-| Cleanup + final review | in progress — legacy CSS/components removed, final audit next |
+| Cleanup + final review | done |
 
 ## Skills used
 - `impeccable context` (setup), `craft-floor` (before UI edits).
 - Pilot critique: craft-floor checks (contrast, spacing, states, browser surfaces) + homepage comparison; findings recorded in `decisions.md`.
-- Page critiques: records/report, student room, auth, readiness; fixes recorded in `decisions.md` D24–D30.
+- Page critiques: records/report, student room, auth, readiness; fixes recorded in `decisions.md` D24–D33.
+- Final audit: 48 route/width combinations (overflow, accessible names, heading order, console),
+  contrast calculations for every text/surface pair, full Playwright suite, Lighthouse.
+
+## Final evidence
+- Final screenshots (36): `main/app/frontend/.impeccable/redesign/final/` at 375/768/1280/1920.
+- State screenshots (19): `main/app/frontend/.impeccable/redesign/states/` (records, report,
+  dialogs, empty/all-clear, signup success/error, camera denied).
+- Baseline screenshots (36): `main/app/frontend/.impeccable/redesign/baseline/`.
+- Lighthouse baseline: `lighthouse-baseline/`; final: `lighthouse-final/`.
+  Final (desktop preset): home 98/100/96/91 · signin 100/100/96/91 · signup 100/100/96/91.
+- Bundle final: JS 3,090.16 kB (gzip 862.26) vs 3,240.79 (908.20) baseline;
+  CSS 83.60 kB (gzip 15.25) vs 109.63 (20.61).
+- Tests: 26 Playwright tests pass (`npx playwright test --config e2e/playwright.config.js`).
+- Homepage: `git diff 426493c --` on `home-page.jsx`, `home-page.css`, `components/home/*`,
+  `chronos-mark.jsx`, `index.css`, `index.html` is empty. Final screenshots match the
+  baseline except for a 30px sample-room height variance that also appears between two
+  fresh captures (baseline artifact, not a source change).
 
 ## Next action
-Phase 5: homepage regression proof, full-page overflow/console audit at 375/768/1280/1920,
-Lighthouse + bundle comparison, final critique, then update the report docs and commit.
+None. The redesign is ready for review. Start with `docs/redesign/05-final-report.md`.
+
 

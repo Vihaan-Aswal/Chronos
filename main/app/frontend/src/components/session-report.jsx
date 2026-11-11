@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { jsPDF } from "jspdf";
 import {
   LineChart,
@@ -77,6 +78,27 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
   const [showPerStudent, setShowPerStudent] = useState(false);
   const [saveState, setSaveState] = useState("idle");
   const [saveError, setSaveError] = useState("");
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (!dialog.open) dialog.showModal();
+    return () => {
+      if (dialog.open) dialog.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const onCancel = (event) => {
+      event.preventDefault();
+      onClose?.();
+    };
+    dialog.addEventListener("cancel", onCancel);
+    return () => dialog.removeEventListener("cancel", onCancel);
+  }, [onClose]);
 
   const distributionEffective = useMemo(() => {
     const hasData =
@@ -251,12 +273,18 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
     doc.save(`session-record-${sessionId || "record"}.pdf`);
   };
 
-  return (
-    <div className="app rec" role="dialog" aria-modal="true" aria-label="Session record">
+  return createPortal(
+    <dialog
+      ref={dialogRef}
+      className="app rec"
+      aria-labelledby="rec-title"
+    >
       <header className="rec-bar">
         <div className="wrap wrap-wide rec-bar-inner">
           <div>
-            <h1 className="rec-title">Session record</h1>
+            <h1 className="rec-title" id="rec-title">
+              Session record
+            </h1>
             <div className="rec-meta">
               <span>{sessionId || "Session not named"}</span>
               <span>{formatDate(startTime)}</span>
@@ -777,6 +805,7 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
           </button>
         </footer>
       </div>
-    </div>
+    </dialog>,
+    document.body,
   );
 }

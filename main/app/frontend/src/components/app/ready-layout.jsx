@@ -1,13 +1,19 @@
 import AppHeader from "./app-header.jsx";
 import AppFooter from "./app-footer.jsx";
 
-export default function ReadyLayout({ user, title, lede, children }) {
+export default function ReadyLayout({
+  user,
+  title,
+  lede,
+  children,
+  links = [{ label: "Home", to: "/" }],
+}) {
   return (
     <div className="app page">
       <a className="skip-link" href="#main">
         Skip to content
       </a>
-      <AppHeader user={user} links={[{ label: "Home", to: "/" }]} />
+      <AppHeader user={user} links={links} />
       <main className="page-main" id="main">
         <div className="wrap ready-page">
           <header className="ready-head">

@@ -392,8 +392,13 @@ function JoinScreen({ user, onJoin, role = "student" }) {
           fix: "Move to the middle of the frame.",
         };
 
-  const lightCheck =
-    lightStatus === "good"
+  const lightCheck = cameraOff
+    ? {
+        ok: false,
+        state: "Unavailable",
+        fix: "Lighting needs the camera.",
+      }
+    : lightStatus === "good"
       ? { ok: true, state: "Good", fix: "Even light on your face." }
       : lightStatus === "too_dark"
         ? {
@@ -463,19 +468,27 @@ function JoinScreen({ user, onJoin, role = "student" }) {
         )}
 
         <div className="ready-stage-foot">
-          <span className={facePresent ? "" : "is-wait"}>
+          <span className={facePresent && !cameraOff ? "" : "is-wait"}>
             <i aria-hidden="true" />
-            {facePresent ? "Face in frame" : "Looking for a face"}
+            {cameraOff
+              ? "Camera off"
+              : engineOff
+                ? "Check unavailable"
+                : facePresent
+                  ? "Face in frame"
+                  : "Looking for a face"}
           </span>
-          <span className={lightStatus === "good" ? "" : "is-wait"}>
+          <span className={lightStatus === "good" && !cameraOff ? "" : "is-wait"}>
             <i aria-hidden="true" />
-            {lightStatus === "good"
-              ? "Lighting good"
-              : lightStatus === "too_dark"
-                ? "Too dark"
-                : lightStatus === "too_bright"
-                  ? "Too bright"
-                  : "Reading light"}
+            {cameraOff
+              ? "No signal"
+              : lightStatus === "good"
+                ? "Lighting good"
+                : lightStatus === "too_dark"
+                  ? "Too dark"
+                  : lightStatus === "too_bright"
+                    ? "Too bright"
+                    : "Reading light"}
           </span>
         </div>
 

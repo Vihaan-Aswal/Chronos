@@ -1,5 +1,6 @@
 import { Component } from "react";
 import "../../styles/app-system.css";
+import "../../styles/readiness.css";
 
 export default class AppErrorBoundary extends Component {
   constructor(props) {

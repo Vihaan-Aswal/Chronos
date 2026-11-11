@@ -198,9 +198,22 @@ export default function SignUpPage() {
             </form>
           )}
 
-          <p className="auth-switch">
-            Already have an account? <Link to="/signin">Sign in</Link>
-          </p>
+          {success && (
+            <div className="auth-success-actions">
+              <Link className="btn btn-ink btn-block" to="/signin" replace>
+                Go to sign in
+              </Link>
+              <p className="auth-success-note">
+                Taking you there in a moment.
+              </p>
+            </div>
+          )}
+
+          {!success && (
+            <p className="auth-switch">
+              Already have an account? <Link to="/signin">Sign in</Link>
+            </p>
+          )}
         </div>
 
         <p className="auth-foot">
