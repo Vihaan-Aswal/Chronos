@@ -27,10 +27,12 @@ export default function MotionProvider({ children }) {
   useLayoutEffect(() => {
     const root = document.documentElement;
     const params = new URLSearchParams(window.location.search);
-    const requested = params.get("motion") || safeReadStoredMode();
+    const queryMode = params.get("motion");
+    const requested = queryMode || safeReadStoredMode();
 
     if (MOTION_MODES.includes(requested)) {
       root.dataset.motion = requested;
+      if (MOTION_MODES.includes(queryMode)) safeStoreMode(queryMode);
     } else {
       delete root.dataset.motion;
     }

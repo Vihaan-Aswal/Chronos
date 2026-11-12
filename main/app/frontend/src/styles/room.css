@@ -823,6 +823,11 @@
 
 /* ── Nudge note (student) ───────────────────────────────────────────────── */
 
+.app.room-nudge {
+  /* The portal carries .app for tokens; do not inherit its 100vh page height. */
+  min-height: 0;
+}
+
 .room-nudge {
   position: fixed;
   left: 50%;
