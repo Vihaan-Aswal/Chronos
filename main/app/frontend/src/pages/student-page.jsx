@@ -233,8 +233,12 @@ export default function StudentPage() {
 
             <div className="signal-state">
               <p className="label">Right now</p>
-              <p className="signal-state-title">{current.title}</p>
-              <p className="signal-state-copy">{current.copy}</p>
+              <p className="signal-state-title" key={`${signal.band}-title`}>
+                {current.title}
+              </p>
+              <p className="signal-state-copy" key={`${signal.band}-copy`}>
+                {current.copy}
+              </p>
               <div className="signal-strip" aria-hidden="true">
                 {cells.map((band, index) => (
                   <span

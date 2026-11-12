@@ -1,6 +1,6 @@
 # 03 — Progress
 
-**Phase:** 2 — foundation + pilot `/teacher` live complete; pilot calibrated. Next: `/signin`, `/signup`.
+**Phase:** 3 — shared system + all app surfaces implemented; measurement/hardening next.
 **Branch:** `feat/app-motion-elevation`
 **Baseline commit:** `fb5caff` (e2e lint fix) on top of `2c2094c`; homepage frozen at `426493c`.
 **Dev server:** `http://localhost:5173` (running); production preview `http://localhost:4174` (running).
@@ -27,14 +27,14 @@
 |---|---|
 | Foundation / motion system | done — tokens, switch, reduced motion, primitives |
 | `/teacher` live (pilot) | done — CSS row entrance, dialog, rail, live dot; calibrated |
-| `/signin`, `/signup` | next — CSS auth first impression + notices |
-| `/choose-role` | not started |
-| `/readiness` + JoinScreen | not started |
-| `/student` live | not started |
-| `/records` + session record | not started |
-| `/teacher` desk | not started |
-| `/meeting`, 404, error boundary | not started |
-| Holistic review / homepage regression | not started |
+| `/signin`, `/signup` | done — first impression, notices, success |
+| `/choose-role` | done — column settle + header rule |
+| `/readiness` + JoinScreen | done — panel, checks, result; camera untouched |
+| `/student` live | done — state keyed fade, strip, nudge, dialogs, rail |
+| `/records` + session record | done — loading rule, rows, report print, charts |
+| `/teacher` desk | done — panel + records row |
+| `/meeting`, 404, error boundary | done — rule/buttons; stage states static |
+| Holistic review / homepage regression | next |
 
 ## Pilot spec — `/teacher` live
 
@@ -46,6 +46,19 @@
 - **Header/room bar:** 260 ms hairline draw.
 - **Fallback:** `?motion=off` / `data-motion="off"` disables all; reduced motion zeroes travel/stagger, keeps 120–180 ms fades.
 - **Evidence:** `.impeccable/motion-after/app/pilot-*.png`, 353-frame sequence in `.impeccable/motion-after/app/frames/teacher-live/`, 1x and 4x traces in `.impeccable/motion-after/app/traces/`.
+
+## Page specs — remaining surfaces
+
+- **`/signin`:** h1 static (LCP); aside facts 60 ms stagger / 420 ms; form fields 4 px / 180 ms; provider error notice 180 ms; eye/button feedback 120 ms.
+- **`/signup`:** same; inline mismatch 180 ms; success notice + actions 180 ms; 2.2 s redirect unchanged.
+- **`/choose-role`:** header rule 260 ms; two columns 180 ms with 18 ms second delay; buttons 120 ms; h1 static.
+- **`/readiness`:** panel 180 ms; each check colour/border 180 ms; result notice 180 ms; camera/video untouched; primary button feedback 120 ms.
+- **`/student` live:** state title/copy keyed 180 ms; signal cells 180 ms; nudge note 260 ms; liveness/auto-nudge/tab-switch dialogs 180 ms; mobile rail 180 ms; tracker canvas untouched.
+- **`/records`:** loading rule 1.2 s loop (static reduced); rows 180 ms + 18 ms stagger; empty/error 180 ms; open button 120 ms.
+- **Session record:** sheet 260 ms; header rule 420 ms; facts 180 ms + 60 ms stagger; band scaleX 420 ms; charts 420 ms ease-out; details 180 ms; save notice 180 ms; no section reveal.
+- **`/teacher` desk:** readiness panel + records row 180 ms; header rule 260 ms.
+- **`/meeting`:** room bar rule 260 ms; stage states static (the stage error is the LCP on this page; no opacity gate).
+- **404 / error:** header rule 260 ms; button feedback; no new graphic.
 
 ## Pilot calibration
 
@@ -65,6 +78,18 @@
 - `.impeccable/motion-baseline/app/audit-baseline.txt` — 48 page/width combinations clean.
 - `.impeccable/motion-baseline/app-tests-baseline.txt` — 26 passed.
 - `.impeccable/motion-baseline/` — frozen homepage baseline (from the prior motion plan).
+
+## After measurement (production preview)
+
+- **Bundle:** main JS 3,092.28 kB raw / 862.86 kB gzip vs 3,090.33 / 862.30 baseline: **+1.95 kB raw / +0.56 kB gzip**. All JS gzip **+0.57 kB**; CSS 92,960 raw / 16,509 gzip vs 83,651 / 15,131: **+1.38 kB gzip**. Total dist gzip **1,029,644 vs 1,027,691: +1.95 kB**. No new runtime dependency.
+- **Lighthouse perf:** desktop 96→95 signin, 96→95 choose, 65→64 readiness, 96→96 meeting, 95→95 records, 96→96 signup, 62→65 teacher desk, 63→65 student join; mobile 65→65 signin/signup/records, 64→64 meeting, 65→65 404, 65→64 choose. All within ±2 except improvements on camera pages.
+- **LCP:** all LCP elements are static headings/paragraphs; meeting LCP fixed from 5.91 s → 5.76 s by removing the stage opacity gate. Remaining deltas (+37–149 ms) are Lighthouse run variance on static LCP elements.
+- **CLS:** no added shift; records mobile 0, choose mobile 0.008 (baseline 0.011), readiness desktop 0.0002. Comparable traces: teacher 0.1357 and student 0.1609, the same as baseline (the earlier pilot 1× run's 0.1065 was a different capture, not the comparison trace).
+- **TBT:** no regression; camera pages improved (readiness 6,045→3,446; teacher desk 4,885→3,748; student 4,477→3,634).
+- **Homepage regression:** homepage screenshots at 375/768/1280/1920 are **byte-identical** (SHA-256) to the baseline; `git diff 426493c -- home-page.jsx components/home home-page.css chronos-mark.jsx index.css index.html` is empty. Lighthouse home 89 desktop / 64 mobile (baseline 89/59; variance, frozen code).
+- **Tests:** 26 Playwright tests pass with reduced motion emulated; no new console errors beyond the existing 100ms `unload` policy entry.
+- **Evidence:** `.impeccable/motion-after/app/screenshots/` (70 stills), `frames/` (teacher live 353, signin 57, signup 55, choose 18, readiness 52, student nudge 123, record print 79), `traces/` (teacher 1×/4×, signin, student, records), Lighthouse JSON + `lighthouse-compare.json`.
+- **Static design:** all 70 after screenshots have the same dimensions as baseline; visual diff is limited to 1px header rules/text antialiasing, not layout or copy.
 
 ## Skills used
 
