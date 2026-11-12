@@ -502,21 +502,6 @@
   color: var(--ink);
 }
 
-.home .room-panel {
-  animation: panel-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes panel-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
 .home .room-body {
   display: grid;
   min-height: 540px;
@@ -563,7 +548,6 @@
   padding: 10px 18px 12px;
   border-radius: 3px;
   background: var(--forest);
-  box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.5);
   color: var(--cream);
   text-align: center;
 }
@@ -674,11 +658,6 @@
   font-weight: 800;
   letter-spacing: 0.02em;
   cursor: pointer;
-  transition:
-    transform 160ms ease,
-    box-shadow 160ms ease,
-    opacity 200ms ease,
-    background-color 200ms ease;
 }
 
 .home .desk-attentive {
@@ -714,17 +693,6 @@
   color: var(--slate);
 }
 
-.home .desk:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px -12px rgba(11, 26, 20, 0.5);
-}
-
-.home .desk.is-selected {
-  z-index: 2;
-  box-shadow: 0 0 0 2px var(--ink);
-  transform: translateY(-2px);
-}
-
 .home .desk.is-dimmed {
   opacity: 0.25;
 }
@@ -747,11 +715,6 @@
   border: 1px dashed rgba(11, 26, 20, 0.22);
   background: rgba(252, 249, 241, 0.35);
   cursor: default;
-}
-
-.home .desk-empty:hover {
-  box-shadow: none;
-  transform: none;
 }
 
 .home .room-caption {
@@ -1051,21 +1014,6 @@
   margin-top: 4px;
   font-size: 12px;
   line-height: 1.45;
-}
-
-.home .student-note.is-nudged {
-  animation: note-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes note-in {
-  from {
-    opacity: 0.4;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 .home .inspector-actions {
@@ -2006,8 +1954,6 @@
   gap: 20px;
 }
 
-/* ── Responsive ─────────────────────────────────────────────────────────── */
-
 @media (max-width: 1100px) {
   .home .desk {
     width: 56px;
@@ -2380,16 +2326,5 @@
 
   .home .foot-top {
     gap: 24px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .home *,
-  .home *::before,
-  .home *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
   }
 }

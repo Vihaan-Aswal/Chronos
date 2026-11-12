@@ -1,0 +1,628 @@
+/* Homepage motion — paper, light, signal.
+   Resting layout lives in home-page.css; this file owns the paper diorama,
+   the load settle, the nudge ring, the reading aids and the record print.
+   Tokens come from styles/motion.css (.app, .home). */
+
+.home {
+  /* 220ms: the inspector sits between fast feedback and a panel. */
+  --inspector-in: calc((var(--motion-fast) + var(--motion-base)) / 2);
+}
+
+/* ── Paper diorama (static depth) ───────────────────────────────────────── */
+
+.home .desk {
+  --desk-edge: #d8d2c2;
+  box-shadow:
+    0 3px 0 var(--desk-edge),
+    0 8px 14px -10px rgba(11, 26, 20, 0.4);
+  transition:
+    transform var(--motion-fast) var(--ease-state),
+    box-shadow var(--motion-fast) var(--ease-state),
+    opacity var(--motion-fast) var(--ease-state),
+    background-color var(--motion-base) var(--ease-state),
+    border-color var(--motion-base) var(--ease-state);
+}
+
+.home .desk-attentive {
+  --desk-edge: #b7c8a9;
+}
+
+.home .desk-distracted {
+  --desk-edge: #d3bd8c;
+}
+
+.home .desk-away {
+  --desk-edge: #c6c1b1;
+}
+
+.home .desk-disengaged {
+  --desk-edge: #d4aaa2;
+}
+
+.home .desk-identity {
+  --desk-edge: #bd8d86;
+}
+
+.home .desk-nodata {
+  --desk-edge: transparent;
+}
+
+.home .desk-empty {
+  --desk-edge: #ddd7c7;
+}
+
+@media (hover: hover) {
+  .home .desk:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 3px 0 var(--desk-edge),
+      0 12px 18px -10px rgba(11, 26, 20, 0.46);
+  }
+
+  .home .desk-empty:hover {
+    transform: none;
+    box-shadow:
+      0 3px 0 var(--desk-edge),
+      0 8px 14px -10px rgba(11, 26, 20, 0.4);
+  }
+}
+
+.home .desk.is-selected {
+  z-index: 2;
+  transform: translateY(-3px);
+  box-shadow:
+    0 0 0 2px var(--ink),
+    0 3px 0 var(--desk-edge),
+    0 10px 16px -10px rgba(11, 26, 20, 0.5);
+}
+
+.home .desk.is-landed {
+  transform: translateY(-6px);
+  transition-duration: var(--motion-base);
+}
+
+.home .desk.is-selected.is-landed {
+  box-shadow:
+    0 0 0 2px var(--ink),
+    0 3px 0 var(--desk-edge),
+    0 14px 20px -12px rgba(11, 26, 20, 0.55);
+}
+
+.home .room-board {
+  box-shadow:
+    0 2px 0 #081b15,
+    0 12px 24px -16px rgba(0, 0, 0, 0.55);
+}
+
+.home .teacher-desk {
+  box-shadow:
+    0 1px 0 rgba(11, 26, 20, 0.2),
+    0 5px 10px -8px rgba(11, 26, 20, 0.35);
+}
+
+.home .room-arch {
+  box-shadow:
+    inset 0 18px 30px -22px rgba(11, 26, 20, 0.18),
+    inset 0 -20px 40px -30px rgba(11, 26, 20, 0.12);
+}
+
+/* The floor light is a layer, not a background, so a moment can crossfade it. */
+.home .room-light {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.home .room-light i {
+  position: absolute;
+  inset: 0;
+  display: block;
+  opacity: 0;
+  transition: opacity var(--motion-slow) var(--ease-state);
+}
+
+.home .light-live {
+  background: radial-gradient(
+    68% 42% at 50% 104%,
+    rgba(255, 226, 160, 0.5),
+    rgba(255, 226, 160, 0) 72%
+  );
+}
+
+.home .light-before {
+  background: radial-gradient(
+    68% 42% at 50% 104%,
+    rgba(216, 190, 138, 0.18),
+    rgba(216, 190, 138, 0) 72%
+  );
+}
+
+.home .room-window[data-moment="live"] .light-live,
+.home .room-window[data-moment="before"] .light-before {
+  opacity: 1;
+}
+
+/* ── Load settle (once, after first paint; the H1 is never touched) ─────── */
+
+.home .room-window[data-settle="true"] .room-arch::before {
+  animation: home-arch-draw var(--motion-authored) var(--ease-arrive) backwards;
+}
+
+.home .room-window[data-settle="true"] .room-board {
+  animation: home-board-settle var(--motion-base) var(--ease-arrive) backwards;
+}
+
+.home .room-window[data-settle="true"] .desk {
+  animation: home-desk-rise var(--motion-base) var(--ease-arrive) backwards;
+  animation-delay: calc(var(--desk-order, 0) * var(--stagger-desk));
+}
+
+.home .room-window[data-settle="true"] .room-light i {
+  animation: home-light-bloom calc(var(--motion-authored) + var(--motion-base))
+    var(--ease-state) backwards;
+}
+
+.home .room-window[data-settle="true"] .room-inspector {
+  animation: home-inspector-in var(--motion-base) var(--ease-arrive) backwards;
+}
+
+/* Weak devices keep the arch line and skip the wave and the bloom. */
+.home .room-window[data-settle="true"][data-budget="weak"] .desk,
+.home .room-window[data-settle="true"][data-budget="weak"] .room-light i {
+  animation: none;
+}
+
+@keyframes home-arch-draw {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+
+@keyframes home-board-settle {
+  from {
+    transform: translateY(4px);
+  }
+}
+
+@keyframes home-desk-rise {
+  from {
+    transform: translateY(6px);
+  }
+}
+
+@keyframes home-light-bloom {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes home-inspector-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* ── Tab panel, inspector and state feedback ────────────────────────────── */
+
+.home .room-panel {
+  animation: home-panel-in var(--motion-base) var(--ease-arrive) both;
+}
+
+@keyframes home-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.home .room-window[data-settled="true"] .inspector-main {
+  animation: home-inspector-main var(--inspector-in) var(--ease-arrive) both;
+}
+
+@keyframes home-inspector-main {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.home .room-window[data-settled="true"] .inspector-state {
+  animation: home-state-in var(--motion-fast) var(--ease-arrive) both;
+}
+
+@keyframes home-state-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+.home .history-cell,
+.home .desk-dot {
+  transition:
+    background-color var(--motion-fast) var(--ease-state),
+    border-color var(--motion-fast) var(--ease-state);
+}
+
+.home .student-note.is-nudged {
+  animation: home-note-in var(--motion-base) var(--ease-arrive) both;
+}
+
+@keyframes home-note-in {
+  from {
+    opacity: 0.4;
+    transform: translateY(6px);
+  }
+}
+
+.home .btn,
+.home .text-btn,
+.home .room-tab,
+.home .legend-btn,
+.home .setting-option {
+  transition-property: background-color, border-color, color, opacity, transform;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-state);
+}
+
+.home .btn:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.home .setting-summary.is-changing {
+  animation: home-summary-in var(--motion-fast) var(--ease-arrive) both;
+}
+
+@keyframes home-summary-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Nudge ring (the one authored moment) ───────────────────────────────── */
+
+.home .room-body {
+  position: relative;
+}
+
+.home .nudge-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 6;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-100px, -100px);
+}
+
+.home .nudge-ring.is-flying {
+  will-change: transform, opacity;
+}
+
+/* ── Reading aids: band wipe and chain rule (once, in view) ─────────────── */
+
+.home .band-zones {
+  position: relative;
+  overflow: hidden;
+}
+
+.home .band-zones.is-armed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: var(--cream);
+  pointer-events: none;
+}
+
+.home .band-zones.is-read::after {
+  animation: home-band-wipe var(--motion-slow) var(--ease-state) both;
+}
+
+@keyframes home-band-wipe {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(101%);
+  }
+}
+
+.home .chain {
+  position: relative;
+}
+
+.home .chain.is-armed {
+  border-top-color: transparent;
+}
+
+.home .chain::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: rgba(11, 26, 20, 0.22);
+  pointer-events: none;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.home .chain.is-read::before {
+  animation: home-rule-draw var(--motion-slow) var(--ease-arrive) both;
+}
+
+@keyframes home-rule-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ── Record print (the epilogue) ────────────────────────────────────────── */
+
+.home .room-body.is-record {
+  position: relative;
+}
+
+.home .room-body.is-record::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    90% 70% at 50% -10%,
+    rgba(216, 190, 138, 0.1),
+    transparent 70%
+  );
+}
+
+.home .room-body.is-record .record {
+  position: relative;
+  z-index: 1;
+}
+
+.home .room-body.is-printing .tpi {
+  animation: home-tpi-print var(--motion-print) var(--ease-arrive) both;
+}
+
+@keyframes home-tpi-print {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+
+.home .room-body.is-printing .timeline-bar span {
+  transform-origin: left center;
+  animation: home-cell-fill var(--motion-base) var(--ease-arrive) both;
+  animation-delay: calc(var(--cell-order, 0) * var(--stagger-desk));
+}
+
+@keyframes home-cell-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.home .archive {
+  position: relative;
+}
+
+.home .archive::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: var(--line);
+  pointer-events: none;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.home .room-body.is-printing .archive {
+  border-top-color: transparent;
+}
+
+.home .room-body.is-printing .archive::before {
+  animation: home-rule-draw var(--motion-slow) var(--ease-arrive) both;
+}
+
+/* ── Ambient: the live dot only, paused offscreen and when hidden ───────── */
+
+.home .live-dot.is-live {
+  animation: home-live-pulse 2.4s var(--ease-state) infinite;
+}
+
+.home .room-window[data-inview="false"] .live-dot.is-live,
+html[data-hidden="true"] .home .live-dot.is-live {
+  animation-play-state: paused;
+}
+
+.home .room-window[data-budget="lite"] .live-dot.is-live {
+  animation: none;
+}
+
+@keyframes home-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.35);
+  }
+}
+
+/* ── Reduced motion and the global switch ───────────────────────────────── */
+
+@keyframes home-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home .room-panel,
+  .home .room-window[data-settled="true"] .inspector-main,
+  .home .room-window[data-settled="true"] .inspector-state,
+  .home .student-note.is-nudged {
+    animation: home-fade-in var(--motion-instant) var(--ease-state) both;
+  }
+
+  .home .room-window[data-settle="true"] .room-arch::before,
+  .home .room-window[data-settle="true"] .room-board,
+  .home .room-window[data-settle="true"] .desk,
+  .home .room-window[data-settle="true"] .room-light i,
+  .home .room-window[data-settle="true"] .room-inspector,
+  .home .live-dot.is-live {
+    animation: none;
+  }
+
+  .home .band-zones.is-armed::after {
+    display: none;
+  }
+
+  .home .chain.is-armed {
+    border-top-color: rgba(11, 26, 20, 0.22);
+  }
+
+  .home .chain.is-read::before {
+    animation: none;
+    transform: scaleX(1);
+  }
+
+  .home .room-body.is-printing .tpi,
+  .home .room-body.is-printing .timeline-bar span,
+  .home .room-body.is-printing .archive::before {
+    animation: none;
+  }
+
+  .home .room-body.is-printing .archive {
+    border-top-color: var(--line);
+  }
+
+  .home .desk.is-landed {
+    transform: none;
+  }
+
+  .home .btn:active:not(:disabled) {
+    transform: none;
+  }
+
+  .home .setting-summary.is-changing {
+    animation-duration: var(--motion-instant);
+  }
+
+  .home .desk,
+  .home .history-cell,
+  .home .desk-dot,
+  .home .inspector-state,
+  .home .legend-btn,
+  .home .setting-option,
+  .home .room-tab,
+  .home .btn,
+  .home .text-btn {
+    transition-duration: var(--motion-instant);
+  }
+}
+
+html[data-motion="reduced"] .home .room-panel,
+html[data-motion="reduced"] .home .room-window[data-settled="true"] .inspector-main,
+html[data-motion="reduced"] .home .room-window[data-settled="true"] .inspector-state,
+html[data-motion="reduced"] .home .student-note.is-nudged {
+  animation: home-fade-in var(--motion-instant) var(--ease-state) both;
+}
+
+html[data-motion="reduced"] .home .room-window[data-settle="true"] .room-arch::before,
+html[data-motion="reduced"] .home .room-window[data-settle="true"] .room-board,
+html[data-motion="reduced"] .home .room-window[data-settle="true"] .desk,
+html[data-motion="reduced"] .home .room-window[data-settle="true"] .room-light i,
+html[data-motion="reduced"] .home .room-window[data-settle="true"] .room-inspector,
+html[data-motion="reduced"] .home .live-dot.is-live {
+  animation: none;
+}
+
+html[data-motion="reduced"] .home .band-zones.is-armed::after {
+  display: none;
+}
+
+html[data-motion="reduced"] .home .chain.is-armed {
+  border-top-color: rgba(11, 26, 20, 0.22);
+}
+
+html[data-motion="reduced"] .home .chain.is-read::before {
+  animation: none;
+  transform: scaleX(1);
+}
+
+html[data-motion="reduced"] .home .room-body.is-printing .tpi,
+html[data-motion="reduced"] .home .room-body.is-printing .timeline-bar span,
+html[data-motion="reduced"] .home .room-body.is-printing .archive::before {
+  animation: none;
+}
+
+html[data-motion="reduced"] .home .room-body.is-printing .archive {
+  border-top-color: var(--line);
+}
+
+html[data-motion="reduced"] .home .desk.is-landed {
+  transform: none;
+}
+
+html[data-motion="reduced"] .home .btn:active:not(:disabled) {
+  transform: none;
+}
+
+html[data-motion="reduced"] .home .setting-summary.is-changing {
+  animation-duration: var(--motion-instant);
+}
+
+html[data-motion="reduced"] .home .desk,
+html[data-motion="reduced"] .home .history-cell,
+html[data-motion="reduced"] .home .desk-dot,
+html[data-motion="reduced"] .home .inspector-state,
+html[data-motion="reduced"] .home .legend-btn,
+html[data-motion="reduced"] .home .setting-option,
+html[data-motion="reduced"] .home .room-tab,
+html[data-motion="reduced"] .home .btn,
+html[data-motion="reduced"] .home .text-btn {
+  transition-duration: var(--motion-instant);
+}
+
+/* The switch can flip after the page has armed; restore any hidden resting
+   state without waiting for React to re-render. */
+html[data-motion="off"] .home .band-zones.is-armed::after {
+  display: none;
+}
+
+html[data-motion="off"] .home .chain.is-armed {
+  border-top-color: rgba(11, 26, 20, 0.22);
+}
+
+html[data-motion="off"] .home .room-body.is-printing .archive {
+  border-top-color: var(--line);
+}

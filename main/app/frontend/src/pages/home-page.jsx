@@ -5,6 +5,7 @@ import RoomWindow from "../components/home/room-frame.jsx";
 import ModeSettings from "../components/home/mode-settings.jsx";
 import { STATES } from "../components/home/session-data.js";
 import "../styles/home-page.css";
+import "../styles/home-motion.css";
 
 const FLAGS = STATES.filter((state) => state.kind === "flag");
 
@@ -126,7 +127,7 @@ export default function HomePage() {
               <div className="section-side">
                 <p>
                   Three score bands, three flags. A student is in one state at a
-                  time, and no face in frame is a camera miss — not a verdict.
+                  time, and no face in frame is a camera miss â€” not a verdict.
                 </p>
                 <p className="section-fine">
                   No emotion. No ranking. No student score that changes a grade.
@@ -146,7 +147,7 @@ export default function HomePage() {
                 <div className="band-zone zone-distracted">
                   <div className="zone-head">
                     <span>Distracted</span>
-                    <span>0.40 – 0.70</span>
+                    <span>0.40 â€“ 0.70</span>
                   </div>
                   <p>Time and a nudge first.</p>
                 </div>
@@ -381,7 +382,7 @@ export default function HomePage() {
             </p>
           </div>
           <div className="foot-bottom">
-            <span>© 2026 Chronos · Intelligence for Presence</span>
+            <span>Â© 2026 Chronos Â· Intelligence for Presence</span>
             <span>Built for the humane classroom.</span>
           </div>
         </div>

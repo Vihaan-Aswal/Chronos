@@ -7,6 +7,18 @@ export function readMotionMode() {
   if (typeof document === "undefined") return "full";
   const attr = document.documentElement.dataset.motion;
   if (attr === "full" || attr === "reduced" || attr === "off") return attr;
+  if (typeof window !== "undefined") {
+    // The provider applies these before paint; reading them here keeps the
+    // first render of a page in step with it.
+    const query = new URLSearchParams(window.location.search).get("motion");
+    if (MOTION_MODES.includes(query)) return query;
+    try {
+      const stored = localStorage.getItem("chronos_motion");
+      if (MOTION_MODES.includes(stored)) return stored;
+    } catch {
+      // Private mode / storage blocked.
+    }
+  }
   if (typeof window !== "undefined" && window.matchMedia?.(MOTION_MEDIA).matches) {
     return "reduced";
   }

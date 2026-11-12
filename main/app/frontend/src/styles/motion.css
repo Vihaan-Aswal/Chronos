@@ -1,8 +1,10 @@
 /* App motion — paper, ink, signal.
-   Extends the homepage motion plan. Scoped to .app so the frozen .home is untouched.
+   Extends the homepage motion plan. Shared tokens cover .app and .home; the
+   homepage primitives live in styles/home-motion.css.
    Tokens are the single source for CSS; JS mirrors them in components/motion/tokens.js. */
 
-.app {
+.app,
+.home {
   --motion-instant: 120ms;
   --motion-fast: 180ms;
   --motion-base: 260ms;
@@ -520,13 +522,18 @@ html[data-motion="off"] .app,
 html[data-motion="off"] .app *,
 html[data-motion="off"] .app *::before,
 html[data-motion="off"] .app *::after,
+html[data-motion="off"] .home,
+html[data-motion="off"] .home *,
+html[data-motion="off"] .home *::before,
+html[data-motion="off"] .home *::after,
 html[data-motion="off"] dialog.app,
 html[data-motion="off"] dialog.app * {
   animation: none !important;
   transition: none !important;
 }
 
-html[data-motion="reduced"] .app {
+html[data-motion="reduced"] .app,
+html[data-motion="reduced"] .home {
   --motion-rise: 0px;
   --motion-row-rise: 0px;
   --motion-stagger: 0ms;
@@ -552,7 +559,8 @@ html[data-motion="reduced"] .app.auth .auth-fact {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app {
+  .app,
+  .home {
     --motion-rise: 0px;
     --motion-row-rise: 0px;
     --motion-stagger: 0ms;
