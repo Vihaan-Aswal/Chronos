@@ -44,6 +44,18 @@ Format: decision — alternatives — reason. Newest first.
 - **Alternatives:** fake production fixtures for live shells; skip Lighthouse; add a production preview flag.
 - **Reason:** `/teacher?preview=live` and `/student?preview=live` are `import.meta.env.DEV` only; production Lighthouse cannot reach them without changing functionality. Baseline uses production Lighthouse for static pages and dev-server Playwright/CDP traces for live shells. Mobile Lighthouse is skipped for `/readiness`, `/teacher`, `/student` because the existing MediaPipe/face-api stack dominates (8.5 MiB, ~42 s TTI); desktop runs are recorded. This is a measurement limitation, not a product change.
 
+## D-M15 — No opacity gate on the meeting stage state
+- **Alternatives:** fade the full-screen stage error/loading state in over 180 ms; leave it static.
+- **Reason:** the meeting page's LCP element is the stage error heading; an opacity-from-0 animation delays LCP. The stage state is now static. This is a hard LCP rule, not a taste choice. The report/dialog entrances use transform-only so their LCP-like content is never transparent.
+
+## D-M16 — No new 3D/WebGL graphics in the app tools
+- **Alternatives:** a 3D paper diorama on auth/404/empty states; a WebGL signal field in the live room.
+- **Reason:** the app pages are working tools; the existing live stage, signal strip, report charts and distribution band are the 2D graphics that carry meaning. New 3D would be spectacle, add weight, and risk the camera stack. The homepage remains the showpiece; its plan's 3D paper diorama is not implemented here.
+
+## D-M17 — Shared foundation covers the simple surfaces
+- **Alternatives:** duplicate page-specific CSS for auth, choose-role, readiness, teacher desk and 404.
+- **Reason:** those pages need the same primitives (header rule, auth first impression, panel/notice, buttons/fields). The shared `motion.css` is the correct single source; only pages with page-specific code (teacher live, student live, session record, meeting guard) get page commits. The progress table records coverage.
+
 ## D-M12 — Rows use CSS entrance, not `motion` presence
 - **Alternatives:** `motion.li` + `AnimatePresence` for entrance/exit/reorder; CSS entrance only.
 - **Reason:** importing `motion` for row components grew the main chunk by ~40.8 kB gzip, far over the 6 kB JS budget. The brief prioritises the existing budget and frequent-action speed. CSS gives the 180 ms entrance with 18 ms stagger; removal is instant. The row reorder in a live roster is data-driven every few seconds; animating it would make the working tool busy.
