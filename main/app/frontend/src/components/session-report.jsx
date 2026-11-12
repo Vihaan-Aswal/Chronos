@@ -14,6 +14,8 @@ import {
   Bar,
 } from "recharts";
 import { AlertIcon, CheckIcon, DownloadIcon } from "./app/icons.jsx";
+import { useMotionPreference } from "./motion/use-motion-preference.js";
+import { MOTION } from "./motion/tokens.js";
 
 const CHART = {
   grid: "rgba(11, 26, 20, 0.09)",
@@ -79,6 +81,7 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
   const [saveState, setSaveState] = useState("idle");
   const [saveError, setSaveError] = useState("");
   const dialogRef = useRef(null);
+  const { reduced } = useMotionPreference();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -445,6 +448,9 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
                   <Line
                     type="monotone"
                     dataKey="avgScore"
+                    isAnimationActive={!reduced}
+                    animationDuration={MOTION.slow * 1000}
+                    animationEasing="ease-out"
                     name="All learners"
                     stroke={CHART.ink}
                     strokeWidth={2.4}
@@ -455,6 +461,9 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
                     <Line
                       type="monotone"
                       dataKey="avgScoreReal"
+                      isAnimationActive={!reduced}
+                      animationDuration={MOTION.slow * 1000}
+                      animationEasing="ease-out"
                       name="Live learners"
                       stroke={CHART.sage}
                       strokeWidth={2}
@@ -466,6 +475,9 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
                     <Line
                       type="monotone"
                       dataKey="avgScoreSimulated"
+                      isAnimationActive={!reduced}
+                      animationDuration={MOTION.slow * 1000}
+                      animationEasing="ease-out"
                       name="Simulated"
                       stroke={CHART.gold}
                       strokeWidth={2}
@@ -621,6 +633,9 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
                       fill={CHART.gold}
                       name="Confusion"
                       radius={[2, 2, 0, 0]}
+                      isAnimationActive={!reduced}
+                      animationDuration={MOTION.slow * 1000}
+                      animationEasing="ease-out"
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -707,6 +722,9 @@ export default function SessionReport({ sessionData, onClose, onSave }) {
                             <Line
                               type="monotone"
                               dataKey="score"
+                              isAnimationActive={!reduced}
+                              animationDuration={MOTION.slow * 1000}
+                              animationEasing="ease-out"
                               stroke={CHART.sage}
                               strokeWidth={2}
                               dot={{ r: 1.8 }}
