@@ -1,6 +1,6 @@
 # 03 — Progress
 
-**Phase:** 3 — shared system + all app surfaces implemented; measurement/hardening next.
+**Phase:** complete — shared system, all app surfaces, pilot calibration, measurement, hardening, homepage regression.
 **Branch:** `feat/app-motion-elevation`
 **Baseline commit:** `fb5caff` (e2e lint fix) on top of `2c2094c`; homepage frozen at `426493c`.
 **Dev server:** `http://localhost:5173` (running); production preview `http://localhost:4174` (running).
@@ -34,7 +34,7 @@
 | `/records` + session record | done — loading rule, rows, report print, charts |
 | `/teacher` desk | done — panel + records row |
 | `/meeting`, 404, error boundary | done — rule/buttons; stage states static |
-| Holistic review / homepage regression | next |
+| Holistic review / homepage regression | done — screenshots byte-identical; Lighthouse home unchanged/improved |
 
 ## Pilot spec — `/teacher` live
 
