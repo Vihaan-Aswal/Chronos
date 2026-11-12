@@ -538,6 +538,7 @@ export default function RoomWindow() {
           <AfterPanel
             nudged={nudged.includes("R.K.")}
             recovered={recovered.includes("R.K.")}
+            print={!reduced && !saveData}
             exportNote={exportNote}
             setExportNote={setExportNote}
           />
@@ -636,9 +637,9 @@ function BeforePanel() {
   );
 }
 
-function AfterPanel({ nudged, recovered, exportNote, setExportNote }) {
+function AfterPanel({ nudged, recovered, print, exportNote, setExportNote }) {
   return (
-    <div className="room-body is-record">
+    <div className={`room-body is-record ${print ? "is-printing" : ""}`}>
       <h2 className="sr-only">Session record</h2>
       <div className="record">
         <div className="record-lead">
@@ -680,7 +681,11 @@ function AfterPanel({ nudged, recovered, exportNote, setExportNote }) {
               aria-label="Class attention over 42 minutes: mostly attentive, with distracted periods, two NO_DATA gaps, and one away period."
             >
               {TIMELINE.map((state, index) => (
-                <span key={index} className={`cell-${state}`} />
+                <span
+                  key={index}
+                  className={`cell-${state}`}
+                  style={{ "--cell-order": index }}
+                />
               ))}
             </div>
             <div className="timeline-ticks">
