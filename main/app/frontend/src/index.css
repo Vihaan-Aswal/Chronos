@@ -254,3 +254,19 @@ header.scrolled-nav {
 @media (max-width: 1024px) {
   .floating-plane { transform: none !important; }
 }
+
+/* Accessibility Focus Rings (WCAG 2.4.7 Focus Visible) */
+:focus-visible {
+  outline: 2px solid var(--color-tertiary-fixed-dim, #dcc492) !important;
+  outline-offset: 2px !important;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid #dcc492 !important;
+  outline-offset: 2px !important;
+}
+

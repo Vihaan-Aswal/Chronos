@@ -1,8 +1,13 @@
 const KIND_BY_LABEL = {
+  Stable: "attentive",
   Attentive: "attentive",
+  Monitor: "distracted",
+  "Self-recovery": "distracted",
   Distracted: "distracted",
   Away: "away",
+  "Action required": "disengaged",
   Disengaged: "disengaged",
+  "Identity review": "identity",
   "Identity mismatch": "identity",
   "Identity Mismatch": "identity",
   "No data": "nodata",

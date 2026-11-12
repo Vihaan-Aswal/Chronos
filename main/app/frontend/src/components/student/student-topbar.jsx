@@ -1,3 +1,4 @@
+import React from "react";
 import ChronosMark from "../chronos-mark.jsx";
 
 export default function StudentTopbar({
@@ -7,8 +8,13 @@ export default function StudentTopbar({
   railOpen,
   onToggleRail,
   onLeave,
+  onOpenPrivacy,
   railId = "student-signals",
 }) {
+  const isDemo =
+    typeof sessionStorage !== "undefined" &&
+    sessionStorage.getItem("chronos_is_demo") === "true";
+
   return (
     <header className="room-bar">
       <div className="room-bar-inner">
@@ -34,15 +40,32 @@ export default function StudentTopbar({
         </span>
 
         <div className="room-bar-actions">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={onToggleRail}
-            aria-expanded={railOpen}
-            aria-controls={railId}
-          >
-            {railOpen ? "Hide signals" : "Your signals"}
-          </button>
+          {isDemo && (
+            <span className="room-demo-chip" title="Session running in accelerated demo timing">
+              Accelerated demo
+            </span>
+          )}
+          {onOpenPrivacy && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={onOpenPrivacy}
+              title="Privacy, consent, and technical context"
+            >
+              Privacy
+            </button>
+          )}
+          {onToggleRail && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={onToggleRail}
+              aria-expanded={railOpen}
+              aria-controls={railId}
+            >
+              {railOpen ? "Hide signals" : "Your signals"}
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-cream"

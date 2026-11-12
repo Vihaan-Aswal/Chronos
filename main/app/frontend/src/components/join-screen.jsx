@@ -6,6 +6,8 @@
 import { useEffect, useRef, useState } from "react";
 import { loadEmbedder, getEmbedding } from "../utils/embedder";
 import { fetchIdentity, registerIdentity } from "../api/identity";
+import PreJoinNoticeModal from "./privacy/pre-join-notice-modal";
+import { recordConsent } from "../api/privacy";
 import {
   AlertIcon,
   CameraOffIcon,
@@ -14,7 +16,7 @@ import {
   ShieldIcon,
 } from "./app/icons.jsx";
 
-function JoinScreen({ user, onJoin, role = "student" }) {
+function JoinScreen({ user, onJoin, role = "student", token }) {
   const videoRef = useRef(null);
   const cropCanvasRef = useRef(null);
   const lightCanvasRef = useRef(null);
@@ -28,6 +30,8 @@ function JoinScreen({ user, onJoin, role = "student" }) {
   const [engineError, setEngineError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [consents, setConsents] = useState({});
 
   const userId = user?.id || user?.user_id || "unknown-user";
   const cameraOff = Boolean(mediaError);
@@ -596,6 +600,24 @@ function JoinScreen({ user, onJoin, role = "student" }) {
           <button
             type="button"
             className="text-btn"
+            onClick={() => setShowPrivacyModal(true)}
+          >
+            Review privacy &amp; consent choices
+          </button>
+          <button
+            type="button"
+            className="text-btn"
+            onClick={() => {
+              sessionStorage.setItem("chronos_camera_optional", "true");
+              sessionStorage.setItem("chronos_alternative_verification", "true");
+              onJoin?.();
+            }}
+          >
+            Join in camera-optional mode
+          </button>
+          <button
+            type="button"
+            className="text-btn"
             onClick={() => window.location.reload()}
           >
             Retry check
@@ -610,6 +632,27 @@ function JoinScreen({ user, onJoin, role = "student" }) {
           </p>
         </div>
       </div>
+
+      <PreJoinNoticeModal
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+        initialConsents={consents}
+        onConfirm={async (selectedConsents) => {
+          setConsents(selectedConsents);
+          setShowPrivacyModal(false);
+          if (token) {
+            try {
+              await recordConsent(token, { scopes: selectedConsents });
+            } catch (e) {
+              console.warn("Failed to persist consent:", e);
+            }
+          }
+          if (!selectedConsents.CAMERA_LOCAL_PROCESSING || !selectedConsents.IDENTITY_ENROLLMENT) {
+            sessionStorage.setItem("chronos_camera_optional", "true");
+            onJoin?.();
+          }
+        }}
+      />
     </div>
   );
 }

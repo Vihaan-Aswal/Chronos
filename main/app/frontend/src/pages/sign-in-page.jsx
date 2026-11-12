@@ -43,7 +43,17 @@ export default function SignInPage() {
       return;
     }
 
-    sessionStorage.setItem("chronos_user", JSON.stringify(data.user));
+    // Persist user and access token — primary source of truth for AuthGuard & downstream pages
+    const userWithToken = {
+      ...data.user,
+      token: data.session?.access_token || "",
+    };
+    sessionStorage.setItem("chronos_user", JSON.stringify(userWithToken));
+    if (data.session?.access_token) {
+      sessionStorage.setItem("chronos_token", data.session.access_token);
+    }
+
+    // Navigate with replace so Back from /choose-role goes to /, not here
     navigate("/choose-role", { replace: true });
   }
 

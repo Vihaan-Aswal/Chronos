@@ -40,6 +40,7 @@ export default function RoomBar({
   onToggleSimulate,
   livenessLoading,
   onCheckEngagement,
+  onOpenAssessment,
   onEndSession,
 }) {
   return (
@@ -96,6 +97,15 @@ export default function RoomBar({
               {simulateClassroom ? "Sim on" : "Simulate"}
             </button>
           </div>
+
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={onOpenAssessment}
+            title="Question paper, resources, and submissions"
+          >
+            Assessment
+          </button>
 
           <button
             type="button"

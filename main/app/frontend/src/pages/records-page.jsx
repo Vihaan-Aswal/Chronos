@@ -43,6 +43,7 @@ export default function RecordsPage() {
   const [records, setRecords] = useState([]);
   const [status, setStatus] = useState("loading");
   const [selected, setSelected] = useState(null);
+  const [evidenceId, setEvidenceId] = useState(null);
   const [openingId, setOpeningId] = useState(null);
   const [openError, setOpenError] = useState("");
 
@@ -198,6 +199,13 @@ export default function RecordsPage() {
                           ? "Opening"
                           : "Open record"}
                       </button>
+                      <button
+                        type="button"
+                        className="text-btn"
+                        onClick={() => setEvidenceId(record.session_id)}
+                      >
+                        Evidence report
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -220,6 +228,13 @@ export default function RecordsPage() {
         <SessionReport
           sessionData={selected}
           onClose={() => setSelected(null)}
+        />
+      )}
+
+      {evidenceId && (
+        <SessionReport
+          sessionId={evidenceId}
+          onClose={() => setEvidenceId(null)}
         />
       )}
     </div>

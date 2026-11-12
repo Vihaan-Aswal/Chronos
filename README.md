@@ -1,15 +1,71 @@
 # Chronos
 
-Chronos is a privacy-first engagement and identity intelligence layer for online classrooms.
+> Privacy-first engagement and identity intelligence layer for online classrooms.
 
-It performs computer-vision inference on the client side and stores only embeddings and engagement analytics, not raw video frames.
+Chronos performs computer-vision inference on the client side and stores only embeddings and engagement analytics — never raw video frames.
+
+---
+
+## Branches
+
+| Branch | Purpose |
+|--------|---------|
+| `main` | Stable baseline — last known-good snapshot |
+| `dev`  | Active development — audited, hardened, and feature-complete |
+
+Open pull requests against `main` from `dev` when a milestone is ready for release.
+
+---
 
 ## Tech stack
 
-- **Frontend:** React, Vite, TensorFlow.js, MediaPipe
-- **Backend:** FastAPI, WebSockets
-- **Database/Auth:** Supabase
-- **Video infrastructure:** 100ms
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, Vite, TypeScript, TailwindCSS |
+| CV / ML | TensorFlow.js, MediaPipe, face-api.js |
+| Backend | FastAPI, WebSockets, Uvicorn |
+| Database / Auth | Supabase (PostgreSQL + Auth) |
+| Video | 100ms WebRTC |
+| PDF export | jsPDF |
+| Charts | Recharts |
+| Animation | Motion |
+| Testing | Vitest, Testing Library, pytest |
+
+---
+
+## Repository layout
+
+```
+Chronos/
+├── main/
+│   └── app/
+│       ├── backend/          # FastAPI application
+│       │   ├── auth/
+│       │   ├── assessment/
+│       │   ├── observation/
+│       │   ├── presence/
+│       │   ├── privacy/
+│       │   ├── projections/
+│       │   ├── reports/
+│       │   ├── storage/
+│       │   ├── migrations/
+│       │   ├── tests/
+│       │   ├── main.py
+│       │   ├── contracts.py
+│       │   ├── models.py
+│       │   ├── repository.py
+│       │   ├── websocket_manager.py
+│       │   └── requirements.txt
+│       └── frontend/         # React + Vite SPA
+│           ├── src/
+│           ├── public/
+│           ├── package.json
+│           └── vite.config.js
+├── hackathon spec/           # PRDs, audit reports, implementation plans
+├── PRD.md
+├── verify_baseline.py
+└── README.md
+```
 
 ---
 
@@ -28,6 +84,7 @@ It performs computer-vision inference on the client side and stores only embeddi
   - [Prerequisites](#prerequisites)
   - [End-to-end validation flow](#end-to-end-validation-flow)
   - [Completion criteria](#completion-criteria)
+- [Contributing](#contributing)
 
 ---
 
@@ -37,11 +94,11 @@ Chronos is designed for real-time classroom engagement monitoring and identity-a
 
 ### Core principles
 
-- Client-side inference for privacy-sensitive processing
-- No storage of raw video frames
-- Persistence of embeddings and analytics only
-- Real-time classroom telemetry via WebSockets
-- End-to-end flow across teacher and student experiences
+- **Client-side inference** — all CV processing runs in the browser; no video is sent to any server
+- **Embeddings only** — only face embeddings and derived analytics are persisted, never raw frames
+- **Real-time telemetry** — WebSocket-based classroom state shared across teacher and student sessions
+- **Explainable signals** — every state change carries a reason tag; no black-box verdicts
+- **Teacher-first UX** — triage, nudges, and recovery flows optimised for managing 20+ students
 
 ---
 
@@ -252,7 +309,9 @@ Run these checks before opening a pull request.
 
 ```bash
 cd main/app/frontend
+npm run typecheck   # TypeScript static check
 npm run lint
+npm run test
 npm run build
 ```
 
@@ -263,6 +322,13 @@ Run from a shell where the backend virtual environment is activated:
 ```bash
 cd main/app/backend
 python -m compileall .
+pytest tests/
+```
+
+### Baseline script
+
+```bash
+python verify_baseline.py
 ```
 
 ---
@@ -352,3 +418,12 @@ Chronos can be considered working end to end when all of the following pass succ
 - WebSocket recovery behavior
 - Session analytics persistence
 - Report visibility in past sessions
+
+---
+
+## Contributing
+
+1. Work on the `dev` branch
+2. Run the full verification suite before opening a PR (see [Pre-PR verification](#7-pre-pr-verification))
+3. Open pull requests against `main`
+4. Reference any relevant spec from [`hackathon spec/`](hackathon%20spec/) in your PR description

@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
+import { getWebSocketTicket, getAuthToken } from "../api/ws-auth.js";
 
 /**
- * Teacher WebSocket:
- * - Receives engagement metrics + auto-nudge responses
- * - Tracks all active students with detailed facial metrics
- * - Now includes identity verification status
+ * Teacher WebSocket Hook:
+ * - Real-time case updates and student projections from server.
+ * - Single-use ticket admission with zero-trust token fallback.
+ * - Auto-reconnection loop.
  */
 export default function useTeacherWebSocket(sessionId) {
   const [connected, setConnected] = useState(false);
   const [students, setStudents] = useState({});
+  const [cases, setCases] = useState([]);
   const wsRef = useRef(null);
   const reconnectRef = useRef(null);
 
@@ -16,13 +18,23 @@ export default function useTeacherWebSocket(sessionId) {
     if (!sessionId) return;
     let isMounted = true;
 
-    function connect() {
+    async function connect() {
       if (!isMounted) return;
 
       const base = import.meta.env.VITE_BACKEND_WS_URL || "ws://localhost:8000";
-      const wsUrl = `${base}/ws/teacher/${sessionId}`;
+      let wsUrl = `${base}/ws/teacher/${sessionId}`;
 
       try {
+        try {
+          const ticket = await getWebSocketTicket(sessionId, "teacher");
+          wsUrl = `${wsUrl}?ticket=${ticket}`;
+        } catch {
+          const token = getAuthToken();
+          if (token) {
+            wsUrl = `${wsUrl}?token=${token}`;
+          }
+        }
+
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 
@@ -36,7 +48,14 @@ export default function useTeacherWebSocket(sessionId) {
 
           try {
             const msg = JSON.parse(event.data);
-            const uid = msg.user_id;
+
+            // Real-time cases update from server projections
+            if (msg.type === "cases_update" && Array.isArray(msg.cases)) {
+              setCases(msg.cases);
+              return;
+            }
+
+            const uid = msg.user_id || msg.participant_id;
             if (!uid) return;
 
             setStudents((prev) => {
@@ -44,38 +63,23 @@ export default function useTeacherWebSocket(sessionId) {
               const isSimulated =
                 Boolean(msg.is_simulated) || prevStudent.isSimulated === true;
 
-              // --- TYPE handlers ---
-              if (msg.type === "anti_cheat_violation") {
-                return {
-                  ...prev,
-                  [uid]: {
-                    ...prevStudent,
-                    isSimulated,
-                    antiCheatViolations:
-                      (prevStudent.antiCheatViolations || 0) + 1,
-                    lastViolationType: msg.violation_type,
-                    lastViolationTime: msg.timestamp,
-                  },
-                };
-              }
-
-              if (msg.type === "metrics") {
+              // --- Normalized Event / Metric Handlers ---
+              if (msg.type === "metrics" || msg.type === "OBSERVATION_SAMPLE") {
+                const payload = msg.payload || {};
                 return {
                   ...prev,
                   [uid]: {
                     ...prevStudent,
                     score: msg.score ?? prevStudent.score ?? 0,
                     timestamp: msg.timestamp || prevStudent.timestamp,
-                    // Store facial metrics for confusion detection
                     gazeDirection:
                       msg.gaze_direction ||
                       prevStudent.gazeDirection ||
                       "center",
                     ear: msg.ear ?? prevStudent.ear ?? 0,
-                    headPose: msg.head_pose ||
+                    headPose: msg.head_pose || payload.head_pose ||
                       prevStudent.headPose || { yaw: 0, pitch: 0 },
                     presence: msg.presence || prevStudent.presence || "unknown",
-                    // Identity verification
                     identityStatus:
                       msg.identity_status ||
                       prevStudent.identityStatus ||
@@ -84,119 +88,81 @@ export default function useTeacherWebSocket(sessionId) {
                       msg.identity_mismatch_count ??
                       prevStudent.identityMismatchCount ??
                       0,
+                    warningStreak: msg.warning_streak ?? prevStudent.warningStreak ?? 0,
+                    cleanStreak: msg.clean_streak ?? prevStudent.cleanStreak ?? 0,
+                    caseState: msg.case_state || prevStudent.caseState || "NONE",
                     isSimulated,
                   },
                 };
               }
 
-              if (msg.type === "identity_update") {
-                return {
-                  ...prev,
-                  [uid]: {
-                    ...prevStudent,
-                    isSimulated,
-                    identityStatus:
-                      msg.identity_status ||
-                      prevStudent.identityStatus ||
-                      "checking",
-                    identityMismatchCount:
-                      msg.identity_mismatch_count ??
-                      prevStudent.identityMismatchCount ??
-                      0,
-                    timestamp: msg.timestamp || prevStudent.timestamp,
-                  },
-                };
-              }
-
-              if (msg.type === "auto_disengaged") {
-                const strikeCount =
-                  msg.strike_count ?? prevStudent.strikes ?? 0;
-                return {
-                  ...prev,
-                  [uid]: {
-                    ...prevStudent,
-                    isSimulated,
-                    strikes: strikeCount,
-                    disengaged: strikeCount >= 3,
-                    timestamp: msg.timestamp || prevStudent.timestamp,
-                  },
-                };
-              }
-
-              if (msg.type === "auto_disengaged_strike") {
-                return {
-                  ...prev,
-                  [uid]: {
-                    ...prevStudent,
-                    isSimulated,
-                    strikes: msg.strike_count,
-                    disengaged: true,
-                    timestamp: msg.timestamp || prevStudent.timestamp,
-                  },
-                };
-              }
-
-              if (msg.type === "auto_nudge_response") {
-                const strikeCount =
-                  msg.strike_count ?? prevStudent.strikes ?? 0;
-                return {
-                  ...prev,
-                  [uid]: {
-                    ...prevStudent,
-                    isSimulated,
-                    strikes: strikeCount,
-                    disengaged: strikeCount >= 3,
-                    score: msg.score ?? prevStudent.score ?? 0,
-                    timestamp: msg.timestamp || prevStudent.timestamp,
-                  },
-                };
-              }
-
-              if (msg.type === "nudge") {
-                return {
-                  ...prev,
-                  [uid]: {
-                    ...prevStudent,
-                    isSimulated,
-                    lastManualNudge: Date.now(),
-                  },
-                };
-              }
-
+              // Legacy classroom signals still emitted by the engagement tracker.
               if (msg.type === "multi_face_detected") {
                 return {
                   ...prev,
                   [uid]: {
                     ...prevStudent,
                     isSimulated,
-                    multiFaceDetected: true,
-                    multiFaceCount: msg.face_count ?? 0,
-                    multiFaceTime: msg.timestamp,
+                    multiFaceDetected: (msg.face_count || 2) > 1,
+                    timestamp: msg.timestamp || prevStudent.timestamp,
                   },
                 };
               }
 
-              if (msg.type === "mark_engaged_ack") {
+              if (msg.type === "auto_disengaged") {
                 return {
                   ...prev,
                   [uid]: {
                     ...prevStudent,
                     isSimulated,
-                    strikes: 0,
-                    disengaged: false,
-                    manuallyMarkedEngaged: true,
+                    strikes: Math.max(
+                      Number(msg.strike_count) || 0,
+                      prevStudent.strikes || 0,
+                    ),
+                    disengaged: true,
                     timestamp: msg.timestamp || prevStudent.timestamp,
-                    antiCheatViolations: 0,
-                    lastViolationType: null,
-                    multiFaceDetected: false,
-                    livenessFailed: false,
-                    identityMismatchCount: 0,
-                    identityStatus: "verified",
                   },
                 };
               }
 
-              if (msg.type === "liveness_pass") {
+              if (msg.type === "identity_update" || msg.type === "IDENTITY_RESULT") {
+                return {
+                  ...prev,
+                  [uid]: {
+                    ...prevStudent,
+                    isSimulated,
+                    identityStatus:
+                      msg.identity_status ||
+                      msg.identity_state ||
+                      prevStudent.identityStatus ||
+                      "checking",
+                    identityMismatchCount:
+                      msg.identity_mismatch_count ??
+                      prevStudent.identityMismatchCount ??
+                      0,
+                    timestamp: msg.timestamp || prevStudent.timestamp,
+                  },
+                };
+              }
+
+              if (msg.type === "window_finalized" || msg.type === "WINDOW_FINALIZED") {
+                return {
+                  ...prev,
+                  [uid]: {
+                    ...prevStudent,
+                    isSimulated,
+                    warningStreak: msg.warning_streak ?? prevStudent.warningStreak ?? 0,
+                    cleanStreak: msg.clean_streak ?? prevStudent.cleanStreak ?? 0,
+                    observationState: msg.observation_state || prevStudent.observationState,
+                    classification: msg.classification || prevStudent.classification,
+                    attentionPattern: msg.attention_pattern || prevStudent.attentionPattern,
+                    caseState: msg.case_state || prevStudent.caseState,
+                    timestamp: msg.timestamp || prevStudent.timestamp,
+                  },
+                };
+              }
+
+              if (msg.type === "liveness_pass" || msg.type === "active_presence_passed" || msg.type === "ACTIVE_PRESENCE_PASSED") {
                 return {
                   ...prev,
                   [uid]: {
@@ -204,27 +170,58 @@ export default function useTeacherWebSocket(sessionId) {
                     isSimulated,
                     livenessVerified: true,
                     livenessFailed: false,
-                    livenessLastCheck: msg.timestamp,
+                    activePresenceState: "PASSED",
+                    livenessLastCheck: msg.timestamp || new Date().toISOString(),
                   },
                 };
               }
 
-              if (msg.type === "liveness_fail") {
+              if (
+                msg.type === "liveness_fail" ||
+                msg.type === "active_presence_quality_fail" ||
+                msg.type === "active_presence_timed_out" ||
+                msg.type === "ACTIVE_PRESENCE_QUALITY_FAIL" ||
+                msg.type === "ACTIVE_PRESENCE_TIMED_OUT"
+              ) {
+                const presenceState = msg.type.includes("timed_out") ? "TIMED_OUT" : "QUALITY_FAIL";
                 return {
                   ...prev,
                   [uid]: {
                     ...prevStudent,
                     isSimulated,
                     livenessFailed: true,
-                    livenessFailReason: msg.reason || "timeout",
-                    strikes: (prevStudent.strikes || 0) + 1,
-                    disengaged: true,
+                    activePresenceState: presenceState,
+                    livenessFailReason: msg.reason || msg.failure_reason || "timeout",
                     timestamp: msg.timestamp || prevStudent.timestamp,
                   },
                 };
               }
 
-              // fallback
+              if (msg.type === "active_presence_declined" || msg.type === "ACTIVE_PRESENCE_DECLINED") {
+                return {
+                  ...prev,
+                  [uid]: {
+                    ...prevStudent,
+                    isSimulated,
+                    activePresenceState: "DECLINED",
+                    timestamp: msg.timestamp || prevStudent.timestamp,
+                  },
+                };
+              }
+
+              if (msg.type === "active_presence_manual_review" || msg.type === "ACTIVE_PRESENCE_MANUAL_REVIEW") {
+                return {
+                  ...prev,
+                  [uid]: {
+                    ...prevStudent,
+                    isSimulated,
+                    activePresenceState: "MANUAL_REVIEW",
+                    timestamp: msg.timestamp || prevStudent.timestamp,
+                  },
+                };
+              }
+
+              // Fallback
               return {
                 ...prev,
                 [uid]: {
@@ -267,5 +264,5 @@ export default function useTeacherWebSocket(sessionId) {
     };
   }, [sessionId]);
 
-  return { connected, students };
+  return { connected, students, cases, setCases };
 }

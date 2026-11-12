@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { getWebSocketTicket, getAuthToken } from "../api/ws-auth.js";
 
 /**
- * Generic WebSocket hook with auto-reconnect.
+ * Generic WebSocket hook with ticket-based auto-reconnect.
  */
 export default function useWebSocket(url, onMessage = null) {
   const [connected, setConnected] = useState(false);
@@ -18,11 +19,32 @@ export default function useWebSocket(url, onMessage = null) {
 
     let isMounted = true;
 
-    function connect() {
+    async function connect() {
       if (!isMounted) return;
 
       try {
-        const ws = new WebSocket(url);
+        let finalUrl = url;
+        // If url doesn't already contain ticket or token, attempt ticket acquisition if sessionId is present
+        if (!finalUrl.includes("ticket=") && !finalUrl.includes("token=")) {
+          const match = finalUrl.match(/\/ws\/(?:engagement|teacher)\/([^/?#]+)/);
+          if (match && match[1]) {
+            const sessionId = match[1];
+            const channel = finalUrl.includes("/ws/teacher/") ? "teacher" : "engagement";
+            try {
+              const ticket = await getWebSocketTicket(sessionId, channel);
+              const delimiter = finalUrl.includes("?") ? "&" : "?";
+              finalUrl = `${finalUrl}${delimiter}ticket=${ticket}`;
+            } catch {
+              const token = getAuthToken();
+              if (token) {
+                const delimiter = finalUrl.includes("?") ? "&" : "?";
+                finalUrl = `${finalUrl}${delimiter}token=${token}`;
+              }
+            }
+          }
+        }
+
+        const ws = new WebSocket(finalUrl);
         wsRef.current = ws;
 
         ws.onopen = () => {

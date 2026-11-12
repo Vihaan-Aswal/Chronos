@@ -20,7 +20,13 @@ import AppHeader from "../components/app/app-header.jsx";
 import AppFooter from "../components/app/app-footer.jsx";
 
 import SessionReport from "../components/session-report.jsx";
-import { sendTeacherAction } from "../api/teacher-actions.js";
+import AssessmentManagementModal from "../components/teacher/assessment-management-modal.jsx";
+import CaseTriageRail from "../components/teacher/case-triage-rail.jsx";
+import {
+  sendTeacherAction,
+  sendBatchTeacherAction,
+  fetchSessionCases,
+} from "../api/teacher-actions.js";
 import { triggerLiveness } from "../api/liveness.js";
 import "../styles/app-system.css";
 import "../styles/readiness.css";
@@ -52,6 +58,7 @@ export default function TeacherPage() {
   const [sessionEnded, setSessionEnded] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [sessionData, setSessionData] = useState(null);
+  const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const [strictMode, setStrictMode] = useState(false);
   /** Lenient class vs strict exam engagement (student-side scoring). */
   const [classContextMode, setClassContextMode] = useState("class");
@@ -64,6 +71,7 @@ export default function TeacherPage() {
       typeof window !== "undefined" &&
       window.matchMedia("(min-width: 1200px)").matches,
   );
+  const [sideRailTab, setSideRailTab] = useState("students"); // "students" | "cases"
   const [messageFor, setMessageFor] = useState(null);
   const [messageText, setMessageText] = useState("");
   const [messageError, setMessageError] = useState("");
@@ -81,7 +89,7 @@ export default function TeacherPage() {
   const isMountedRef = useRef(true);
   const livenessRequestIdRef = useRef(0);
 
-  const { connected, students } = useTeacherWebSocket(sessionId);
+  const { connected, students, cases = [], setCases } = useTeacherWebSocket(sessionId);
 
   const [showDisconnect, setShowDisconnect] = useState(false);
   useEffect(() => {
@@ -91,6 +99,40 @@ export default function TeacherPage() {
     return () => clearTimeout(t);
   }, [inMeeting, connected]);
   useClassroomSimulator(sessionId, inMeeting && simulateClassroom);
+
+  // Fetch the server's initial triage cases for this session.
+  useEffect(() => {
+    if (!sessionId || !inMeeting) return;
+    fetchSessionCases(sessionId)
+      .then((res) => {
+        if (res && Array.isArray(res.cases) && typeof setCases === "function") {
+          setCases(res.cases);
+        }
+      })
+      .catch((err) => console.warn("Failed to fetch initial cases:", err));
+  }, [sessionId, inMeeting, setCases]);
+
+  const handleBatchAction = async ({
+    caseIds,
+    actionType,
+    note,
+    snoozeDurationMinutes,
+  }) => {
+    try {
+      await sendBatchTeacherAction(sessionId, {
+        caseIds,
+        actionType,
+        note,
+        snoozeDurationMinutes,
+      });
+      const res = await fetchSessionCases(sessionId);
+      if (res && Array.isArray(res.cases) && typeof setCases === "function") {
+        setCases(res.cases);
+      }
+    } catch (err) {
+      console.error("Batch teacher action failed:", err);
+    }
+  };
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -107,17 +149,25 @@ export default function TeacherPage() {
     if (ignoredUserIds.has(s.userId)) return false;
     const hasIdentityIssue =
       s.identityStatus === "mismatch" && (s.identityMismatchCount || 0) >= 2;
+    const isActionRequired =
+      s.caseState === "ACTION_REQUIRED" || (s.warningStreak || 0) >= 3;
+    const isMonitor = s.caseState === "MONITOR" || (s.warningStreak || 0) >= 2;
     const hasTabSwitch =
       (s.antiCheatViolations || 0) > 0 && s.lastViolationType === "tab_switch";
     const hasMultiFace = s.multiFaceDetected === true;
-    const hasLivenessFail = s.livenessFailed === true;
+    const hasPresenceFail =
+      s.livenessFailed === true ||
+      s.activePresenceState === "QUALITY_FAIL" ||
+      s.activePresenceState === "TIMED_OUT";
     return (
-      s.strikes >= 3 ||
-      s.disengaged ||
+      isActionRequired ||
+      isMonitor ||
       hasIdentityIssue ||
       hasTabSwitch ||
       hasMultiFace ||
-      hasLivenessFail
+      hasPresenceFail ||
+      s.strikes >= 3 ||
+      s.disengaged
     );
   };
 
@@ -128,11 +178,12 @@ export default function TeacherPage() {
   const severityScore = (s) => {
     const hasIdentity =
       s.identityStatus === "mismatch" && (s.identityMismatchCount || 0) >= 2;
+    const isActionRequired =
+      s.caseState === "ACTION_REQUIRED" || (s.warningStreak || 0) >= 3;
     const hasMultiFace = s.multiFaceDetected === true;
-    const hasTabSwitch = (s.antiCheatViolations || 0) > 0;
-    if (hasIdentity || hasMultiFace) return 3;
-    if (hasTabSwitch || s.strikes >= 3) return 2;
-    if ((s.score || 0) < 0.4) return 1;
+    if (isActionRequired || hasIdentity) return 3;
+    if (s.caseState === "MONITOR" || hasMultiFace) return 2;
+    if (s.caseState === "SELF_RECOVERY" || (s.warningStreak || 0) >= 1) return 1;
     return 0;
   };
 
@@ -270,32 +321,32 @@ export default function TeacherPage() {
     return () => clearInterval(interval);
   }, [inMeeting, students]);
 
-  const statusLabel = (
-    score,
-    strikes,
-    identityStatus,
-    identityMismatchCount,
-  ) => {
-    if (identityStatus === "mismatch" && identityMismatchCount >= 2)
-      return "Identity Mismatch";
-    if (strikes >= 3) return "Disengaged";
-    if (score > 0.7) return "Attentive";
-    if (score >= 0.4) return "Distracted";
-    return "Away";
+  const statusLabel = (student) => {
+    if (
+      student?.identityStatus === "mismatch" &&
+      (student?.identityMismatchCount || 0) >= 2
+    )
+      return "Identity review";
+    if (
+      student?.caseState === "ACTION_REQUIRED" ||
+      (student?.warningStreak || 0) >= 3
+    )
+      return "Action required";
+    if (student?.caseState === "MONITOR" || (student?.warningStreak || 0) >= 2)
+      return "Monitor";
+    if (
+      student?.caseState === "SELF_RECOVERY" ||
+      (student?.warningStreak || 0) >= 1
+    )
+      return "Self-recovery";
+    return "Stable";
   };
 
   const getStageStatus = (student) => {
     if (isFlagged(student)) return "flagged";
-
-    const label = statusLabel(
-      student.score,
-      student.strikes,
-      student.identityStatus,
-      student.identityMismatchCount,
-    );
-
-    if (label === "Attentive") return "attentive";
-    if (label === "Distracted") return "distracted";
+    const label = statusLabel(student);
+    if (label === "Stable") return "attentive";
+    if (label === "Self-recovery" || label === "Monitor") return "distracted";
     return "away";
   };
 
@@ -306,7 +357,7 @@ export default function TeacherPage() {
       student.identityStatus === "mismatch" &&
       (student.identityMismatchCount || 0) >= 2
     ) {
-      signalPills.push({ label: "Identity mismatch", tone: "alert" });
+      signalPills.push({ label: "Identity needs review", tone: "alert" });
     }
 
     if (student.multiFaceDetected) {
@@ -320,21 +371,33 @@ export default function TeacherPage() {
       signalPills.push({ label: "Tab switched", tone: "warn" });
     }
 
-    if (student.livenessFailed) {
-      signalPills.push({ label: "Liveness fail", tone: "violet" });
+    if (
+      student.activePresenceState === "PASSED" ||
+      student.livenessVerified
+    ) {
+      signalPills.push({ label: "Presence verified", tone: "ok" });
     }
 
-    if ((student.strikes || 0) > 0) {
+    if (
+      student.livenessFailed ||
+      student.activePresenceState === "QUALITY_FAIL" ||
+      student.activePresenceState === "TIMED_OUT"
+    ) {
+      signalPills.push({ label: "Presence unconfirmed", tone: "violet" });
+    }
+
+    const streak = student.warningStreak || 0;
+    if (streak > 0) {
       signalPills.push({
-        label: `${student.strikes} strike${student.strikes > 1 ? "s" : ""}`,
-        tone: student.strikes >= 3 ? "alert" : "warn",
+        label: `${streak} warning window${streak > 1 ? "s" : ""}`,
+        tone: streak >= 3 ? "alert" : "warn",
       });
     }
 
     if (signalPills.length === 0) {
       signalPills.push({
-        label: (student.score || 0) >= 0.7 ? "Stable" : "Focus dip",
-        tone: (student.score || 0) >= 0.7 ? "ok" : "warn",
+        label: student.attentionPattern || "Stable",
+        tone: "ok",
       });
     }
 
@@ -742,27 +805,19 @@ export default function TeacherPage() {
 
   const presentCount = allStudents.length;
   const attentiveCount = allStudents.filter(
-    (s) =>
-      statusLabel(
-        s.score,
-        s.strikes,
-        s.identityStatus,
-        s.identityMismatchCount,
-      ) === "Attentive",
+    (s) => statusLabel(s) === "Stable",
   ).length;
   const distractedCount = allStudents.filter((s) => {
-    const label = statusLabel(
-      s.score,
-      s.strikes,
-      s.identityStatus,
-      s.identityMismatchCount,
-    );
-    return label === "Distracted";
+    const label = statusLabel(s);
+    return label === "Self-recovery" || label === "Monitor";
   }).length;
   const flaggedCount = allStudents.filter((s) => isFlagged(s)).length;
   const identityIssueCount = allStudents.filter(
     (s) =>
       s.identityStatus === "mismatch" && (s.identityMismatchCount || 0) >= 2,
+  ).length;
+  const openCaseCount = cases.filter(
+    (c) => c.status !== "RESOLVED" && c.status !== "DISMISSED",
   ).length;
 
   const cameraStudents = allStudents.map((s) => {
@@ -773,12 +828,7 @@ export default function TeacherPage() {
       timestamp: s.timestamp,
       isSimulated: isSim,
       stageStatus: getStageStatus(s),
-      statusLabel: statusLabel(
-        s.score,
-        s.strikes,
-        s.identityStatus,
-        s.identityMismatchCount,
-      ),
+      statusLabel: statusLabel(s),
     };
   });
 
@@ -827,7 +877,12 @@ export default function TeacherPage() {
         }
         lede="You are joining as a teacher. Three checks, then class. Past classes live under Session records."
       >
-        <JoinScreen user={user} role="teacher" onJoin={handleJoinMeeting} />
+        <JoinScreen
+          user={user}
+          role="teacher"
+          onJoin={handleJoinMeeting}
+          token={sessionStorage.getItem("chronos_token") || ""}
+        />
 
         <div className="desk-records">
           <div>
@@ -837,10 +892,27 @@ export default function TeacherPage() {
               list. No camera check needed.
             </p>
           </div>
-          <Link className="btn btn-line" to="/records">
-            Open records
-          </Link>
+          <div className="row">
+            <button
+              type="button"
+              className="btn btn-line"
+              onClick={() => setShowAssessmentModal(true)}
+            >
+              Assessment &amp; resources
+            </button>
+            <Link className="btn btn-line" to="/records">
+              Open records
+            </Link>
+          </div>
         </div>
+
+        <AssessmentManagementModal
+          isOpen={showAssessmentModal}
+          onClose={() => setShowAssessmentModal(false)}
+          sessionId={sessionId}
+          sessionStatus="DRAFT"
+          studentsList={allStudents}
+        />
       </ReadyLayout>
     );
   }
@@ -861,6 +933,7 @@ export default function TeacherPage() {
             onToggleSimulate={() => setSimulateClassroom((v) => !v)}
             livenessLoading={livenessLoading}
             onCheckEngagement={handleCheckEngagement}
+            onOpenAssessment={() => setShowAssessmentModal(true)}
             onEndSession={requestEndSession}
           />
 
@@ -927,6 +1000,43 @@ export default function TeacherPage() {
 
               <div
                 className="room-filters"
+                role="tablist"
+                aria-label="Rail view"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  className="room-filter"
+                  aria-selected={sideRailTab === "students"}
+                  aria-pressed={sideRailTab === "students"}
+                  onClick={() => setSideRailTab("students")}
+                >
+                  Students
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  className="room-filter"
+                  aria-selected={sideRailTab === "cases"}
+                  aria-pressed={sideRailTab === "cases"}
+                  onClick={() => setSideRailTab("cases")}
+                >
+                  Triage queue ({openCaseCount})
+                </button>
+              </div>
+
+              {sideRailTab === "cases" ? (
+                <div className="room-list">
+                  <CaseTriageRail
+                    cases={cases}
+                    onExecuteBatchAction={handleBatchAction}
+                    onViewStudent={() => setSideRailTab("students")}
+                  />
+                </div>
+              ) : (
+                <>
+              <div
+                className="room-filters"
                 role="group"
                 aria-label="Student filter"
               >
@@ -972,14 +1082,7 @@ export default function TeacherPage() {
                         ((s.antiCheatViolations || 0) > 0 &&
                           s.lastViolationType === "tab_switch");
                       const label =
-                        s.presence === "no_face"
-                          ? "No data"
-                          : statusLabel(
-                              s.score,
-                              s.strikes,
-                              s.identityStatus,
-                              s.identityMismatchCount,
-                            );
+                        s.presence === "no_face" ? "No data" : statusLabel(s);
 
                       return (
                         <StudentRow
@@ -1005,6 +1108,8 @@ export default function TeacherPage() {
                   </ul>
                 )}
               </div>
+                </>
+              )}
             </aside>
           </div>
 
@@ -1124,6 +1229,14 @@ export default function TeacherPage() {
           onSave={handleSaveReport}
         />
       )}
+
+      <AssessmentManagementModal
+        isOpen={showAssessmentModal}
+        onClose={() => setShowAssessmentModal(false)}
+        sessionId={sessionId}
+        sessionStatus={inMeeting ? "ACTIVE" : sessionEnded ? "ENDED" : "DRAFT"}
+        studentsList={allStudents}
+      />
     </>
   );
 }
