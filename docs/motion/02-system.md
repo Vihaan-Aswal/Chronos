@@ -80,7 +80,7 @@
 - **Cut:** `motion` row presence (40.8 kB gzip) — replaced by CSS entrance; no exit animation. Instant filter removal is better for a working roster.
 - **Cut:** layout animation on rows. Live scores re-sort the roster; animating positions would be busy and could jitter the scroll container.
 - **Keep:** CSS row entrance, state colour transitions, action note rise, dialog entrance, header rule, mobile rail entrance.
-- **Measure:** 4× CPU interactions produced no motion-attributable long task; the page-load long tasks are the existing camera/video stack. CLS after motion was 0.1065 vs baseline 0.1357 on the same trace setup; no added shift from rows/dialog.
+- **Measure:** 4× CPU interactions produced no motion-attributable long task; the page-load long tasks are the existing camera/video stack. The comparable after trace is 0.1357 CLS, the same as baseline; the 0.1065 pilot capture was a different run. No added shift from rows/dialog.
 - **Tone:** the room still feels like a tool, not a showpiece; the authored moment is reserved for the record.
 
 ## Adding motion to a page
