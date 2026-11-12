@@ -401,7 +401,7 @@ export default function RoomWindow() {
                 </div>
               </div>
 
-              <div className="room-legend">
+              <div className="home-legend">
                 <div className="legend-head">
                   <p className="micro">Six labels · one at a time</p>
                   <p className="legend-hint" aria-live="polite">
