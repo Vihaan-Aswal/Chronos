@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import ChronosMark from "../components/chronos-mark.jsx";
 import RoomWindow from "../components/home/room-frame.jsx";
 import ModeSettings from "../components/home/mode-settings.jsx";
+import { useRevealOnce } from "../components/home/use-home-motion.js";
 import { STATES } from "../components/home/session-data.js";
+import { useMotionPreference } from "../components/motion/use-motion-preference.js";
 import "../styles/home-page.css";
 import "../styles/home-motion.css";
 
@@ -46,6 +48,11 @@ function Brand({ tone = "ink" }) {
 
 export default function HomePage() {
   const [scrolled, setScrolled] = useState(false);
+  const { reduced } = useMotionPreference();
+  const bandRef = useRef(null);
+  const chainRef = useRef(null);
+  useRevealOnce(bandRef, !reduced);
+  useRevealOnce(chainRef, !reduced);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -127,7 +134,7 @@ export default function HomePage() {
               <div className="section-side">
                 <p>
                   Three score bands, three flags. A student is in one state at a
-                  time, and no face in frame is a camera miss â€” not a verdict.
+                  time, and no face in frame is a camera miss — not a verdict.
                 </p>
                 <p className="section-fine">
                   No emotion. No ranking. No student score that changes a grade.
@@ -136,7 +143,7 @@ export default function HomePage() {
             </div>
 
             <div className="band">
-              <div className="band-zones">
+              <div ref={bandRef} className="band-zones">
                 <div className="band-zone zone-away">
                   <div className="zone-head">
                     <span>Away</span>
@@ -147,7 +154,7 @@ export default function HomePage() {
                 <div className="band-zone zone-distracted">
                   <div className="zone-head">
                     <span>Distracted</span>
-                    <span>0.40 â€“ 0.70</span>
+                    <span>0.40 – 0.70</span>
                   </div>
                   <p>Time and a nudge first.</p>
                 </div>
@@ -227,7 +234,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            <ol className="chain">
+            <ol ref={chainRef} className="chain">
               <li>
                 <span>Signal</span>
                 <p>One state changes. The room shows it.</p>
@@ -382,7 +389,7 @@ export default function HomePage() {
             </p>
           </div>
           <div className="foot-bottom">
-            <span>Â© 2026 Chronos Â· Intelligence for Presence</span>
+            <span>© 2026 Chronos · Intelligence for Presence</span>
             <span>Built for the humane classroom.</span>
           </div>
         </div>

@@ -29,6 +29,17 @@ const CLASS_CONTEXT = {
 export default function ModeSettings() {
   const [tab, setTab] = useState("normal");
   const [context, setContext] = useState("class");
+  const [changed, setChanged] = useState(false);
+
+  const chooseTab = (key) => {
+    setTab(key);
+    setChanged(true);
+  };
+
+  const chooseContext = (key) => {
+    setContext(key);
+    setChanged(true);
+  };
 
   return (
     <div className="settings">
@@ -44,7 +55,7 @@ export default function ModeSettings() {
               type="button"
               className="setting-option"
               aria-pressed={tab === key}
-              onClick={() => setTab(key)}
+              onClick={() => chooseTab(key)}
             >
               <span className="option-name">{value.label}</span>
               <span className="option-hint">{value.hint}</span>
@@ -65,7 +76,7 @@ export default function ModeSettings() {
               type="button"
               className="setting-option"
               aria-pressed={context === key}
-              onClick={() => setContext(key)}
+              onClick={() => chooseContext(key)}
             >
               <span className="option-name">{value.label}</span>
               <span className="option-hint">{value.hint}</span>
@@ -74,7 +85,10 @@ export default function ModeSettings() {
         </div>
       </div>
 
-      <p className="setting-summary">
+      <p
+        key={`${tab}-${context}`}
+        className={`setting-summary ${changed ? "is-changing" : ""}`}
+      >
         In force: <b>{TAB_POLICY[tab].label}</b> tab ·{" "}
         <b>{CLASS_CONTEXT[context].label}</b> context.
         <span> Both are shown to students before they join.</span>
