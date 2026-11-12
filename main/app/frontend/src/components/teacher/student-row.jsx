@@ -46,7 +46,6 @@ export default function StudentRow({
       !["Stable", "Focus dip"].includes(signal.label) &&
       signal.label.toLowerCase() !== String(statusLabel).toLowerCase(),
   );
-
   return (
     <li className={`room-row ${isFlagged ? "is-priority" : ""}`.trim()}>
       <div className="room-row-top">
