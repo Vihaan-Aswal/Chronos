@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { MOTION } from "../motion/tokens.js";
+import { useMotionBudget } from "./use-home-motion.js";
 import {
   ROWS,
   SEATS,
@@ -8,6 +10,12 @@ import {
   labelFor,
   stateFor,
 } from "./session-data.js";
+
+const EASE_ARRIVE = `cubic-bezier(${MOTION.easeArrive.join(", ")})`;
+const EASE_STATE = `cubic-bezier(${MOTION.easeState.join(", ")})`;
+const SETTLE_MS = Math.round(
+  (MOTION.authored + MOTION.base + MOTION.fast) * 1000,
+);
 
 const MOMENTS = [
   { key: "before", label: "Before class" },
@@ -81,6 +89,7 @@ function noteFor(state, isNudged, isRecovered) {
 }
 
 export default function RoomWindow() {
+  const { reduced, saveData, weak } = useMotionBudget();
   const [moment, setMoment] = useState("live");
   const [selected, setSelected] = useState("R.K.");
   const [filter, setFilter] = useState(null);
@@ -89,12 +98,69 @@ export default function RoomWindow() {
   const [recovered, setRecovered] = useState([]);
   const [status, setStatus] = useState("");
   const [exportNote, setExportNote] = useState("");
+  const [settle, setSettle] = useState(() => !reduced && !saveData);
+  const [settled, setSettled] = useState(() => reduced || saveData);
+  const [inView, setInView] = useState(true);
+  const [landed, setLanded] = useState(null);
   const timeoutRef = useRef(null);
+  const landTimerRef = useRef(null);
+  const ringFrameRef = useRef(0);
+  const ringRef = useRef(null);
+  const ringAnimRef = useRef(null);
+  const roomRef = useRef(null);
 
-  useEffect(() => () => window.clearTimeout(timeoutRef.current), []);
+  const settling = settle && !reduced && !saveData;
+  const isSettled = settled || reduced || saveData;
+
+  useEffect(() => {
+    if (!settling) return undefined;
+    const timer = window.setTimeout(() => {
+      setSettle(false);
+      setSettled(true);
+    }, SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [settling]);
+
+  useEffect(() => {
+    const node = roomRef.current;
+    if (!node || !("IntersectionObserver" in window)) return undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { threshold: 0 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const cancelRing = () => ringAnimRef.current?.cancel();
+    window.addEventListener("resize", cancelRing, { passive: true });
+    return () => window.removeEventListener("resize", cancelRing);
+  }, []);
+
+  useEffect(() => {
+    if (!reduced) return;
+    window.cancelAnimationFrame(ringFrameRef.current);
+    ringAnimRef.current?.cancel();
+    window.clearTimeout(landTimerRef.current);
+  }, [reduced]);
+
+  useEffect(
+    () => () => {
+      window.clearTimeout(timeoutRef.current);
+      window.clearTimeout(landTimerRef.current);
+      window.cancelAnimationFrame(ringFrameRef.current);
+      ringAnimRef.current?.cancel();
+    },
+    [],
+  );
 
   const seatMap = useMemo(
     () => Object.fromEntries(SEATS.map((seat) => [seat.initials, seat])),
+    [],
+  );
+  const deskOrder = useMemo(
+    () => Object.fromEntries(SEATS.map((seat, index) => [seat.initials, index])),
     [],
   );
 
@@ -117,8 +183,76 @@ export default function RoomWindow() {
     return next;
   }, [overrides]);
 
-  const sendNudge = () => {
+  const flyRing = (fromElement, initials) => {
+    const ring = ringRef.current;
+    const body = ring?.parentElement;
+    const desk = roomRef.current?.querySelector(`[data-desk="${initials}"]`);
+    if (!ring || !body || !desk) return;
+
+    const bodyRect = body.getBoundingClientRect();
+    const fromRect = fromElement.getBoundingClientRect();
+    const toRect = desk.getBoundingClientRect();
+    const size = ring.offsetWidth || 18;
+    const startX = fromRect.left + fromRect.width / 2 - bodyRect.left - size / 2;
+    const startY = fromRect.top + fromRect.height / 2 - bodyRect.top - size / 2;
+    const endX = toRect.left + toRect.width / 2 - bodyRect.left - size / 2;
+    const endY = toRect.top + toRect.height / 2 - bodyRect.top - size / 2;
+
+    ringAnimRef.current?.cancel();
+    ring.classList.add("is-flying");
+    ringAnimRef.current = ring.animate(
+      [
+        {
+          transform: `translate(${startX}px, ${startY}px) scale(0.6)`,
+          opacity: 0,
+          offset: 0,
+          easing: EASE_STATE,
+        },
+        {
+          transform: `translate(${startX}px, ${startY}px) scale(1)`,
+          opacity: 1,
+          offset: 0.1,
+          easing: EASE_STATE,
+        },
+        {
+          transform: `translate(${endX}px, ${endY}px) scale(1)`,
+          opacity: 1,
+          offset: 0.88,
+          easing: EASE_ARRIVE,
+        },
+        {
+          transform: `translate(${endX}px, ${endY}px) scale(1.25)`,
+          opacity: 0,
+          offset: 1,
+        },
+      ],
+      {
+        duration: MOTION.slow * 1000,
+        easing: "linear",
+        fill: "none",
+      },
+    );
+    ringAnimRef.current.onfinish = () => {
+      ring.classList.remove("is-flying");
+      setLanded(initials);
+      window.clearTimeout(landTimerRef.current);
+      landTimerRef.current = window.setTimeout(
+        () => setLanded(null),
+        MOTION.base * 1000,
+      );
+    };
+    ringAnimRef.current.oncancel = () => ring.classList.remove("is-flying");
+  };
+
+  const sendNudge = (event) => {
     if (isNudged || selectedState === "attentive") return;
+    if (!reduced) {
+      const source = event.currentTarget;
+      const initials = selected;
+      ringFrameRef.current = window.requestAnimationFrame(() =>
+        flyRing(source, initials),
+      );
+    }
     setNudged((previous) => [...previous, selected]);
     setStatus(`Private nudge sent to ${selected}.`);
     if (selected === "R.K.") {
@@ -161,7 +295,16 @@ export default function RoomWindow() {
         : { title: "Session ended", meta: "42:00 · 20 learners" };
 
   return (
-    <div className="room-window" id="room">
+    <div
+      className="room-window"
+      id="room"
+      ref={roomRef}
+      data-moment={moment}
+      data-settle={settling ? "true" : "false"}
+      data-settled={isSettled ? "true" : "false"}
+      data-budget={saveData ? "lite" : weak ? "weak" : "full"}
+      data-inview={inView ? "true" : "false"}
+    >
       <div className="room-head">
         <div className="room-id">
           <i
@@ -204,6 +347,9 @@ export default function RoomWindow() {
             <h2 className="sr-only">Live room</h2>
             <div className="room-stage">
               <div className="room-arch">
+                <div className="room-light" aria-hidden="true">
+                  <i className="light-live" />
+                </div>
                 <div className="room-board">
                   <span className="board-label">Front</span>
                   <p>Quadratic forms</p>
@@ -229,9 +375,11 @@ export default function RoomWindow() {
                           <button
                             key={initials}
                             type="button"
+                            data-desk={initials}
+                            style={{ "--desk-order": deskOrder[initials] }}
                             className={`desk desk-${state} ${
                               isSelected ? "is-selected" : ""
-                            } ${
+                            } ${landed === initials && !reduced ? "is-landed" : ""} ${
                               filter && filter !== state && !isSelected
                                 ? "is-dimmed"
                                 : ""
@@ -295,48 +443,59 @@ export default function RoomWindow() {
                 <p className="micro">Row {selectedSeat.row}</p>
               </div>
 
-              <div className="inspector-name-row">
-                <h3 className="inspector-name">{selectedSeat.initials}</h3>
-                <span className="inspector-id">Illustrative</span>
-              </div>
-
-              <p className={`inspector-state state-${selectedState}`}>
-                <i
-                  className={`state-dot dot-${selectedState}`}
-                  aria-hidden="true"
-                />
-                {labelFor(selectedState)}
-              </p>
-              <p className="inspector-meta">
-                {isRecovered ? "Back after 2 min" : stateFor(selectedState).meta}
-              </p>
-
-              <div className="history">
-                <div className="history-head">
-                  <span>Last 4 minutes</span>
-                  <span>every 12s</span>
+              <div className="inspector-main" key={selected}>
+                <div className="inspector-name-row">
+                  <h3 className="inspector-name">{selectedSeat.initials}</h3>
+                  <span className="inspector-id">Illustrative</span>
                 </div>
-                <div
-                  className="history-bar"
-                  role="img"
-                  aria-label={`${selectedSeat.initials}'s last 4 minutes: ${selectedHistory
-                    .filter((value, index) => value !== selectedHistory[index - 1])
-                    .map((value) => labelFor(value))
-                    .join(", then ")}.`}
+
+                <p
+                  key={selectedState}
+                  className={`inspector-state state-${selectedState}`}
                 >
-                  {selectedHistory.map((state, index) => (
-                    <span
-                      key={index}
-                      className={`history-cell cell-${state}`}
-                    />
-                  ))}
-                </div>
-              </div>
+                  <i
+                    className={`state-dot dot-${selectedState}`}
+                    aria-hidden="true"
+                  />
+                  {labelFor(selectedState)}
+                </p>
+                <p className="inspector-meta">
+                  {isRecovered
+                    ? "Back after 2 min"
+                    : stateFor(selectedState).meta}
+                </p>
 
-              <div className={`student-note ${isNudged ? "is-nudged" : ""}`}>
-                <p className="note-label">What {selectedSeat.initials} sees</p>
-                <b>{note.title}</b>
-                <p>{note.body}</p>
+                <div className="history">
+                  <div className="history-head">
+                    <span>Last 4 minutes</span>
+                    <span>every 12s</span>
+                  </div>
+                  <div
+                    className="history-bar"
+                    role="img"
+                    aria-label={`${selectedSeat.initials}'s last 4 minutes: ${selectedHistory
+                      .filter(
+                        (value, index) => value !== selectedHistory[index - 1],
+                      )
+                      .map((value) => labelFor(value))
+                      .join(", then ")}.`}
+                  >
+                    {selectedHistory.map((state, index) => (
+                      <span
+                        key={index}
+                        className={`history-cell cell-${state}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className={`student-note ${isNudged ? "is-nudged" : ""}`}>
+                  <p className="note-label">
+                    What {selectedSeat.initials} sees
+                  </p>
+                  <b>{note.title}</b>
+                  <p>{note.body}</p>
+                </div>
               </div>
 
               <div className="inspector-actions">
@@ -370,6 +529,8 @@ export default function RoomWindow() {
                 stored.
               </p>
             </aside>
+
+            <div className="nudge-ring" ref={ringRef} aria-hidden="true" />
           </div>
         )}
 
@@ -396,6 +557,9 @@ function BeforePanel() {
       <h2 className="sr-only">Before class</h2>
       <div className="room-stage">
         <div className="room-arch is-empty">
+          <div className="room-light" aria-hidden="true">
+            <i className="light-before" />
+          </div>
           <div className="room-board is-quiet">
             <span className="board-label">Room open</span>
             <p>No one has joined yet.</p>
