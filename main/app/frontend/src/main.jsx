@@ -17,6 +17,7 @@ import RecordsPage     from "./pages/records-page.jsx";
 import NotFoundPage    from "./pages/not-found-page.jsx";
 import AuthGuard       from "./components/auth-guard.jsx";
 import AppErrorBoundary from "./components/app/error-boundary.jsx";
+import MotionProvider   from "./components/motion/motion-provider.jsx";
 
 // ── Core app pages (Phase 8/9 protected routes) ──────────────────────────
 import StudentPage from "./pages/student-page.jsx";
@@ -24,6 +25,7 @@ import TeacherPage from "./pages/teacher-page.jsx";
 import MeetingRoom from "./pages/meeting-room.jsx";
 
 import "./index.css";
+import "./styles/motion.css";
 
 const missingEnv = [];
 if (!import.meta.env.VITE_SUPABASE_URL) missingEnv.push('VITE_SUPABASE_URL');
@@ -47,9 +49,10 @@ if (missingEnv.length > 0) {
   ReactDOM.createRoot(document.getElementById("root")).render(
   <HMSRoomProvider>
     <BrowserRouter>
-      <AppErrorBoundary>
-        <AnimatePresence mode="wait">
-          <Routes>
+      <MotionProvider>
+        <AppErrorBoundary>
+          <AnimatePresence mode="wait">
+            <Routes>
           {/* ── Phase 3: landing page ── */}
         <Route path="/" element={<HomePage />} />
 
@@ -73,7 +76,8 @@ if (missingEnv.length > 0) {
         <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </AnimatePresence>
-      </AppErrorBoundary>
+        </AppErrorBoundary>
+      </MotionProvider>
     </BrowserRouter>
   </HMSRoomProvider>
   );

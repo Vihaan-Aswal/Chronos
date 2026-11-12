@@ -1,0 +1,596 @@
+/* App motion — paper, ink, signal.
+   Extends the homepage motion plan. Scoped to .app so the frozen .home is untouched.
+   Tokens are the single source for CSS; JS mirrors them in components/motion/tokens.js. */
+
+.app {
+  --motion-instant: 120ms;
+  --motion-fast: 180ms;
+  --motion-base: 260ms;
+  --motion-slow: 420ms;
+  --motion-authored: 620ms;
+  --motion-print: 700ms;
+  --ease-arrive: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-state: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --stagger-desk: 18ms;
+  --stagger-chain: 60ms;
+
+  /* Reduced-motion travel is zeroed; fades and colour remain. */
+  --motion-rise: 4px;
+  --motion-row-rise: 4px;
+  --motion-stagger: 18ms;
+}
+
+/* ── Frequent feedback ─────────────────────────────────────────────────── */
+
+.app .btn,
+.app .icon-btn,
+.app .text-btn,
+.app .room-filter,
+.app .seg > button,
+.app .app-nav a,
+.app .field-eye,
+.app .room-toggle,
+.app .rec-detail-toggle,
+.app .record-item,
+.app .room-row {
+  transition-property: background-color, border-color, color, opacity, transform;
+  transition-duration: var(--motion-instant);
+  transition-timing-function: var(--ease-state);
+}
+
+.app .btn:active:not(:disabled),
+.app .icon-btn:active:not(:disabled),
+.app .room-toggle:active,
+.app .rec-detail-toggle:active {
+  transform: scale(0.985);
+}
+
+.app .field :where(input, select, textarea) {
+  transition:
+    border-color var(--motion-instant) var(--ease-state),
+    background-color var(--motion-instant) var(--ease-state);
+}
+
+.app .badge,
+.app .dot,
+.app .signal-cell {
+  transition:
+    background-color var(--motion-fast) var(--ease-state),
+    border-color var(--motion-fast) var(--ease-state),
+    color var(--motion-fast) var(--ease-state);
+}
+
+.app .record-item,
+.app .room-row {
+  transition: background-color var(--motion-instant) var(--ease-state);
+}
+
+.app .room-row {
+  animation: row-in var(--motion-fast) var(--ease-arrive) both;
+}
+
+.app .room-row:nth-child(2) {
+  animation-delay: var(--stagger-desk);
+}
+
+.app .room-row:nth-child(3) {
+  animation-delay: calc(var(--stagger-desk) * 2);
+}
+
+.app .room-row:nth-child(4) {
+  animation-delay: calc(var(--stagger-desk) * 3);
+}
+
+.app .room-row:nth-child(5) {
+  animation-delay: calc(var(--stagger-desk) * 4);
+}
+
+.app .room-row:nth-child(6) {
+  animation-delay: calc(var(--stagger-desk) * 5);
+}
+
+.app .room-row:nth-child(7) {
+  animation-delay: calc(var(--stagger-desk) * 6);
+}
+
+.app .room-row:nth-child(8) {
+  animation-delay: calc(var(--stagger-desk) * 7);
+}
+
+.app .ready-check-icon,
+.app .ready-check-state {
+  transition:
+    background-color var(--motion-fast) var(--ease-state),
+    border-color var(--motion-fast) var(--ease-state),
+    color var(--motion-fast) var(--ease-state);
+}
+
+.app .room-row-note,
+.app .field-error,
+.app .rec-students {
+  animation: notice-in var(--motion-fast) var(--ease-arrive) both;
+}
+
+/* ── Route / page cue: the header hairline draws ────────────────────────── */
+
+.app .app-header,
+.app .room-bar {
+  position: relative;
+}
+
+.app .app-header::after,
+.app .room-bar::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  background: var(--line);
+  pointer-events: none;
+  transform-origin: left center;
+  animation: rule-draw var(--motion-base) var(--ease-arrive) both;
+}
+
+.app .app-header--forest::after,
+.app .room-bar::after {
+  background: var(--line-cream);
+}
+
+@keyframes rule-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ── Dialogs and notices ────────────────────────────────────────────────── */
+
+dialog.app-dialog[open] {
+  animation: dialog-in var(--motion-fast) var(--ease-arrive) both;
+}
+
+dialog.app-dialog[open]::backdrop {
+  animation: backdrop-in var(--motion-fast) var(--ease-state) both;
+}
+
+dialog.rec[open] {
+  animation: record-in var(--motion-base) var(--ease-arrive) both;
+}
+
+dialog.rec[open]::backdrop {
+  animation: backdrop-in var(--motion-base) var(--ease-state) both;
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes record-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-row-rise));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.app .notice,
+.app .room-banner,
+.app .empty {
+  animation: notice-in var(--motion-fast) var(--ease-arrive) both;
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Auth first impression ──────────────────────────────────────────────── */
+
+.app.auth .auth-fact {
+  animation: fact-in var(--motion-slow) var(--ease-arrive) both;
+}
+
+.app.auth .auth-fact:nth-child(2) {
+  animation-delay: var(--stagger-chain);
+}
+
+.app.auth .auth-fact:nth-child(3) {
+  animation-delay: calc(var(--stagger-chain) * 2);
+}
+
+.app.auth .auth-form form > * {
+  animation: field-in var(--motion-fast) var(--ease-arrive) both;
+}
+
+.app.auth .auth-form form > *:nth-child(2) {
+  animation-delay: var(--stagger-desk);
+}
+
+.app.auth .auth-form form > *:nth-child(3) {
+  animation-delay: calc(var(--stagger-desk) * 2);
+}
+
+.app.auth .auth-form form > *:nth-child(4) {
+  animation-delay: calc(var(--stagger-desk) * 3);
+}
+
+.app.auth .auth-success-actions,
+.app .desk-records {
+  animation: notice-in var(--motion-fast) var(--ease-arrive) both;
+}
+
+@keyframes fact-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes field-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Choose role / readiness / records lists ────────────────────────────── */
+
+.app .choose-col {
+  animation: col-in var(--motion-fast) var(--ease-arrive) both;
+}
+
+.app .choose-col + .choose-col {
+  animation-delay: var(--stagger-desk);
+}
+
+.app .ready-panel {
+  animation: app-panel-in var(--motion-fast) var(--ease-arrive) both;
+}
+
+.app .record-item {
+  animation: row-in var(--motion-fast) var(--ease-arrive) both;
+}
+
+.app .record-item:nth-child(2) {
+  animation-delay: var(--stagger-desk);
+}
+
+.app .record-item:nth-child(3) {
+  animation-delay: calc(var(--stagger-desk) * 2);
+}
+
+.app .record-item:nth-child(4) {
+  animation-delay: calc(var(--stagger-desk) * 3);
+}
+
+.app .record-item:nth-child(5) {
+  animation-delay: calc(var(--stagger-desk) * 4);
+}
+
+.app .record-item:nth-child(6) {
+  animation-delay: calc(var(--stagger-desk) * 5);
+}
+
+.app .record-item:nth-child(7) {
+  animation-delay: calc(var(--stagger-desk) * 6);
+}
+
+.app .record-item:nth-child(8) {
+  animation-delay: calc(var(--stagger-desk) * 7);
+}
+
+@keyframes col-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes app-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-row-rise));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Live room ──────────────────────────────────────────────────────────── */
+
+.app .room-connection i {
+  animation: live-pulse 2.4s var(--ease-state) infinite;
+}
+
+.app .room-connection.is-offline i {
+  animation: none;
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.35);
+  }
+}
+
+@media (max-width: 1023px) {
+  .app .room-rail.is-open {
+    animation: rail-in var(--motion-fast) var(--ease-arrive) both;
+  }
+}
+
+@keyframes rail-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.app .stage-state {
+  animation: stage-in var(--motion-fast) var(--ease-arrive) both;
+}
+
+@keyframes stage-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.app .room-nudge {
+  animation: nudge-in var(--motion-base) var(--ease-arrive) both;
+}
+
+@keyframes nudge-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.app .signal-state-title,
+.app .signal-state-copy {
+  animation: state-in var(--motion-fast) var(--ease-arrive) both;
+}
+
+@keyframes state-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Records loading and report print ───────────────────────────────────── */
+
+.app .records-loading {
+  position: relative;
+}
+
+.app .records-loading::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: var(--sage-ink);
+  transform-origin: left center;
+  animation: loading-line 1.2s var(--ease-state) infinite;
+}
+
+@keyframes loading-line {
+  0% {
+    opacity: 1;
+    transform: scaleX(0);
+  }
+  55% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+
+dialog.rec[open] .rec-bar::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  background: rgba(216, 190, 138, 0.55);
+  transform-origin: left center;
+  animation: rule-draw var(--motion-slow) var(--ease-arrive) both;
+}
+
+dialog.rec[open] .rec-fact {
+  animation: rec-fact-in var(--motion-fast) var(--ease-arrive) both;
+}
+
+dialog.rec[open] .rec-fact:nth-child(2) {
+  animation-delay: var(--stagger-chain);
+}
+
+dialog.rec[open] .rec-fact:nth-child(3) {
+  animation-delay: calc(var(--stagger-chain) * 2);
+}
+
+dialog.rec[open] .rec-fact:nth-child(4) {
+  animation-delay: calc(var(--stagger-chain) * 3);
+}
+
+@keyframes rec-fact-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-row-rise));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+dialog.rec[open] .rec-band-seg {
+  transform-origin: left center;
+  animation: band-fill var(--motion-slow) var(--ease-arrive) both;
+}
+
+dialog.rec[open] .rec-band-seg:nth-child(2) {
+  animation-delay: var(--stagger-chain);
+}
+
+dialog.rec[open] .rec-band-seg:nth-child(3) {
+  animation-delay: calc(var(--stagger-chain) * 2);
+}
+
+@keyframes band-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ── Global switch and reduced motion ───────────────────────────────────── */
+
+html[data-hidden="true"] .app .room-connection i,
+html[data-hidden="true"] .app .records-loading::after {
+  animation-play-state: paused;
+}
+
+html[data-motion="off"] .app,
+html[data-motion="off"] .app *,
+html[data-motion="off"] .app *::before,
+html[data-motion="off"] .app *::after,
+html[data-motion="off"] dialog.app,
+html[data-motion="off"] dialog.app * {
+  animation: none !important;
+  transition: none !important;
+}
+
+html[data-motion="reduced"] .app {
+  --motion-rise: 0px;
+  --motion-row-rise: 0px;
+  --motion-stagger: 0ms;
+}
+
+html[data-motion="reduced"] .app .app-header::after,
+html[data-motion="reduced"] .app .room-bar::after,
+html[data-motion="reduced"] .app .records-loading::after,
+html[data-motion="reduced"] .app .room-connection i,
+html[data-motion="reduced"] dialog.rec[open] .rec-band-seg {
+  animation: none;
+}
+
+html[data-motion="reduced"] .app .btn:active:not(:disabled),
+html[data-motion="reduced"] .app .icon-btn:active:not(:disabled),
+html[data-motion="reduced"] .app .room-toggle:active,
+html[data-motion="reduced"] .app .rec-detail-toggle:active {
+  transform: none;
+}
+
+html[data-motion="reduced"] .app.auth .auth-fact {
+  animation-duration: var(--motion-fast);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app {
+    --motion-rise: 0px;
+    --motion-row-rise: 0px;
+    --motion-stagger: 0ms;
+  }
+
+  .app .app-header::after,
+  .app .room-bar::after,
+  .app .records-loading::after,
+  .app .room-connection i,
+  dialog.rec[open] .rec-band-seg {
+    animation: none;
+  }
+
+  .app .btn:active:not(:disabled),
+  .app .icon-btn:active:not(:disabled),
+  .app .room-toggle:active,
+  .app .rec-detail-toggle:active {
+    transform: none;
+  }
+
+  .app.auth .auth-fact {
+    animation-duration: var(--motion-fast);
+  }
+}
