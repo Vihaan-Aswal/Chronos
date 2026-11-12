@@ -90,6 +90,8 @@
 - **Tests:** 26 Playwright tests pass with reduced motion emulated; no new console errors beyond the existing 100ms `unload` policy entry.
 - **Evidence:** `.impeccable/motion-after/app/screenshots/` (70 stills), `frames/` (teacher live 353, signin 57, signup 55, choose 18, readiness 52, student nudge 123, record print 79), `traces/` (teacher 1×/4×, signin, student, records), Lighthouse JSON + `lighthouse-compare.json`.
 - **Static design:** all 70 after screenshots have the same dimensions as baseline; visual diff is limited to 1px header rules/text antialiasing, not layout or copy.
+- **Hardening:** reduced motion (`rise 0`, rules/loops off), `?motion=off` (all animations/transitions none), 4× CPU, WebGL off (no motion errors, 0 overflow), rapid 10× filter + 3× dialog interruption (3 rows, no open dialog), 375→1280 resize (0 overflow), hidden-tab pause (`animation-play-state: paused`), 14-route fast loop (no console errors). Evidence: `.impeccable/motion-after/app/hardening.json`.
+- **Deviation:** `D-M-DEV1` fixes the student nudge toast's inherited 100vh height; the note now sits at the intended `bottom: 24px` and the private-nudge motion is visible.
 
 ## Skills used
 
