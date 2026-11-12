@@ -11,7 +11,8 @@ import {
 } from "./helpers.js";
 
 const baseUrl = process.env.BASE_URL || "http://localhost:5173";
-const outDir = ".impeccable/motion-baseline/app/traces";
+const outDir = process.env.OUT_DIR || ".impeccable/motion-baseline/app/traces";
+const reducedMotion = process.env.REDUCED === "0" ? "no-preference" : "reduce";
 const widths = { viewport: { width: 1280, height: 900 } };
 
 const list = {
@@ -60,7 +61,7 @@ async function contextFor(browser, { auth = false, role = "teacher" } = {}) {
   const context = await browser.newContext({
     ...widths,
     permissions: ["camera", "microphone"],
-    reducedMotion: "reduce",
+    reducedMotion,
   });
   if (auth) {
     await context.addInitScript(
