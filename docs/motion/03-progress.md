@@ -81,7 +81,7 @@
 
 ## After measurement (production preview)
 
-- **Bundle:** main JS 3,092.28 kB raw / 862.86 kB gzip vs 3,090.33 / 862.30 baseline: **+1.95 kB raw / +0.56 kB gzip**. All JS gzip **+0.57 kB**; CSS 92,960 raw / 16,509 gzip vs 83,651 / 15,131: **+1.38 kB gzip**. Total dist gzip **1,029,644 vs 1,027,691: +1.95 kB**. No new runtime dependency.
+- **Bundle:** main JS 3,092.31 kB raw / 862.86 kB gzip vs 3,090.33 / 862.30 baseline: **+1.98 kB raw / +0.56 kB gzip**. All JS gzip **+0.57 kB**; CSS 92,989 raw / 16,514 gzip vs 83,651 / 15,131: **+1.38 kB gzip**. Total dist gzip **1,029,631 vs 1,027,691: +1.94 kB**. No new runtime dependency.
 - **Lighthouse perf:** desktop 96→95 signin, 96→95 choose, 65→64 readiness, 96→96 meeting, 95→95 records, 96→96 signup, 62→65 teacher desk, 63→65 student join; mobile 65→65 signin/signup/records, 64→64 meeting, 65→65 404, 65→64 choose. All within ±2 except improvements on camera pages.
 - **LCP:** all LCP elements are static headings/paragraphs; meeting LCP fixed from 5.91 s → 5.76 s by removing the stage opacity gate. Remaining deltas (+37–149 ms) are Lighthouse run variance on static LCP elements.
 - **CLS:** no added shift; records mobile 0, choose mobile 0.008 (baseline 0.011), readiness desktop 0.0002. Comparable traces: teacher 0.1357 and student 0.1609, the same as baseline (the earlier pilot 1× run's 0.1065 was a different capture, not the comparison trace).
