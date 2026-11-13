@@ -40,7 +40,7 @@ export default function PreJoinNoticeModal({ isOpen, onClose, onConfirm, initial
   };
 
   return (
-    <div className="surface-overlay">
+    <div className="app surface-overlay">
       <div className="surface-modal">
         {/* Header */}
         <div className="surface-head">
@@ -89,7 +89,7 @@ export default function PreJoinNoticeModal({ isOpen, onClose, onConfirm, initial
 
           {/* Granular Consent Checkboxes */}
           <div className="surface-section">
-            <div className="surface-choice-list">
+            <div className="surface-choice-list surface-choice-list--tall">
               {CONSENT_CATEGORIES.map((cat) => {
                 const isChecked = consents[cat.id] ?? false;
                 return (

@@ -113,7 +113,7 @@ export default function PrivacySettingsDrawer({ isOpen, onClose, token, sessionI
   if (!isOpen) return null;
 
   return (
-    <div className="surface-overlay surface-overlay--drawer">
+    <div className="app surface-overlay surface-overlay--drawer">
       <div className="surface-drawer">
         {/* Header */}
         <div className="surface-head">

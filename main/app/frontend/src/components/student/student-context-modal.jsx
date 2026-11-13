@@ -128,7 +128,7 @@ export default function StudentContextModal({
 
   return (
     <div
-      className="surface-overlay"
+      className="app surface-overlay"
       role="dialog"
       aria-modal="true"
       aria-labelledby="context-modal-title"

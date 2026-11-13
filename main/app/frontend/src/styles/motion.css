@@ -371,7 +371,7 @@ dialog.rec[open]::backdrop {
 
 @media (max-width: 1023px) {
   .app .room-rail.is-open {
-    animation: rail-in var(--motion-fast) var(--ease-arrive) both;
+    animation: rail-in var(--motion-fast) var(--ease-arrive);
   }
 }
 

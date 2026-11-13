@@ -405,6 +405,10 @@
   overflow-y: auto;
 }
 
+.surface-choice-list--tall {
+  max-height: none;
+}
+
 .surface-choice {
   display: flex;
   align-items: flex-start;
@@ -438,16 +442,22 @@
 }
 
 .surface-choice-title {
+  display: block;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.35;
 }
 
 .surface-choice-desc {
+  display: block;
   margin-top: 2px;
   color: var(--slate);
   font-size: 11px;
   line-height: 1.45;
+}
+
+.surface-overlay--forest :focus-visible {
+  outline-color: var(--gold) !important;
 }
 
 .surface-loading {
@@ -1267,7 +1277,7 @@
 
 .ans-title {
   font-family: var(--serif);
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1.05;
   letter-spacing: -0.02em;
 }
@@ -1493,6 +1503,7 @@
 
 .ans-history {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0;
   margin: 0;
   padding: 0;
@@ -1635,6 +1646,11 @@
   color: var(--slate);
   font-size: 11px;
   line-height: 1.5;
+}
+
+.health-head .btn {
+  flex: none;
+  white-space: nowrap;
 }
 
 .health-cell .btn {
@@ -2046,6 +2062,10 @@
     padding: 10px;
   }
 
+  .surface-overlay--drawer {
+    padding: 0;
+  }
+
   .surface-modal {
     max-height: calc(100dvh - 20px);
   }
@@ -2063,6 +2083,10 @@
     grid-template-columns: 1fr;
   }
 
+  .surface-choice-list {
+    max-height: none;
+  }
+
   .presence-steps {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2078,6 +2102,10 @@
   .am-toolbar-fields {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .am-search {
+    flex: none;
   }
 }
 

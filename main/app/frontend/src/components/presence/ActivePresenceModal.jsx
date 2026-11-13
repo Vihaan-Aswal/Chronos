@@ -286,7 +286,7 @@ export default function ActivePresenceModal({
   }, [onDismiss]);
 
   return (
-    <div className="surface-overlay surface-overlay--forest" role="dialog" aria-modal="true" aria-labelledby="presence-modal-title">
+    <div className="app surface-overlay surface-overlay--forest" role="dialog" aria-modal="true" aria-labelledby="presence-modal-title">
       <div className="surface-modal presence-modal">
         {/* Top Header & Countdown */}
         <div className="surface-head">

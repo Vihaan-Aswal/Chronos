@@ -11,6 +11,7 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import useWebSocket from "../hooks/use-websocket";
 import { ObservationAdapter } from "../observation/observation-adapter";
 import { BrowserVisibilityTracker } from "../observation/browser-visibility-tracker";
@@ -441,16 +442,18 @@ export default function EngagementTracker({
       )}
 
       {/* Active Presence Verification Modal */}
-      {activeChallenge && (
-        <ActivePresenceModal
-          challenge={activeChallenge}
-          sessionId={sessionId}
-          currentPose={currentPose}
-          qualityScore={qualityScore}
-          onComplete={() => setActiveChallenge(null)}
-          onDismiss={() => setActiveChallenge(null)}
-        />
-      )}
+      {activeChallenge &&
+        createPortal(
+          <ActivePresenceModal
+            challenge={activeChallenge}
+            sessionId={sessionId}
+            currentPose={currentPose}
+            qualityScore={qualityScore}
+            onComplete={() => setActiveChallenge(null)}
+            onDismiss={() => setActiveChallenge(null)}
+          />,
+          document.body,
+        )}
     </div>
   );
 }

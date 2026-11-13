@@ -612,7 +612,7 @@ export default function AnswerSubmissionPanel({
       {/* Confirmation Modal Before Replacing a Submitted Version */}
       {showReplaceModal && (
         <div
-          className="surface-overlay surface-overlay--stacked"
+          className="app surface-overlay surface-overlay--stacked"
           role="dialog"
           aria-modal="true"
           aria-labelledby="replace-answer-title"
