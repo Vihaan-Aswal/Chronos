@@ -359,29 +359,21 @@ export default function EngagementTracker({
   }, []);
 
   return (
-    <div className="relative w-full rounded-2xl bg-[#091926] border border-white/10 shadow-xl overflow-hidden p-4">
+    <div className="camera-frame">
       {/* Video Preview Container */}
-      <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black/40 border border-white/10">
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          autoPlay
-          className="w-full h-full object-cover grayscale-[10%]"
-        />
+      <div className="camera-well">
+        <video ref={videoRef} playsInline muted autoPlay />
 
         {/* Hidden offscreen canvases for lighting/sharpness evaluation */}
-        <canvas ref={canvasRef} className="hidden" />
-        <canvas ref={cropCanvasRef} className="hidden" />
+        <canvas ref={canvasRef} hidden />
+        <canvas ref={cropCanvasRef} hidden />
 
         {/* Live Overlay Status Strip */}
-        <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-          <div className="flex items-center gap-2">
+        <div className="camera-overlay-top">
+          <div className="camera-chips">
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium backdrop-blur-md border ${
-                facePresent
-                  ? "bg-emerald-950/70 border-emerald-500/30 text-emerald-300"
-                  : "bg-amber-950/70 border-amber-500/30 text-amber-300"
+              className={`camera-chip ${
+                facePresent ? "camera-chip--ok" : "camera-chip--warn"
               }`}
             >
               <span className="material-symbols-outlined text-[13px]">
@@ -391,10 +383,8 @@ export default function EngagementTracker({
             </div>
 
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium backdrop-blur-md border ${
-                lightingStatus === "optimal"
-                  ? "bg-emerald-950/70 border-emerald-500/30 text-emerald-300"
-                  : "bg-amber-950/70 border-amber-500/30 text-amber-300"
+              className={`camera-chip ${
+                lightingStatus === "optimal" ? "camera-chip--ok" : "camera-chip--warn"
               }`}
             >
               <span className="material-symbols-outlined text-[13px]">
@@ -404,14 +394,17 @@ export default function EngagementTracker({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-black/60 px-2.5 py-1 rounded-full text-[11px] text-white/70 border border-white/10 backdrop-blur-md">
-              <span className={`w-2 h-2 rounded-full ${cameraActive ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+          <div className="camera-chips">
+            <div className="camera-chip">
+              <span
+                className={`dot ${cameraActive ? "dot-attentive" : "dot-wait"}`}
+                aria-hidden="true"
+              />
               {cameraActive ? "Active Observation" : "Camera Initializing"}
             </div>
 
             {identityStatus === "verified" && (
-              <div className="flex items-center gap-1.5 bg-emerald-950/70 border border-emerald-500/30 px-2.5 py-1 rounded-full text-[11px] text-emerald-300 backdrop-blur-md">
+              <div className="camera-chip camera-chip--ok">
                 <span className="material-symbols-outlined text-[13px]">verified</span>
                 Verified
               </div>
@@ -420,23 +413,27 @@ export default function EngagementTracker({
         </div>
 
         {/* Head Pose Guidance Indicators */}
-        <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-[11px] text-white/80 font-mono">
+        <div className="camera-pose">
           <span>Yaw: {currentPose.yaw}°</span>
-          <span className="text-white/30">|</span>
           <span>Pitch: {currentPose.pitch}°</span>
         </div>
       </div>
 
       {/* Tab Switch Context Notice */}
       {tabSwitchPopup && (
-        <div className="mt-3 p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between text-xs text-white/80">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-amber-400 text-sm">info</span>
+        <div className="camera-note" role="status">
+          <div className="row">
+            <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
             <span>Returned to session window. Navigation intervals recorded.</span>
           </div>
           <button
+            type="button"
             onClick={() => setTabSwitchPopup(false)}
-            className="text-white/40 hover:text-white text-[11px] underline"
+            className="btn btn-quiet btn-sm"
           >
             Dismiss
           </button>

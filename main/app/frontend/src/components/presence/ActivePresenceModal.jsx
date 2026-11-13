@@ -286,136 +286,134 @@ export default function ActivePresenceModal({
   }, [onDismiss]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="presence-modal-title">
-      <div className="relative w-full max-w-lg rounded-2xl bg-[#091926] border border-[#DCC492]/30 shadow-2xl p-6 text-white">
+    <div className="surface-overlay surface-overlay--forest" role="dialog" aria-modal="true" aria-labelledby="presence-modal-title">
+      <div className="surface-modal presence-modal">
         {/* Top Header & Countdown */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-[#DCC492] text-2xl" aria-hidden="true">
-              verified_user
-            </span>
+        <div className="surface-head">
+          <div className="surface-head-main">
+            <div className="surface-mark surface-mark--gold" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <polyline points="9 12 11 14 15 10" />
+              </svg>
+            </div>
             <div>
-              <h3 id="presence-modal-title" className="font-headline font-bold text-lg text-[#DCC492]">
+              <h3 id="presence-modal-title" className="surface-title">
                 Active Presence Verification
               </h3>
-              <p className="text-xs text-white/60">
+              <p className="surface-sub">
                 Quick confirmation of attendance & engagement
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full border border-white/10">
-            <span className="material-symbols-outlined text-xs text-[#DCC492]">
-              timer
-            </span>
-            <span className="text-xs font-mono font-bold text-[#DCC492]">
-              {secondsRemaining}s
-            </span>
+          <div className="presence-timer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <polyline points="12 7 12 12 15 14" />
+            </svg>
+            {secondsRemaining}s
           </div>
         </div>
 
-        {/* Step Indicator Progress */}
-        <div className="grid grid-cols-4 gap-2 mb-6">
-          {[
-            { key: "BASELINE", label: "Center" },
-            { key: "ACTION_1", label: action1Def.label },
-            { key: "ACTION_2", label: action2Def.label },
-            { key: "FINAL_CENTER", label: "Confirm" },
-          ].map((s, idx) => {
-            const isDone =
-              (stage === "ACTION_1" && idx === 0) ||
-              (stage === "RETURN_CENTER" && idx <= 1) ||
-              (stage === "ACTION_2" && idx <= 1) ||
-              (stage === "FINAL_CENTER" && idx <= 2) ||
-              stage === "COMPLETE";
-            const isCurrent =
-              stage === s.key ||
-              (stage === "RETURN_CENTER" && idx === 1);
+        <div className="surface-body">
+          {/* Step Indicator Progress */}
+          <div className="presence-steps">
+            {[
+              { key: "BASELINE", label: "Center" },
+              { key: "ACTION_1", label: action1Def.label },
+              { key: "ACTION_2", label: action2Def.label },
+              { key: "FINAL_CENTER", label: "Confirm" },
+            ].map((s, idx) => {
+              const isDone =
+                (stage === "ACTION_1" && idx === 0) ||
+                (stage === "RETURN_CENTER" && idx <= 1) ||
+                (stage === "ACTION_2" && idx <= 1) ||
+                (stage === "FINAL_CENTER" && idx <= 2) ||
+                stage === "COMPLETE";
+              const isCurrent =
+                stage === s.key ||
+                (stage === "RETURN_CENTER" && idx === 1);
 
-            return (
-              <div
-                key={s.key}
-                className={`py-2 px-1 rounded-lg text-center border transition-all ${
-                  isDone
-                    ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-400"
-                    : isCurrent
-                    ? "bg-[#DCC492]/20 border-[#DCC492] text-[#DCC492] font-semibold"
-                    : "bg-white/5 border-white/10 text-white/40"
-                }`}
-              >
-                <div className="text-[10px] uppercase tracking-wider">Step {idx + 1}</div>
-                <div className="text-xs truncate">{s.label}</div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Main Instruction Display */}
-        <div className="bg-black/30 rounded-xl p-5 border border-white/10 text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[#DCC492]/10 border border-[#DCC492]/30 mb-3 text-[#DCC492]">
-            <span className="material-symbols-outlined text-3xl">
-              {stage === "BASELINE" || stage === "RETURN_CENTER" || stage === "FINAL_CENTER"
-                ? "face"
-                : stage === "ACTION_1"
-                ? action1Def.icon
-                : action2Def.icon}
-            </span>
+              return (
+                <div
+                  key={s.key}
+                  className={`presence-step${isDone ? " is-done" : ""}${isCurrent ? " is-current" : ""}`}
+                >
+                  <span>Step {idx + 1}</span>
+                  <b>{s.label}</b>
+                </div>
+              );
+            })}
           </div>
 
-          <div className="text-base font-medium text-white mb-2">{statusMessage}</div>
+          {/* Main Instruction Display */}
+          <div className="presence-card">
+            <div className="presence-mark" aria-hidden="true">
+              <span className="material-symbols-outlined text-3xl">
+                {stage === "BASELINE" || stage === "RETURN_CENTER" || stage === "FINAL_CENTER"
+                  ? "face"
+                  : stage === "ACTION_1"
+                  ? action1Def.icon
+                  : action2Def.icon}
+              </span>
+            </div>
 
-          {/* Real-time Hold Progress Bar */}
-          <div
-            className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden max-w-xs mx-auto"
-            role="progressbar"
-            aria-valuenow={holdProgress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Pose hold progress"
-          >
+            <div className="presence-instruction">{statusMessage}</div>
+
+            {/* Real-time Hold Progress Bar */}
             <div
-              className="h-full bg-gradient-to-r from-[#DCC492] to-emerald-400 transition-all duration-100"
-              style={{ width: `${holdProgress}%` }}
-            />
-          </div>
-          <div className="text-[11px] text-white/50 mt-1.5">
-            Hold pose: {holdProgress}%
-          </div>
-        </div>
-
-        {errorMsg && (
-          <div className="mb-4 p-3 bg-red-950/50 border border-red-500/30 rounded-lg text-red-300 text-xs text-center">
-            {errorMsg}
-          </div>
-        )}
-
-        {/* Accessibility & Manual Fallbacks */}
-        <div className="border-t border-white/10 pt-4 flex flex-col gap-2">
-          <div className="text-[11px] text-white/50 text-center mb-1">
-            Need an alternative accommodation or having camera trouble?
+              className="presence-progress"
+              role="progressbar"
+              aria-valuenow={holdProgress}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Pose hold progress"
+            >
+              <span style={{ width: `${holdProgress}%` }} />
+            </div>
+            <div className="presence-progress-caption">
+              Hold pose: {holdProgress}%
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button
-              onClick={handleAlternativeNeutralVerification}
-              disabled={isSubmitting}
-              className="px-3 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg text-xs text-white/90 transition-all"
-            >
-              Use Neutral Hold
-            </button>
-            <button
-              onClick={handleManualReviewRequest}
-              disabled={isSubmitting}
-              className="px-3 py-2 bg-amber-950/30 hover:bg-amber-900/40 border border-amber-500/30 rounded-lg text-xs text-amber-300 transition-all"
-            >
-              Teacher Check
-            </button>
-            <button
-              onClick={handleDecline}
-              disabled={isSubmitting}
-              className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-white/60 transition-all"
-            >
-              Decline Check
-            </button>
+          {errorMsg && (
+            <div className="notice notice-flag" role="alert">
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {/* Accessibility & Manual Fallbacks */}
+          <div className="presence-fallback">
+            <p>
+              Need an alternative accommodation or having camera trouble?
+            </p>
+
+            <div className="presence-actions">
+              <button
+                type="button"
+                onClick={handleAlternativeNeutralVerification}
+                disabled={isSubmitting}
+                className="btn btn-cream btn-sm"
+              >
+                Use Neutral Hold
+              </button>
+              <button
+                type="button"
+                onClick={handleManualReviewRequest}
+                disabled={isSubmitting}
+                className="btn btn-ghost btn-sm"
+              >
+                Teacher Check
+              </button>
+              <button
+                type="button"
+                onClick={handleDecline}
+                disabled={isSubmitting}
+                className="btn btn-quiet-cream btn-sm"
+              >
+                Decline Check
+              </button>
+            </div>
           </div>
         </div>
       </div>
