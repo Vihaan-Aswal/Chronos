@@ -26,6 +26,7 @@ import MeetingRoom from "./pages/meeting-room.jsx";
 
 import "./index.css";
 import "./styles/motion.css";
+import "./styles/surfaces.css";
 
 const missingEnv = [];
 if (!import.meta.env.VITE_SUPABASE_URL) missingEnv.push('VITE_SUPABASE_URL');

@@ -64,15 +64,18 @@
   color: var(--ink);
 }
 
+/* index.css sets a gold ring with !important; ink wins on cream surfaces. */
 .app :focus-visible {
-  outline: 2px solid var(--ink);
+  outline: 2px solid var(--ink) !important;
   outline-offset: 2px;
 }
 
 .app .on-dark :focus-visible,
+.app.room :focus-visible,
 .app .room :focus-visible,
-.app .auth-aside :focus-visible {
-  outline-color: var(--gold);
+.app .auth-aside :focus-visible,
+.app .surface-overlay--forest :focus-visible {
+  outline-color: var(--gold) !important;
 }
 
 .app .sr-only {
