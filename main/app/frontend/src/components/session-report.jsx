@@ -1731,17 +1731,17 @@ export default function SessionReport({
               </button>
             </div>
 
-            <div className="rec-compare">
-              <div className="rec-compare-row">
-                <span>Coverage</span>
+            <div>
+              <div className="surface-row">
+                <span className="surface-row-title">Coverage</span>
                 <b>{((drilldown.coverage_ratio || 0) * 100).toFixed(0)}%</b>
               </div>
-              <div className="rec-compare-row">
-                <span>Attention pattern</span>
+              <div className="surface-row">
+                <span className="surface-row-title">Attention pattern</span>
                 <b>{drilldown.attention_pattern || "-"}</b>
               </div>
-              <div className="rec-compare-row">
-                <span>Identity state</span>
+              <div className="surface-row">
+                <span className="surface-row-title">Identity state</span>
                 <b>{drilldown.identity_state || "-"}</b>
               </div>
             </div>
