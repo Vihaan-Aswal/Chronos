@@ -491,6 +491,10 @@ dialog.rec::backdrop {
     justify-self: start;
   }
 
+  .record-actions {
+    justify-self: start;
+  }
+
   .rec-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

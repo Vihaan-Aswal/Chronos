@@ -189,23 +189,25 @@ export default function RecordsPage() {
                           </dd>
                         </div>
                       </dl>
-                      <button
-                        type="button"
-                        className="btn btn-line btn-sm"
-                        onClick={() => openRecord(record)}
-                        disabled={openingId === record.session_id}
-                      >
-                        {openingId === record.session_id
-                          ? "Opening"
-                          : "Open record"}
-                      </button>
-                      <button
-                        type="button"
-                        className="text-btn"
-                        onClick={() => setEvidenceId(record.session_id)}
-                      >
-                        Evidence report
-                      </button>
+                      <div className="record-actions">
+                        <button
+                          type="button"
+                          className="btn btn-line btn-sm"
+                          onClick={() => openRecord(record)}
+                          disabled={openingId === record.session_id}
+                        >
+                          {openingId === record.session_id
+                            ? "Opening"
+                            : "Open record"}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-btn"
+                          onClick={() => setEvidenceId(record.session_id)}
+                        >
+                          Evidence report
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
