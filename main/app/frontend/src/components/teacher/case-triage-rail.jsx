@@ -299,7 +299,7 @@ export default function CaseTriageRail({
       )}
 
       {/* 4. Scrollable Case List */}
-      <div className="triage-list">
+      <div className="triage-list" key={activeView}>
         {filteredCases.length === 0 ? (
           <div className="triage-empty">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
