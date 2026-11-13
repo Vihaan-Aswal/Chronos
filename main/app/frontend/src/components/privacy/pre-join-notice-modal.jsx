@@ -40,17 +40,19 @@ export default function PreJoinNoticeModal({ isOpen, onClose, onConfirm, initial
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-6 my-8">
+    <div className="surface-overlay">
+      <div className="surface-modal">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
-              <span className="material-symbols-outlined text-2xl">shield</span>
+        <div className="surface-head">
+          <div className="surface-head-main">
+            <div className="surface-mark surface-mark--forest" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-white tracking-tight">Privacy & Consent Transparency</h2>
-              <p className="text-sm text-slate-400 mt-1">
+              <h2 className="surface-title">Privacy & Consent Transparency</h2>
+              <p className="surface-sub">
                 Chronos protects your privacy by processing video strictly on your device. Review and customize what data you share before joining.
               </p>
             </div>
@@ -59,85 +61,87 @@ export default function PreJoinNoticeModal({ isOpen, onClose, onConfirm, initial
             <button
               type="button"
               onClick={onClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+              className="icon-btn icon-btn-sm"
+              aria-label="Close privacy notice"
             >
-              <span className="material-symbols-outlined text-lg">close</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
             </button>
           )}
         </div>
 
-        {/* Zero-Raw-Media Guarantee Alert */}
-        <div className="p-4 bg-slate-800/60 border border-slate-700/60 rounded-xl space-y-2 text-xs text-slate-300">
-          <div className="flex items-center gap-2 font-medium text-emerald-400">
-            <span className="material-symbols-outlined text-base">lock</span>
-            <span>Zero Raw Video Guarantee</span>
+        <div className="surface-body stack">
+          {/* Zero-Raw-Media Guarantee Alert */}
+          <div className="notice">
+            <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <div>
+              <div className="surface-row-title">Zero Raw Video Guarantee</div>
+              <p className="surface-meta">
+                No video frames, camera feeds, continuous facial meshes, or microphone audio are ever stored on servers or accessible to administrators. Temporary identity vectors are permanently purged within 24 hours.
+              </p>
+            </div>
           </div>
-          <p className="leading-relaxed">
-            No video frames, camera feeds, continuous facial meshes, or microphone audio are ever stored on servers or accessible to administrators. Temporary identity vectors are permanently purged within 24 hours.
+
+          {/* Granular Consent Checkboxes */}
+          <div className="surface-section">
+            <div className="surface-choice-list">
+              {CONSENT_CATEGORIES.map((cat) => {
+                const isChecked = consents[cat.id] ?? false;
+                return (
+                  <div
+                    key={cat.id}
+                    onClick={() => handleToggle(cat.id)}
+                    className={`surface-row is-choice${isChecked ? " is-selected" : ""}`}
+                  >
+                    <div className="surface-row-copy">
+                      <div className="surface-row-title">
+                        {cat.label}
+                        {cat.required && (
+                          <span className="badge badge-distracted">Required</span>
+                        )}
+                      </div>
+                      <p className="surface-meta">{cat.description}</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      disabled={cat.required}
+                      onChange={() => handleToggle(cat.id)}
+                      className="surface-checkbox"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Non-Penalization Note */}
+          <p className="surface-note">
+            Declining optional analytics is never misconduct and will not negatively impact your grades or standing.
           </p>
         </div>
 
-        {/* Granular Consent Checkboxes */}
-        <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
-          {CONSENT_CATEGORIES.map((cat) => {
-            const isChecked = consents[cat.id] ?? false;
-            return (
-              <div
-                key={cat.id}
-                onClick={() => handleToggle(cat.id)}
-                className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
-                  isChecked
-                    ? "bg-slate-800/80 border-slate-700"
-                    : "bg-slate-900/40 border-slate-800 opacity-60 hover:opacity-100"
-                }`}
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-200">{cat.label}</span>
-                    {cat.required && (
-                      <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        Required
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-400 leading-normal">{cat.description}</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  disabled={cat.required}
-                  onChange={() => handleToggle(cat.id)}
-                  className="mt-1 h-4 w-4 rounded border-slate-700 bg-slate-800 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
-                />
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Non-Penalization Note */}
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <span className="material-symbols-outlined text-base text-slate-400 shrink-0">info</span>
-          <span>Declining optional analytics is never misconduct and will not negatively impact your grades or standing.</span>
-        </div>
-
         {/* Actions */}
-        <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="surface-actions">
           <button
             type="button"
             onClick={handleJoinCameraOptional}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
+            className="btn btn-line btn-sm"
           >
             Join in Camera-Optional Mode
           </button>
-          <div className="w-full sm:w-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSubmitSelected}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-600/20 transition-colors"
-            >
-              Confirm Preferences & Join
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleSubmitSelected}
+            className="btn btn-ink btn-sm"
+          >
+            Confirm Preferences & Join
+          </button>
         </div>
       </div>
     </div>

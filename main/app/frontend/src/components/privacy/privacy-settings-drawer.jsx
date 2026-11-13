@@ -113,45 +113,55 @@ export default function PrivacySettingsDrawer({ isOpen, onClose, token, sessionI
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/60 backdrop-blur-xs">
-      <div className="w-full max-w-md bg-slate-900 border-l border-slate-800 h-full flex flex-col p-6 shadow-2xl overflow-y-auto">
+    <div className="surface-overlay surface-overlay--drawer">
+      <div className="surface-drawer">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-          <div className="flex items-center gap-2 text-white font-medium">
-            <span className="material-symbols-outlined text-emerald-400 text-xl">shield</span>
-            <span>Privacy & Data Controls</span>
+        <div className="surface-head">
+          <div className="surface-head-main">
+            <div className="surface-mark surface-mark--forest" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="surface-title">Privacy & Data Controls</h2>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+            className="icon-btn icon-btn-sm"
+            aria-label="Close privacy settings"
           >
-            <span className="material-symbols-outlined text-lg">close</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-800 mt-4 text-xs font-medium">
+        <div className="surface-tabs">
           <button
+            type="button"
             onClick={() => setActiveTab("consents")}
-            className={`pb-2 px-3 border-b-2 transition-colors ${
-              activeTab === "consents" ? "border-emerald-500 text-emerald-400" : "border-transparent text-slate-400 hover:text-slate-200"
-            }`}
+            className="surface-tab"
+            aria-pressed={activeTab === "consents"}
           >
             Consents
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("context")}
-            className={`pb-2 px-3 border-b-2 transition-colors ${
-              activeTab === "context" ? "border-emerald-500 text-emerald-400" : "border-transparent text-slate-400 hover:text-slate-200"
-            }`}
+            className="surface-tab"
+            aria-pressed={activeTab === "context"}
           >
             Add Context
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("dsr")}
-            className={`pb-2 px-3 border-b-2 transition-colors ${
-              activeTab === "dsr" ? "border-emerald-500 text-emerald-400" : "border-transparent text-slate-400 hover:text-slate-200"
-            }`}
+            className="surface-tab"
+            aria-pressed={activeTab === "dsr"}
           >
             My Data & DSR
           </button>
@@ -160,54 +170,48 @@ export default function PrivacySettingsDrawer({ isOpen, onClose, token, sessionI
         {/* Status Message */}
         {msg && (
           <div
-            className={`mt-4 p-3 rounded-xl text-xs flex items-center gap-2 ${
-              msg.type === "success"
-                ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-                : "bg-rose-500/10 border border-rose-500/20 text-rose-400"
+            className={`notice surface-alert ${
+              msg.type === "success" ? "notice-ok" : "notice-flag"
             }`}
+            role={msg.type === "success" ? "status" : "alert"}
           >
-            <span className="material-symbols-outlined text-base shrink-0">info</span>
             <span>{msg.text}</span>
           </div>
         )}
 
         {/* Tab 1: Consents */}
         {activeTab === "consents" && (
-          <div className="mt-4 space-y-4 flex-1 overflow-y-auto">
-            <p className="text-xs text-slate-400 leading-relaxed">
+          <div className="surface-body surface-panel">
+            <p className="surface-note">
               You can withdraw optional consent at any time without penalty. Chronos will gracefully fall back to camera-optional / manual tracking.
             </p>
-            {loading && <p className="text-xs text-slate-500">Updating consent status...</p>}
-            <div className="space-y-3">
+            {loading && (
+              <div className="surface-loading">
+                <span className="surface-spin" aria-hidden="true" />
+                Updating consent status...
+              </div>
+            )}
+            <div className="surface-section">
               {CONSENT_CATEGORIES.map((cat) => {
                 const isChecked = consents[cat.id] ?? true;
                 return (
-                  <div
-                    key={cat.id}
-                    className="p-3 bg-slate-800/50 border border-slate-700/60 rounded-xl space-y-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-slate-200">{cat.label}</span>
-                      {cat.required ? (
-                        <span className="text-[10px] uppercase font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                          Required
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={loading}
-                          onClick={() => handleToggleScope(cat.id)}
-                          className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                            isChecked
-                              ? "bg-emerald-500/20 text-emerald-300 hover:bg-rose-500/20 hover:text-rose-300"
-                              : "bg-slate-700 text-slate-300 hover:bg-emerald-500/20 hover:text-emerald-300"
-                          }`}
-                        >
-                          {isChecked ? "Granted (Withdraw)" : "Declined (Grant)"}
-                        </button>
-                      )}
+                  <div key={cat.id} className="surface-row">
+                    <div className="surface-row-copy">
+                      <div className="surface-row-title">{cat.label}</div>
+                      <p className="surface-meta">{cat.description}</p>
                     </div>
-                    <p className="text-[11px] text-slate-400">{cat.description}</p>
+                    {cat.required ? (
+                      <span className="badge badge-distracted">Required</span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => handleToggleScope(cat.id)}
+                        className={`btn btn-sm ${isChecked ? "btn-line" : "btn-ink"}`}
+                      >
+                        {isChecked ? "Granted (Withdraw)" : "Declined (Grant)"}
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -217,99 +221,98 @@ export default function PrivacySettingsDrawer({ isOpen, onClose, token, sessionI
 
         {/* Tab 2: Context / Appeal */}
         {activeTab === "context" && (
-          <form onSubmit={handleSubmitContext} className="mt-4 space-y-4 flex-1">
-            <p className="text-xs text-slate-400">
-              Provide context for any technical interruptions, camera drops, or room disturbances. Your note will attach directly to the teacher's session timeline.
-            </p>
+          <form onSubmit={handleSubmitContext} className="surface-form">
+            <div className="surface-body surface-panel stack">
+              <p className="surface-note">
+                Provide context for any technical interruptions, camera drops, or room disturbances. Your note will attach directly to the teacher's session timeline.
+              </p>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-300">Issue Category</label>
-              <select
-                value={appealCategory}
-                onChange={(e) => setAppealCategory(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
-              >
-                <option value="CAMERA_LIGHTING_DEVICE">Camera, lighting, or device problem</option>
-                <option value="NETWORK_CONNECTIVITY">Network or connectivity problem</option>
-                <option value="SIGNAL_MISMATCH">Signal did not reflect my participation</option>
-                <option value="DECLARED_RESOURCE_USE">Expected activity or declared-resource use</option>
-                <option value="ACCESSIBILITY_ACCOMMODATION">Accessibility or accommodation path</option>
-                <option value="IDENTITY_VERIFICATION_ISSUE">Identity verification problem</option>
-                <option value="OTHER">Other</option>
-              </select>
-            </div>
+              <div className="field">
+                <label htmlFor="privacy-issue-category">Issue Category</label>
+                <select
+                  id="privacy-issue-category"
+                  value={appealCategory}
+                  onChange={(e) => setAppealCategory(e.target.value)}
+                >
+                  <option value="CAMERA_LIGHTING_DEVICE">Camera, lighting, or device problem</option>
+                  <option value="NETWORK_CONNECTIVITY">Network or connectivity problem</option>
+                  <option value="SIGNAL_MISMATCH">Signal did not reflect my participation</option>
+                  <option value="DECLARED_RESOURCE_USE">Expected activity or declared-resource use</option>
+                  <option value="ACCESSIBILITY_ACCOMMODATION">Accessibility or accommodation path</option>
+                  <option value="IDENTITY_VERIFICATION_ISSUE">Identity verification problem</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-300">Explanation</label>
-              <textarea
-                rows={4}
-                value={explanationText}
-                onChange={(e) => setExplanationText(e.target.value)}
-                placeholder="Describe what happened (e.g., 'Router restarted at 10:15 AM')..."
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
+              <div className="field">
+                <label htmlFor="privacy-explanation">Explanation</label>
+                <textarea
+                  id="privacy-explanation"
+                  rows={4}
+                  value={explanationText}
+                  onChange={(e) => setExplanationText(e.target.value)}
+                  placeholder="Describe what happened (e.g., 'Router restarted at 10:15 AM')..."
+                />
+              </div>
 
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="reqHelp"
-                checked={requestedHelp}
-                onChange={(e) => setRequestedHelp(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-700 bg-slate-800 text-emerald-500 cursor-pointer"
-              />
-              <label htmlFor="reqHelp" className="text-xs text-slate-300 cursor-pointer">
+              <label className="surface-check" htmlFor="reqHelp">
+                <input
+                  type="checkbox"
+                  id="reqHelp"
+                  checked={requestedHelp}
+                  onChange={(e) => setRequestedHelp(e.target.checked)}
+                />
                 Request teacher assistance or review
               </label>
             </div>
 
-            <button
-              type="submit"
-              disabled={submittingContext || !explanationText.trim()}
-              className="w-full py-2.5 rounded-xl text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors"
-            >
-              {submittingContext ? "Submitting..." : "Submit Context Note"}
-            </button>
+            <div className="surface-actions">
+              <button
+                type="submit"
+                disabled={submittingContext || !explanationText.trim()}
+                className="btn btn-ink btn-sm btn-block"
+              >
+                {submittingContext ? "Submitting..." : "Submit Context Note"}
+              </button>
+            </div>
           </form>
         )}
 
         {/* Tab 3: Data Subject Rights (DSR) */}
         {activeTab === "dsr" && (
-          <div className="mt-4 space-y-4 flex-1">
-            <p className="text-xs text-slate-400">
+          <div className="surface-body surface-panel stack">
+            <p className="surface-note">
               Exercise your Data Subject Rights: download a complete personal data export (SAR) or request record erasure.
             </p>
 
-            <div className="p-4 bg-slate-800/50 border border-slate-700/60 rounded-xl space-y-3">
-              <div className="flex items-center gap-2 text-xs font-medium text-slate-200">
-                <span className="material-symbols-outlined text-emerald-400 text-base">download</span>
-                <span>Subject Access Request (Export)</span>
+            <div className="surface-section">
+              <div className="surface-section-head">
+                <span className="surface-label">Subject Access Request (Export)</span>
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="surface-meta">
                 Download your full personal record archive including consent history, numeric telemetry samples, submissions, and timeline events.
               </p>
               <button
                 type="button"
                 onClick={handleExport}
                 disabled={exporting}
-                className="w-full py-2 rounded-lg text-xs font-medium text-slate-200 bg-slate-700 hover:bg-slate-600 transition-colors"
+                className="btn btn-line btn-sm btn-block"
               >
                 {exporting ? "Generating Export..." : "Download Personal JSON Archive"}
               </button>
             </div>
 
-            <div className="p-4 bg-slate-800/50 border border-rose-500/20 rounded-xl space-y-3">
-              <div className="flex items-center gap-2 text-xs font-medium text-rose-400">
-                <span className="material-symbols-outlined text-base">delete</span>
-                <span>Right to Erasure (Deletion Request)</span>
+            <div className="surface-section">
+              <div className="surface-section-head">
+                <span className="surface-label">Right to Erasure (Deletion Request)</span>
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="surface-meta">
                 Request permanent deletion of all derived observation records, submissions, and temporary identity artifacts.
               </p>
               <button
                 type="button"
                 onClick={handleDeleteRequest}
-                className="w-full py-2 rounded-lg text-xs font-medium text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-colors"
+                className="btn btn-flag btn-sm btn-block"
               >
                 Request Data Deletion
               </button>
