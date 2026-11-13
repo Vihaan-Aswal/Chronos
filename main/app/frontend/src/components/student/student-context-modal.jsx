@@ -128,25 +128,25 @@ export default function StudentContextModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className="surface-overlay"
       role="dialog"
       aria-modal="true"
       aria-labelledby="context-modal-title"
     >
-      <div className="relative w-full max-w-lg bg-[#1a1c1e] text-slate-100 rounded-2xl border border-[#dcc492]/20 shadow-2xl overflow-hidden">
+      <div className="surface-modal">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#212429]">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#dcc492]/10 border border-[#dcc492]/30 flex items-center justify-center text-[#dcc492]">
+        <div className="surface-head">
+          <div className="surface-head-main">
+            <div className="surface-mark surface-mark--gold" aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
             </div>
             <div>
-              <h2 id="context-modal-title" className="text-base font-semibold text-white">
+              <h2 id="context-modal-title" className="surface-title">
                 Add Session Context / Request Help
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="surface-sub">
                 Annotate session timeline with structured explanations
               </p>
             </div>
@@ -154,10 +154,10 @@ export default function StudentContextModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition"
+            className="icon-btn icon-btn-sm"
             aria-label="Close modal"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -166,107 +166,107 @@ export default function StudentContextModal({
 
         {/* Content Body */}
         {submittedSuccess ? (
-          <div className="p-8 text-center">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto mb-3">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
+          <div className="surface-body">
+            <div className="notice notice-ok">
+              <span className="surface-mark surface-mark--forest" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </span>
+              <div>
+                <h3 className="surface-row-title">Context Added</h3>
+                <p className="surface-meta">
+                  Your note has been attached to the session timeline.
+                </p>
+              </div>
             </div>
-            <h3 className="text-lg font-medium text-white mb-1">Context Added</h3>
-            <p className="text-xs text-slate-400">
-              Your note has been attached to the session timeline.
-            </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {errorMsg && (
-              <div className="p-3 bg-red-950/60 border border-red-500/30 rounded-xl text-xs text-red-300">
-                {errorMsg}
-              </div>
-            )}
+          <form onSubmit={handleSubmit} className="surface-form">
+            <div className="surface-body stack">
+              {errorMsg && (
+                <div className="notice notice-flag" role="alert">
+                  <span>{errorMsg}</span>
+                </div>
+              )}
 
-            {/* Category Select */}
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-                Context Category
-              </label>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                {CANONICAL_CATEGORIES.map((cat) => (
-                  <label
-                    key={cat.id}
-                    className={`flex items-start gap-3 p-2.5 rounded-xl border transition cursor-pointer text-left ${
-                      selectedCategory === cat.id
-                        ? "bg-[#dcc492]/10 border-[#dcc492]/50 text-white"
-                        : "bg-white/[0.02] border-white/5 text-slate-300 hover:bg-white/[0.05]"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="appeal_category"
-                      value={cat.id}
-                      checked={selectedCategory === cat.id}
-                      onChange={() => setSelectedCategory(cat.id)}
-                      className="mt-0.5 text-[#dcc492] focus:ring-0"
-                    />
-                    <div>
-                      <div className="text-xs font-medium">{cat.label}</div>
-                      <div className="text-[11px] text-slate-400">{cat.description}</div>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Explanation Note */}
-            <div>
-              <label htmlFor="explanation_text" className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
-                Optional Brief Explanation
-              </label>
-              <textarea
-                id="explanation_text"
-                rows={2}
-                maxLength={300}
-                value={explanationText}
-                onChange={(e) => setExplanationText(e.target.value)}
-                placeholder="Briefly describe what happened (e.g. webcam cord loosened, looked down at paper formula sheet)..."
-                className="w-full bg-[#111315] border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#dcc492]/60 resize-none"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">
-                <strong className="text-amber-300/90 font-medium">Privacy Note:</strong> Chronos does not collect medical or diagnosis details. For physical accommodations, choose &ldquo;Accessibility or accommodation path&rdquo;.
-              </p>
-            </div>
-
-            {/* Immediate Help Checkbox */}
-            <div className="p-3 bg-[#dcc492]/5 border border-[#dcc492]/20 rounded-xl flex items-center justify-between">
-              <div>
-                <div className="text-xs font-medium text-white">Request Immediate Teacher Help</div>
-                <div className="text-[11px] text-slate-400">
-                  Elevates task into teacher&apos;s active triage queue during class
+              {/* Category Select */}
+              <div className="surface-section">
+                <div className="surface-section-head">
+                  <span className="surface-label">Context Category</span>
+                </div>
+                <div className="surface-choice-list">
+                  {CANONICAL_CATEGORIES.map((cat) => (
+                    <label
+                      key={cat.id}
+                      className={`surface-choice${selectedCategory === cat.id ? " is-selected" : ""}`}
+                    >
+                      <input
+                        type="radio"
+                        name="appeal_category"
+                        value={cat.id}
+                        checked={selectedCategory === cat.id}
+                        onChange={() => setSelectedCategory(cat.id)}
+                      />
+                      <span>
+                        <span className="surface-choice-title">{cat.label}</span>
+                        <span className="surface-choice-desc">{cat.description}</span>
+                      </span>
+                    </label>
+                  ))}
                 </div>
               </div>
-              <input
-                type="checkbox"
-                id="requested_help"
-                checked={requestedHelp}
-                onChange={(e) => setRequestedHelp(e.target.checked)}
-                className="w-4 h-4 rounded text-[#dcc492] focus:ring-0 bg-[#111315] border-white/20"
-              />
+
+              {/* Explanation Note */}
+              <div className="field">
+                <label htmlFor="explanation_text">
+                  Optional Brief Explanation
+                </label>
+                <textarea
+                  id="explanation_text"
+                  rows={2}
+                  maxLength={300}
+                  value={explanationText}
+                  onChange={(e) => setExplanationText(e.target.value)}
+                  placeholder="Briefly describe what happened (e.g. webcam cord loosened, looked down at paper formula sheet)..."
+                />
+                <p className="field-hint">
+                  <strong>Privacy Note:</strong> Chronos does not collect medical or diagnosis details. For physical accommodations, choose &ldquo;Accessibility or accommodation path&rdquo;.
+                </p>
+              </div>
+
+              {/* Immediate Help Checkbox */}
+              <div className="surface-row">
+                <div>
+                  <div className="surface-row-title">Request Immediate Teacher Help</div>
+                  <div className="surface-row-meta">
+                    Elevates task into teacher&apos;s active triage queue during class
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  id="requested_help"
+                  checked={requestedHelp}
+                  onChange={(e) => setRequestedHelp(e.target.checked)}
+                  className="surface-checkbox"
+                />
+              </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="surface-actions">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={submitting}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 transition"
+                className="btn btn-line btn-sm"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#dcc492] text-[#1a1c1e] hover:bg-[#ebd7ad] transition shadow-md disabled:opacity-50"
+                className="btn btn-ink btn-sm"
               >
                 {submitting ? "Submitting..." : "Attach Context"}
               </button>

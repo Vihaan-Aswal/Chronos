@@ -247,37 +247,42 @@ export default function AnswerSubmissionPanel({
   const wordCount = typedContent.trim() ? typedContent.trim().split(/\s+/).length : 0;
 
   return (
-    <div className={`flex flex-col h-full bg-[#051421]/95 text-[#d3e4f8] rounded-2xl border border-[rgba(211,228,248,0.12)] p-4 overflow-y-auto ${className}`}>
+    <div className={`ans-panel ${className}`.trim()}>
       {/* Header with Version Counter */}
-      <div className="flex items-center justify-between pb-3 border-b border-[rgba(211,228,248,0.1)] mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[#7eb2ff]/15 border border-[#7eb2ff]/30 flex items-center justify-center text-[#7eb2ff]">
+      <div className="ans-head">
+        <div className="surface-head-main">
+          <div className="surface-mark surface-mark--gold" aria-hidden="true">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 20h9" />
               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
             </svg>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white tracking-wide">Answer Submission</h3>
-            <div className="flex items-center gap-2 text-xs">
-              <span className={`font-medium ${isMaxReached ? "text-amber-400 font-bold" : "text-[#7eb2ff]"}`}>
+            <h3 className="ans-title">Answer Submission</h3>
+            <div className="ans-version">
+              <b className={isMaxReached ? "is-full" : undefined}>
                 Version {currentSubmissionCount} of {MAX_SUBMISSIONS}
-              </span>
-              <span className="text-[#d3e4f8]/50">• Max {MAX_SUBMISSIONS} allowed</span>
+              </b>
+              <span> • Max {MAX_SUBMISSIONS} allowed</span>
             </div>
           </div>
         </div>
 
         {/* Latest Submission Status Badge */}
         {latestSubmission && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-[rgba(211,228,248,0.12)] text-xs">
-            <span className={`w-2 h-2 rounded-full ${
-              latestSubmission.status === "LATE" ? "bg-red-500 animate-pulse" : "bg-emerald-400"
-            }`} />
-            <span className="font-semibold text-white">v{latestSubmission.version}</span>
-            <span className={`text-[10px] uppercase font-bold tracking-wider ${
-              latestSubmission.status === "LATE" ? "text-red-400" : "text-emerald-400"
-            }`}>
+          <div className="ans-latest">
+            <span
+              className={`dot ${
+                latestSubmission.status === "LATE" ? "dot-disengaged" : "dot-attentive"
+              }`}
+              aria-hidden="true"
+            />
+            <b>v{latestSubmission.version}</b>
+            <span
+              className={`badge ${
+                latestSubmission.status === "LATE" ? "badge-flag" : "badge-attentive"
+              }`}
+            >
               {latestSubmission.status}
             </span>
           </div>
@@ -285,17 +290,14 @@ export default function AnswerSubmissionPanel({
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-white/[0.04] rounded-xl border border-[rgba(211,228,248,0.08)] mb-4">
+      <div className="ans-tabs">
         <button
           type="button"
           onClick={() => setActiveTab("typed")}
-          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
-            activeTab === "typed"
-              ? "bg-[#7eb2ff] text-[#020e18] shadow-sm"
-              : "text-[#d3e4f8]/70 hover:text-white hover:bg-white/5"
-          }`}
+          className="ans-tab"
+          aria-pressed={activeTab === "typed"}
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
             <polyline points="4 7 4 4 20 4 20 7" />
             <line x1="9" y1="20" x2="15" y2="20" />
             <line x1="12" y1="4" x2="12" y2="20" />
@@ -306,13 +308,10 @@ export default function AnswerSubmissionPanel({
         <button
           type="button"
           onClick={() => setActiveTab("file")}
-          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
-            activeTab === "file"
-              ? "bg-[#7eb2ff] text-[#020e18] shadow-sm"
-              : "text-[#d3e4f8]/70 hover:text-white hover:bg-white/5"
-          }`}
+          className="ans-tab"
+          aria-pressed={activeTab === "file"}
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="17 8 12 3 7 8" />
             <line x1="12" y1="3" x2="12" y2="15" />
@@ -323,13 +322,10 @@ export default function AnswerSubmissionPanel({
         <button
           type="button"
           onClick={() => setActiveTab("history")}
-          className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
-            activeTab === "history"
-              ? "bg-[#7eb2ff] text-[#020e18] shadow-sm"
-              : "text-[#d3e4f8]/70 hover:text-white hover:bg-white/5"
-          }`}
+          className="ans-tab"
+          aria-pressed={activeTab === "history"}
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
             <polyline points="12 6 12 12 16 14" />
           </svg>
@@ -339,74 +335,77 @@ export default function AnswerSubmissionPanel({
 
       {/* Success / Error Banners */}
       {submitSuccess && (
-        <div className="p-3 mb-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between gap-2 animate-in fade-in">
-          <div className="flex items-center gap-2">
-            <span className="font-bold">✓</span>
-            <span>{submitSuccess}</span>
-          </div>
-          <button onClick={() => setSubmitSuccess(null)} className="text-emerald-300/70 hover:text-emerald-200">✕</button>
+        <div className="notice notice-ok ans-banner" role="status">
+          <span className="strong" aria-hidden="true">✓</span>
+          <span>{submitSuccess}</span>
+          <button
+            type="button"
+            onClick={() => setSubmitSuccess(null)}
+            className="btn btn-quiet btn-sm push"
+          >
+            ✕
+          </button>
         </div>
       )}
 
       {submitError && (
-        <div className="p-3 mb-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center justify-between gap-2 animate-in fade-in">
-          <div className="flex items-center gap-2">
-            <span className="font-bold">!</span>
-            <span>{submitError}</span>
-          </div>
-          <button onClick={() => setSubmitError(null)} className="text-red-300/70 hover:text-red-200">✕</button>
+        <div className="notice notice-flag ans-banner" role="alert">
+          <span className="strong" aria-hidden="true">!</span>
+          <span>{submitError}</span>
+          <button
+            type="button"
+            onClick={() => setSubmitError(null)}
+            className="btn btn-quiet btn-sm push"
+          >
+            ✕
+          </button>
         </div>
       )}
 
       {/* TAB 1: Typed Answer */}
       {activeTab === "typed" && (
-        <div className="flex flex-col flex-1 min-h-[320px]">
+        <div className="surface-panel ans-body">
           {/* Editor Status Bar */}
-          <div className="flex items-center justify-between text-[11px] text-[#d3e4f8]/60 mb-2 px-1">
-            <div className="flex items-center gap-2">
+          <div className="ans-statusbar">
+            <div className="row">
               <span>{wordCount} words</span>
-              <span>•</span>
+              <span aria-hidden="true">•</span>
               <span>{charCount} characters</span>
             </div>
 
-            <div className="flex items-center gap-1.5 font-mono">
+            <div className="row">
               {draftStatus === "saving" && (
-                <span className="text-amber-300 flex items-center gap-1">
-                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
-                    <path fill="currentColor" opacity="0.8" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
+                <span className="is-saving">
+                  <span className="surface-spin inline-spin" aria-hidden="true" />
                   Saving draft...
                 </span>
               )}
               {draftStatus === "saved" && draftSavedAt && (
-                <span className="text-emerald-400">✓ Draft saved at {draftSavedAt}</span>
+                <span className="is-saved">✓ Draft saved at {draftSavedAt}</span>
               )}
-              {draftStatus === "unsaved" && (
-                <span className="text-[#d3e4f8]/40">Unsaved edits</span>
-              )}
+              {draftStatus === "unsaved" && <span>Unsaved edits</span>}
               {draftStatus === "error" && (
-                <span className="text-red-400">Draft auto-save failed</span>
+                <span className="is-error">Draft auto-save failed</span>
               )}
             </div>
           </div>
 
           {/* Clean Text Area */}
-          <div className="relative flex-1 mb-3">
+          <div className="ans-editor-wrap">
             <textarea
               value={typedContent}
               onChange={handleTypedContentChange}
               disabled={isMaxReached || submitting}
               placeholder="Type your essay, code solution, or markdown answer here..."
-              className="w-full h-full min-h-[220px] p-3.5 rounded-xl bg-[#020a12] border border-[rgba(211,228,248,0.14)] focus:border-[#7eb2ff] focus:ring-1 focus:ring-[#7eb2ff] text-white placeholder-[#d3e4f8]/30 text-xs font-mono resize-y leading-relaxed outline-none transition disabled:opacity-50"
+              className="ans-editor"
             />
           </div>
 
           {/* Submit Action */}
-          <div className="flex items-center justify-between pt-2 border-t border-[rgba(211,228,248,0.08)]">
-            <div className="text-[11px] text-[#d3e4f8]/60">
+          <div className="ans-foot">
+            <div>
               {isMaxReached ? (
-                <span className="text-amber-400 font-semibold">Submissions locked (Max 3 reached)</span>
+                <span className="is-locked">Submissions locked (Max 3 reached)</span>
               ) : currentSubmissionCount > 0 ? (
                 <span>Submitting will replace Version {latestSubmission?.version || currentSubmissionCount}</span>
               ) : (
@@ -418,19 +417,16 @@ export default function AnswerSubmissionPanel({
               type="button"
               onClick={() => initiateSubmit("typed")}
               disabled={isMaxReached || submitting || !typedContent.trim()}
-              className="px-4 py-2 rounded-xl bg-[#7eb2ff] hover:bg-[#9cc4ff] disabled:opacity-40 disabled:hover:bg-[#7eb2ff] text-[#020e18] text-xs font-bold transition shadow-md flex items-center gap-1.5"
+              className="btn btn-ink btn-sm"
             >
               {submitting ? (
                 <>
-                  <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
-                    <path fill="currentColor" opacity="0.8" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
+                  <span className="surface-spin surface-spin--cream inline-spin" aria-hidden="true" />
                   Submitting...
                 </>
               ) : (
                 <>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                   Submit Typed Answer (v{currentSubmissionCount + 1})
@@ -443,7 +439,7 @@ export default function AnswerSubmissionPanel({
 
       {/* TAB 2: File Upload */}
       {activeTab === "file" && (
-        <div className="flex flex-col flex-1 min-h-[320px]">
+        <div className="surface-panel ans-body">
           {/* Dropzone Area */}
           <div
             onDragOver={(e) => {
@@ -458,22 +454,18 @@ export default function AnswerSubmissionPanel({
               }
             }}
             onClick={() => !isMaxReached && fileInputRef.current?.click()}
-            className={`flex-1 border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center transition cursor-pointer mb-4 ${
-              selectedFile
-                ? "border-[#7eb2ff]/60 bg-[#7eb2ff]/5"
-                : "border-[rgba(211,228,248,0.18)] hover:border-[#7eb2ff]/40 bg-white/[0.02]"
-            } ${isMaxReached ? "opacity-50 pointer-events-none" : ""}`}
+            className={`ans-drop${selectedFile ? " is-filled" : ""}${isMaxReached ? " is-locked" : ""}`}
           >
             <input
               ref={fileInputRef}
               type="file"
               accept=".pdf,.png,.jpg,.jpeg"
               onChange={(e) => handleFileSelect(e.target.files?.[0])}
-              className="hidden"
+              hidden
             />
 
-            <div className="w-12 h-12 rounded-2xl bg-[#7eb2ff]/10 border border-[#7eb2ff]/20 text-[#7eb2ff] flex items-center justify-center mb-3">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <div className="ans-drop-mark" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
@@ -481,30 +473,30 @@ export default function AnswerSubmissionPanel({
             </div>
 
             {selectedFile ? (
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-white truncate max-w-xs">{selectedFile.name}</p>
-                <p className="text-[11px] text-[#7eb2ff] font-mono">{formatBytes(selectedFile.size)}</p>
-                <p className="text-[10px] text-[#d3e4f8]/60 mt-2">Click or drop another file to replace</p>
-              </div>
+              <>
+                <p className="ans-drop-title">{selectedFile.name}</p>
+                <p className="ans-drop-meta surface-mono">{formatBytes(selectedFile.size)}</p>
+                <p className="ans-drop-meta">Click or drop another file to replace</p>
+              </>
             ) : (
-              <div className="space-y-1">
-                <p className="text-xs font-semibold text-white">Click or drag & drop answer file</p>
-                <p className="text-[11px] text-[#d3e4f8]/60">Supports PDF, PNG, JPG (up to 20MB)</p>
-              </div>
+              <>
+                <p className="ans-drop-title">Click or drag & drop answer file</p>
+                <p className="ans-drop-meta">Supports PDF, PNG, JPG (up to 20MB)</p>
+              </>
             )}
           </div>
 
           {fileError && (
-            <div className="p-2.5 mb-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-300 text-xs">
-              {fileError}
+            <div className="notice notice-flag ans-banner" role="alert">
+              <span>{fileError}</span>
             </div>
           )}
 
           {/* Submit Action */}
-          <div className="flex items-center justify-between pt-2 border-t border-[rgba(211,228,248,0.08)]">
-            <div className="text-[11px] text-[#d3e4f8]/60">
+          <div className="ans-foot">
+            <div>
               {isMaxReached ? (
-                <span className="text-amber-400 font-semibold">Submissions locked (Max 3 reached)</span>
+                <span className="is-locked">Submissions locked (Max 3 reached)</span>
               ) : currentSubmissionCount > 0 ? (
                 <span>Submitting will replace Version {latestSubmission?.version || currentSubmissionCount}</span>
               ) : (
@@ -516,19 +508,16 @@ export default function AnswerSubmissionPanel({
               type="button"
               onClick={() => initiateSubmit("file")}
               disabled={isMaxReached || submitting || !selectedFile}
-              className="px-4 py-2 rounded-xl bg-[#7eb2ff] hover:bg-[#9cc4ff] disabled:opacity-40 disabled:hover:bg-[#7eb2ff] text-[#020e18] text-xs font-bold transition shadow-md flex items-center gap-1.5"
+              className="btn btn-ink btn-sm"
             >
               {submitting ? (
                 <>
-                  <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
-                    <path fill="currentColor" opacity="0.8" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
+                  <span className="surface-spin surface-spin--cream inline-spin" aria-hidden="true" />
                   Uploading...
                 </>
               ) : (
                 <>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                     <polyline points="17 8 12 3 7 8" />
                     <line x1="12" y1="3" x2="12" y2="15" />
@@ -543,136 +532,138 @@ export default function AnswerSubmissionPanel({
 
       {/* TAB 3: Submission History & Audit Trail */}
       {activeTab === "history" && (
-        <div className="flex flex-col flex-1 space-y-3">
+        <div className="surface-panel ans-body">
           {loadingSubmissions ? (
-            <div className="text-center py-10 text-xs text-[#d3e4f8]/60">Loading submissions...</div>
+            <div className="surface-loading">
+              <span className="surface-spin" aria-hidden="true" />
+              Loading submissions...
+            </div>
           ) : submittedVersions.length === 0 ? (
-            <div className="text-center py-10 px-4 bg-white/[0.02] rounded-xl border border-dashed border-[rgba(211,228,248,0.1)] text-xs text-[#d3e4f8]/50">
-              <p className="font-medium text-white/80 mb-1">No Final Submissions Yet</p>
+            <div className="empty">
+              <h3>No Final Submissions Yet</h3>
               <p>When you submit a typed answer or upload a file, your version history and cryptographic hashes will appear here.</p>
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <ul className="ans-history">
               {submittedVersions.map((sub) => {
                 const isCurrent = sub.status === "SUBMITTED" || sub.status === "LATE";
                 return (
-                  <div
-                    key={sub.answer_id}
-                    className={`p-3.5 rounded-xl border transition ${
-                      isCurrent
-                        ? "bg-gradient-to-r from-[#7eb2ff]/10 to-transparent border-[#7eb2ff]/40 shadow-sm"
-                        : "bg-white/[0.02] border-[rgba(211,228,248,0.08)] opacity-75"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          isCurrent ? "bg-[#7eb2ff] text-[#020e18]" : "bg-white/10 text-white/70"
-                        }`}>
+                  <li key={sub.answer_id} className="ans-history-row">
+                    <div>
+                      <div className="ans-history-head">
+                        <span className={`badge ${isCurrent ? "badge-ink" : ""}`}>
                           Version {sub.version}
                         </span>
 
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase ${
-                          sub.status === "SUBMITTED"
-                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                            : sub.status === "LATE"
-                            ? "bg-red-500/20 text-red-300 border border-red-500/30"
-                            : "bg-slate-500/20 text-slate-300 border border-slate-500/30"
-                        }`}>
+                        <span
+                          className={`badge ${
+                            sub.status === "SUBMITTED"
+                              ? "badge-attentive"
+                              : sub.status === "LATE"
+                              ? "badge-flag"
+                              : "badge-away"
+                          }`}
+                        >
                           {sub.status}
                         </span>
 
-                        <span className="text-[11px] text-[#d3e4f8]/60">
+                        <span className="surface-meta">
                           {sub.artifact_type === "typed_text" ? "Typed Text" : sub.storage_path?.split("/").pop() || "Uploaded File"}
                         </span>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadSubmission(sub)}
-                        className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium flex items-center gap-1 transition"
-                        title="Download / View submitted copy"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <polyline points="7 10 12 15 17 10" />
-                          <line x1="12" y1="15" x2="12" y2="3" />
-                        </svg>
-                        Download
-                      </button>
-                    </div>
+                      {/* Metadata & Content Hash */}
+                      <div className="ans-history-facts">
+                        <span>Timestamp: {formatDateUtc(sub.submitted_at)}</span>
 
-                    {/* Metadata & Content Hash */}
-                    <div className="space-y-1 text-[10px] font-mono text-[#d3e4f8]/70">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[#d3e4f8]/40">Timestamp:</span>
-                        <span>{formatDateUtc(sub.submitted_at)}</span>
-                      </div>
-
-                      {sub.content_hash && (
-                        <div className="flex items-center gap-2 truncate">
-                          <span className="text-[#d3e4f8]/40 shrink-0">SHA-256:</span>
-                          <span className="text-[#7eb2ff] truncate" title={sub.content_hash}>
-                            {sub.content_hash}
+                        {sub.content_hash && (
+                          <span className="truncate" title={sub.content_hash}>
+                            SHA-256: {sub.content_hash}
                           </span>
-                        </div>
-                      )}
+                        )}
 
-                      {sub.byte_size > 0 && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[#d3e4f8]/40">Size:</span>
-                          <span>{formatBytes(sub.byte_size)}</span>
-                        </div>
-                      )}
+                        {sub.byte_size > 0 && (
+                          <span>Size: {formatBytes(sub.byte_size)}</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadSubmission(sub)}
+                      className="btn btn-line btn-sm"
+                      title="Download / View submitted copy"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      Download
+                    </button>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           )}
         </div>
       )}
 
       {/* Confirmation Modal Before Replacing a Submitted Version */}
       {showReplaceModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#04111d] border border-amber-400/30 rounded-2xl max-w-md w-full p-5 shadow-2xl animate-in fade-in zoom-in-95">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-400/30 text-amber-300 flex items-center justify-center mx-auto mb-4">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-            </div>
-
-            <h3 className="text-base font-bold text-white text-center mb-2">Replace Submitted Answer?</h3>
-            <p className="text-xs text-[#d3e4f8]/80 text-center mb-4 leading-relaxed">
-              You currently have <strong className="text-white">Version {latestSubmission?.version || currentSubmissionCount}</strong> marked as your active submission. Submitting now will archive the previous version and record <strong className="text-[#7eb2ff]">Version {currentSubmissionCount + 1} of {MAX_SUBMISSIONS}</strong>.
-            </p>
-
-            <div className="p-3 rounded-xl bg-white/[0.04] border border-[rgba(211,228,248,0.1)] text-[11px] text-[#d3e4f8]/70 mb-5 space-y-1">
-              <div className="flex justify-between">
-                <span>Total Versions Allowed:</span>
-                <span className="font-bold text-white">{MAX_SUBMISSIONS}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Remaining Attempts:</span>
-                <span className="font-bold text-amber-300">{MAX_SUBMISSIONS - currentSubmissionCount - 1}</span>
+        <div
+          className="surface-overlay surface-overlay--stacked"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="replace-answer-title"
+        >
+          <div className="surface-modal surface-modal--narrow">
+            <div className="surface-head">
+              <div className="surface-head-main">
+                <div className="surface-mark surface-mark--gold" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 id="replace-answer-title" className="surface-title">
+                    Replace Submitted Answer?
+                  </h3>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="surface-body">
+              <p className="surface-meta">
+                You currently have <strong>Version {latestSubmission?.version || currentSubmissionCount}</strong> marked as your active submission. Submitting now will archive the previous version and record <strong>Version {currentSubmissionCount + 1} of {MAX_SUBMISSIONS}</strong>.
+              </p>
+
+              <dl className="ans-replace-facts">
+                <div>
+                  <dt>Total Versions Allowed:</dt>
+                  <dd>{MAX_SUBMISSIONS}</dd>
+                </div>
+                <div>
+                  <dt>Remaining Attempts:</dt>
+                  <dd className="is-warn">{MAX_SUBMISSIONS - currentSubmissionCount - 1}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="surface-actions">
               <button
                 type="button"
                 onClick={() => setShowReplaceModal(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-[#d3e4f8] text-xs font-semibold transition"
+                className="btn btn-line btn-sm"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => executeSubmission(pendingSubmissionType)}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-[#020e18] text-xs font-bold transition shadow-md"
+                className="btn btn-ink btn-sm"
               >
                 Confirm & Replace
               </button>
