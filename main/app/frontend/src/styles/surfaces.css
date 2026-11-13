@@ -2057,6 +2057,12 @@
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 
+@media (max-width: 860px) {
+  .record-actions {
+    justify-self: start;
+  }
+}
+
 @media (max-width: 720px) {
   .surface-overlay {
     padding: 10px;
